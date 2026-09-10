@@ -113,6 +113,31 @@ assets/             参照図の置き場（README 参照。画像を置くと�
 `assets/spectrum_ref2.png`、`assets/spectrum_ref3.png` として画像を置く。ファイルがあれば自動的に表示され、
 無ければ何も表示されない（`assets/README.md` を参照）。
 
+## 参考文献
+
+本デモが依拠している研究代表者らの主な先行研究と、関連する実装。
+
+- **Abe, S.** (2026), *A calibrated dust-trail model of the Leonid meteoroid stream and forecasts of the 2031–2035 encounters*, [arXiv:2608.25456](https://arxiv.org/abs/2608.25456)（[データ: Zenodo](https://zenodo.org/records/22084210)）
+  — しし座流星群のダストトレイルと地球軌道の交差から流星嵐を予報する。DT-1（上空大気圏ツイン）の予報入力に対応する
+- **Abe, S., et al.** (2020), *Sodium variation in Geminid meteoroids from (3200) Phaethon*, Planetary and Space Science, **194**, 105040
+  — Na I 589 nm の強度変化から母天体の熱進化を読む。火球スペクトルで Na／Mg 比を組成の指標として扱う根拠（G-1）
+- **Abe, S., et al.** (2011), *Near-Ultraviolet and Visible Spectroscopy of HAYABUSA Spacecraft Re-Entry*, Publications of the Astronomical Society of Japan, **63**, 1011–1021
+  — 人工物の再突入を地上から分光観測した先行例。デブリ再突入の分光（G-2）が直接引き継ぐ手法
+- **Abe, S.** (2009), *Meteoroids and Meteors – Observations and Connection to Parent Bodies*, Lecture Notes in Physics, **758**, 129–166, Springer
+  — 流星の観測手法と、軌道・密度・強度・組成から母天体へ遡る枠組みの総説。本デモ全体の観測設計と解析フローの土台
+- **Watanabe, K., Abe, S., Arima, N. & Hanayama, H.** (2026), *Spectroscopic Study of Rocket Debris during Atmospheric Re-entry*, ACM 2026
+  — LM-3B 第2段の再突入分光（石垣島天文台・600 grooves/mm）。分子（酸化物）バンド AlO・CN・TiO と再突入局面の推移はこの成果に基づく
+- **S. Abe et al.** (2000), しし座流星群のスペクトル観測
+  — 自然天体スペクトルの線同定（Ca II・Mg I・Na I・Si II・O I・N I・N₂）と相対強度の基準
+- **[Meteorium（メテオリウム）](https://aero.cst.nihon-u.ac.jp/abe-s/2026/08/31/meteorium%ef%bc%88%e3%83%a1%e3%83%86%e3%82%aa%e3%83%aa%e3%82%a6%e3%83%a0%ef%bc%89/)** — 宇宙科学デジタルツイン アプリ、Abe Space Science Lab (2026)（[App Store](https://apps.apple.com/app/id6798546441)）
+  — 太陽系を俯瞰してダストトレイルと地球軌道の交差を見せ、そのまま地上視点に降りて流星雨を再現する。本観測網の PF-2（デジタルツイン）・DT-7（学びのツイン）が目指す形を、観測データ側から補完する
+
+## 参考資料
+
+- [NU-SX 公式サイト](https://aero.cst.nihon-u.ac.jp/nu-sx/) ／ [Abe Space Science Lab](https://aero.cst.nihon-u.ac.jp/abe-s/)
+- [SonotaCo Network Japan（UFOCapture）](https://sonotaco.jp/)、[株式会社サヤ INF03](https://www.saya-net.com/products/inf03.html)、[Unihedron SQM-LU-DL](https://unihedron.com/projects/sqm-lu-dl/)、[高知工科大学 インフラサウンド研究室](https://www.kochi-tech.ac.jp/research/research_center/advanced_engineering/infrasound.html)
+- 地図データ：dataofjapan/land（国土数値情報を簡略化）
+
 ## ブラウザ
 
 Chrome / Safari / Firefox / Edge の最新版。スマートフォン幅にも対応する。

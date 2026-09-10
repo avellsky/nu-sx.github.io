@@ -155,6 +155,10 @@ table.tbl tbody tr.on{background:color-mix(in srgb,var(--accent) 12%,transparent
 table.tbl td.r,table.tbl th.r{text-align:right}
 table.tbl td.c,table.tbl th.c{text-align:center}
 table.tbl .sm{font-size:11px;color:var(--muted)}
+table.tbl.refs td{padding:9px 12px;line-height:1.7}
+table.tbl.refs td:first-child{width:52%}
+table.tbl.refs i{font-style:normal;color:var(--ink)}
+table.tbl.refs td:last-child{color:var(--ink2);font-size:12px}
 
 /* ---------- チャート ---------- */
 svg.chart{width:100%;height:auto;display:block;overflow:visible}
