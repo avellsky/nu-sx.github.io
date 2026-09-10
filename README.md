@@ -25,7 +25,6 @@ Organization 配下の `<org>.github.io` は組織サイトとして扱われ、
 ```
 index.html                サイト表紙（デモ一覧）
 .nojekyll                 Jekyll による処理を無効化
-.github/workflows/pages.yml  GitHub Pages への自動デプロイ
 nu-sora/                  NU-SORA 観測ポータル デモ版（ビルド不要の静的サイト）
   index.html
   css/app.css
@@ -36,9 +35,22 @@ nu-sora/                  NU-SORA 観測ポータル デモ版（ビルド不要
 
 ## デプロイ
 
-`main` ブランチへの push で GitHub Actions が自動的に GitHub Pages へ公開する。
-初回実行時に Pages が自動で有効化される（`actions/configure-pages` の `enablement: true`）。
-うまくいかない場合は Settings → Pages → Build and deployment → Source を **GitHub Actions** に設定する。
+GitHub Pages の **Deploy from a branch** で公開する。ビルド工程を持たない素の静的サイトなので、
+Actions を経由せず `main` ブランチの内容をそのまま配信するのが最も確実で、以後は push するだけで反映される。
+
+初回のみ、リポジトリの設定を 1 か所変更する（`https://github.com/avellsky/nu-sx.github.io/settings/pages`）。
+
+| 項目 | 設定値 |
+|---|---|
+| Build and deployment → **Source** | **Deploy from a branch** |
+| **Branch** | `main` / `/ (root)` |
+
+設定後、1〜2 分で公開される。`.nojekyll` を置いてあるので Jekyll による変換は行われない。
+
+> Actions 経由（`actions/deploy-pages`）でも公開できるが、`GITHUB_TOKEN` には Pages サイトを
+> **新規作成する**権限がないため、`actions/configure-pages` の `enablement: true` は
+> `Resource not accessible by integration` で失敗する。Actions 方式を使う場合は、
+> 先に Settings → Pages → Source を **GitHub Actions** に設定してから実行すること。
 
 ## 検索エンジンへの登録について
 
