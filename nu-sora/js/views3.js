@@ -36,7 +36,8 @@ NS.V.weather = function (root, go, arg) {
       return 'WBGT <b>' + NS.f(w.wbgt, 1) + '℃</b>（' + l.label + '）<br>気温 ' + NS.f(w.temp, 1) + '℃ / 湿度 ' + NS.f(w.rh, 0) +
         '% / 風 ' + NS.f(w.wind, 1) + ' m/s<br>日射 ' + NS.f(w.solar, 3) + ' kW/m² · 雲量 ' + Math.round(w.cloud * 100) + '%<br>' + l.advice;
     } });
-  var mp = panel('全国 WBGT 分布', { note:'Ono & Tonouchi (2014) の屋外 WBGT 推定式による算出' }, []);
+  var mp = panel('全国 WBGT 分布', { note:'Ono & Tonouchi (2014) の屋外 WBGT 推定式による算出',
+    tools:NS.refreshTool(function () { NS.rerender(); }) }, []);
   var mb = mp.querySelector('.panel-b'); mb.classList.add('flush'); mb.appendChild(M.node);
   NS.add(mb, el('div', { class:'maplegend' }, [
     el('span', null, [el('i', { class:'gradbar', style:{ background:'linear-gradient(90deg,#3B7EA1,#4FA07A,#D9B23C,#DE8330,#C43D2E,#8E1B2C)' } }), ' 18 ← WBGT ℃ → 35']),
@@ -201,7 +202,8 @@ NS.V.skyglow = function (root, go, arg) {
         '平常値 ' + NS.f(st.sqm, 2) + ' / 光害量 ' + NS.f(sb.lp, 2) + ' 等<br>' +
         '雲の寄与 ' + NS.f(sb.cloudEffect, 2) + ' 等 · 月の寄与 ' + NS.f(sb.moonEffect, 2) + ' 等';
     } });
-  var mp = panel('全国 夜空輝度マップ', { note:'夜間の局は現在値、昼間・薄明の局は平常値（* 印・淡く表示）' }, []);
+  var mp = panel('全国 夜空輝度マップ', { note:'夜間の局は現在値、昼間・薄明の局は平常値（* 印・淡く表示）',
+    tools:NS.refreshTool(function () { NS.rerender(); }) }, []);
   var mb = mp.querySelector('.panel-b'); mb.classList.add('flush'); mb.appendChild(M.node);
   NS.add(mb, el('div', { class:'maplegend' }, [
     el('span', null, [el('i', { class:'gradbar', style:{ background:'linear-gradient(90deg,#FFF1C9,#F08A3C,#B4562F,#5C4A8C,#2C3A82,#101A44)' } }),

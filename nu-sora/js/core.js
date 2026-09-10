@@ -187,6 +187,31 @@ NS.table = function (head, rows, opts) {
   return NS.el('div', { class: 'tw' }, NS.el('table', { class: 'tbl ' + (opts.class || '') }, [thead, tb]));
 };
 NS.badge = function (text, kind) { return NS.el('span', { class: 'badge ' + (kind || ''), text: text }); };
+/* 画面全体の再描画。app.js が実体に差し替える */
+NS.rerender = function () {};
+/* 更新ボタン＋最終更新時刻。onRefresh は同期関数（再描画）を渡す */
+NS.refreshTool = function (onRefresh, opts) {
+  opts = opts || {};
+  var stamp = NS.el('span', { class: 'reftime', text: NS.fmtJST(NS.now(), { timeOnly: true }) + ' 現在' });
+  var btn = NS.el('button', {
+    class: 'iconbtn refbtn', type: 'button', title: opts.title || '最新の観測値を取り込んで表示を更新する',
+    onclick: function () {
+      if (btn.disabled) return;
+      btn.disabled = true;
+      btn.classList.add('spin');
+      var done = function () {
+        btn.disabled = false;
+        btn.classList.remove('spin');
+        stamp.textContent = NS.fmtJST(NS.now(), { timeOnly: true }) + ' 現在';
+      };
+      /* 取得中であることが分かるよう 1 フレーム置いてから実行する */
+      requestAnimationFrame(function () {
+        try { onRefresh(); } finally { setTimeout(done, 260); }
+      });
+    }
+  }, [NS.el('span', { class: 'refico', text: '\u27F3' }), '更新']);
+  return NS.el('div', { class: 'reftool' }, [stamp, btn]);
+};
 NS.bar = function (frac, kind) {
   return NS.el('div', { class: 'mbar' }, NS.el('i', { class: kind || '', style: { width: Math.max(0, Math.min(1, frac)) * 100 + '%' } }));
 };

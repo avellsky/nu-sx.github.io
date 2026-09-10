@@ -46,6 +46,15 @@ header.top{position:sticky;top:0;z-index:40;background:color-mix(in srgb,var(--b
 .iconbtn{background:none;border:1px solid var(--rule2);color:var(--ink2);border-radius:4px;padding:5px 10px;
   font-size:11.5px;cursor:pointer;white-space:nowrap}
 .iconbtn:hover{border-color:var(--accent);color:var(--ink)}
+.iconbtn:disabled{opacity:.55;cursor:default}
+.reftool{display:inline-flex;align-items:center;gap:8px}
+.reftool .reftime{font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums;
+  font-family:ui-monospace,monospace;white-space:nowrap}
+.refbtn{display:inline-flex;align-items:center;gap:5px}
+.refbtn .refico{display:inline-block;font-size:13px;line-height:1}
+.refbtn.spin .refico{animation:refspin .7s linear infinite}
+@keyframes refspin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.refbtn.spin .refico{animation:none}}
 nav.tabs{max-width:1440px;margin:0 auto;padding:0 10px;display:flex;gap:1px;overflow-x:auto;scrollbar-width:thin}
 nav.tabs button{background:none;border:0;border-bottom:2px solid transparent;color:var(--ink2);
   padding:9px 13px;font-size:12.5px;cursor:pointer;white-space:nowrap;display:flex;gap:6px;align-items:center}

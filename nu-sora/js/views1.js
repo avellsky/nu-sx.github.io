@@ -144,7 +144,8 @@ NS.V.dashboard = function (root, go) {
   M.addOverlay(s('circle', { cx:ee[0], cy:ee[1], r:M.px(4), fill:'var(--accent)' }));
 
   mapPanel = panel('観測局配置と現況', { note:'ホイールで拡大・ドラッグで移動 / 局をクリックで詳細',
-    tools:el('div', { class:'seg' }, ['all', 'kanto', 'kyushu', 'tohoku'].map(function (k) {
+    tools:el('div', { class:'split' }, [NS.refreshTool(function () { NS.rerender(); }),
+    el('div', { class:'seg' }, ['all', 'kanto', 'kyushu', 'tohoku'].map(function (k) {
       var b = el('button', { text:NS.VIEWS[k].name, 'aria-pressed':k === 'all' ? 'true' : 'false',
         onclick:function () {
           M.goto(k, true);
@@ -152,7 +153,7 @@ NS.V.dashboard = function (root, go) {
           b.setAttribute('aria-pressed', 'true');
         } });
       return b;
-    })) }, []);
+    }))]) }, []);
   mapPanel.querySelector('.panel-b').classList.add('flush');
   mapPanel.querySelector('.panel-b').appendChild(M.node);
   mapPanel.querySelector('.panel-b').appendChild(el('div', { class:'maplegend' }, [
@@ -336,7 +337,9 @@ NS.V.map = function (root, go, arg) {
     }))
   ]);
   var legend = el('div', { class:'maplegend' });
-  var p = panel('全国 13 局', { note:'高度 100 km 基準の視野円' }, []);
+  var refresh = NS.refreshTool(function () { paint(); });
+  var p = panel('全国 13 局', { note:'高度 100 km 基準の視野円。更新しても表示範囲とレイヤはそのまま保たれる',
+    tools:refresh }, []);
   var body = p.querySelector('.panel-b'); body.classList.add('flush');
   NS.add(body, [bar, M.node, legend]);
   NS.add(root, p);

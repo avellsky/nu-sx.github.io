@@ -33,7 +33,15 @@ function parseHash() {
   return { view:p[0], arg:p[1] ? decodeURIComponent(p[1]) : null };
 }
 
-function render() {
+/* 現在の画面を描き直す（更新ボタン用。スクロール位置を保つ） */
+NS.rerender = function () {
+  var y = window.scrollY || 0;
+  render({ keepScroll: true });
+  window.scrollTo(0, y);
+};
+
+function render(opt) {
+  opt = opt || {};
   var r = parseHash();
   if (!NS.V[r.view]) r = { view:'dashboard', arg:null };
   leaveFns.forEach(function (f) { try { f(); } catch (e) {} });
@@ -53,8 +61,7 @@ function render() {
     ])));
     if (window.console) console.error(err);
   }
-  main.scrollIntoView({ block:'start' });
-  window.scrollTo(0, 0);
+  if (!opt.keepScroll) { main.scrollIntoView({ block:'start' }); window.scrollTo(0, 0); }
 }
 
 function buildHeader() {
@@ -111,7 +118,7 @@ function tick() {
 function boot() {
   NS.buildCatalog();
   buildHeader();
-  window.addEventListener('hashchange', render);
+  window.addEventListener('hashchange', function () { render(); });
   render();
   tick();
   setInterval(tick, 1000);
