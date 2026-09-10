@@ -3,7 +3,78 @@
 'use strict';
 (function (NS) {
 
-/* 名前, 赤経(h), 赤緯(°), V等級 */
+/* ---------- 恒星カタログの展開（js/starcatalog.js を base36 から復元） ---------- */
+NS.unpackSky = function () {
+  if (NS._sky) return NS._sky;
+  var S = window.SKY_STAR_STR || '', n = (S.length / 12) | 0;
+  var ra = new Float64Array(n), sinD = new Float64Array(n), cosD = new Float64Array(n);
+  var dec = new Float64Array(n), mag = new Float64Array(n), bv = new Float64Array(n);
+  for (var i = 0; i < n; i++) {
+    var o = i * 12;
+    var r = parseInt(S.substr(o, 4), 36) / 1000;
+    var d = parseInt(S.substr(o + 4, 4), 36) / 1000 - 90;
+    ra[i] = r; dec[i] = d;
+    sinD[i] = Math.sin(d * NS.d2r); cosD[i] = Math.cos(d * NS.d2r);
+    mag[i] = parseInt(S.substr(o + 8, 2), 36) / 50 - 2;
+    bv[i] = parseInt(S.substr(o + 10, 2), 36) / 50 - 1;
+  }
+  /* 星座線（明るさ順の添字ペア） */
+  var LS = window.SKY_LINE_STR || '', ln = (LS.length / 6) | 0;
+  var la = new Int32Array(ln), lb = new Int32Array(ln);
+  for (var j = 0; j < ln; j++) {
+    la[j] = parseInt(LS.substr(j * 6, 3), 36);
+    lb[j] = parseInt(LS.substr(j * 6 + 3, 3), 36);
+  }
+  /* 天の川（Tycho-2 星数密度 1 度グリッドのうち閾値超のセル） */
+  var MS = window.SKY_MW_STR || '', mn = (MS.length / 6) | 0;
+  var mra = new Float64Array(mn), msinD = new Float64Array(mn), mcosD = new Float64Array(mn), mv = new Float64Array(mn);
+  for (var k = 0; k < mn; k++) {
+    var q = k * 6;
+    var rr = parseInt(MS.substr(q, 2), 36), cc = parseInt(MS.substr(q + 2, 3), 36);
+    var dd = rr - 90 + 0.5;
+    mra[k] = cc + 0.5; msinD[k] = Math.sin(dd * NS.d2r); mcosD[k] = Math.cos(dd * NS.d2r);
+    mv[k] = parseInt(MS.substr(q + 5, 1), 36) / 35;
+  }
+  NS._sky = { n:n, ra:ra, dec:dec, sinD:sinD, cosD:cosD, mag:mag, bv:bv,
+              ln:ln, la:la, lb:lb, mn:mn, mra:mra, msinD:msinD, mcosD:mcosD, mv:mv };
+  return NS._sky;
+};
+/* 固有名（和名）を持つ明るい星を、位置でカタログに突き合わせて索引を作る */
+NS.starNameIndex = function () {
+  if (NS._nameIdx) return NS._nameIdx;
+  var sky = NS.unpackSky(), idx = {};
+  NS.STARS.forEach(function (st) {
+    var ra0 = st[1] * 15, dec0 = st[2], best = -1, bestD = 0.35;
+    for (var i = 0; i < sky.n && sky.mag[i] < st[3] + 0.9; i++) {
+      var dr = Math.abs(sky.ra[i] - ra0); if (dr > 180) dr = 360 - dr;
+      var d = Math.hypot(dr * Math.cos(dec0 * NS.d2r), sky.dec[i] - dec0);
+      if (d < bestD) { bestD = d; best = i; }
+    }
+    if (best >= 0 && !(best in idx)) idx[best] = st[0];
+  });
+  NS._nameIdx = idx;
+  return idx;
+};
+/* B−V 色指数 → 表示色（古典的な恒星色テーブルを線形補間） */
+var BV_TAB = [[-0.40,155,176,255],[-0.20,170,191,255],[0.00,202,215,255],[0.20,231,236,255],
+              [0.40,248,247,255],[0.60,255,251,246],[0.80,255,244,234],[1.00,255,235,213],
+              [1.20,255,222,180],[1.40,255,210,161],[1.60,255,199,142],[2.00,255,166,81]];
+NS.bvColor = function (bv) {
+  var t = BV_TAB;
+  if (bv <= t[0][0]) return t[0];
+  for (var i = 1; i < t.length; i++) {
+    if (bv <= t[i][0]) {
+      var f = (bv - t[i - 1][0]) / (t[i][0] - t[i - 1][0]);
+      return [0, Math.round(t[i-1][1] + (t[i][1] - t[i-1][1]) * f),
+                 Math.round(t[i-1][2] + (t[i][2] - t[i-1][2]) * f),
+                 Math.round(t[i-1][3] + (t[i][3] - t[i-1][3]) * f)];
+    }
+  }
+  return t[t.length - 1];
+};
+
+/* 明るい星の和名。位置でカタログ（BSC5）に突き合わせてラベル表示に使う。
+   [名前, 赤経(h), 赤緯(°), V等級] */
 NS.STARS = [
 ['シリウス',6.752,-16.716,-1.46],['カノープス',6.399,-52.696,-0.72],['アークトゥルス',14.261,19.182,-0.05],
 ['ベガ',18.615,38.784,0.03],['カペラ',5.278,45.998,0.08],['リゲル',5.242,-8.202,0.13],
@@ -46,83 +117,12 @@ NS.STARS = [
 ['ジェンナー',12.263,-17.542,2.94],['ミンカル',12.498,-16.516,2.95],['ラスアルアスド',10.333,19.842,2.01],
 ['アルジェバ',10.278,23.417,2.37],['ゾスマ',11.235,20.524,2.56],['シェラタン',1.911,20.808,2.64]
 ];
-/* 星座線（星表インデックスの対） */
-NS.CONST = [
-  { n:'オリオン座', p:[[8,24],[24,25],[24,27],[27,29],[29,5],[5,49],[49,29],[8,26]] },
-  { n:'おおぐま座', p:[[31,84],[84,83],[83,86],[86,30],[30,55],[55,35]] },
-  { n:'カシオペヤ座', p:[[68,67],[67,80],[80,81],[81,77]] },
-  { n:'はくちょう座', p:[[17,66],[66,74],[66,73],[17,75]] },
-  { n:'さそり座', p:[[13,90],[90,89],[89,22],[22,88],[88,91]] },
-  { n:'こと座・わし座', p:[[3,17],[10,69]] }
-];
-
-/* 銀河座標 → 赤道座標（J2000）。標準回転行列の転置 */
-var Rg = [[-0.0548755604,0.4941094279,-0.8676661490],
-          [-0.8734370902,-0.4448296300,-0.1980763734],
-          [-0.4838350155,0.7469822445,0.4559837762]];
-function gal2eq(l, b) {
-  var lr = l * NS.d2r, br = b * NS.d2r;
-  var v = [Math.cos(br) * Math.cos(lr), Math.cos(br) * Math.sin(lr), Math.sin(br)];
-  var x = Rg[0][0] * v[0] + Rg[1][0] * v[1] + Rg[2][0] * v[2];
-  var y = Rg[0][1] * v[0] + Rg[1][1] * v[1] + Rg[2][1] * v[2];
-  var z = Rg[0][2] * v[0] + Rg[1][2] * v[1] + Rg[2][2] * v[2];
-  return [((Math.atan2(y, x) * NS.r2d / 15) + 24) % 24, Math.asin(Math.max(-1, Math.min(1, z))) * NS.r2d];
-}
-/* 天の川の点群（一度だけ生成） */
-var MW = null;
-function milkyWay() {
-  if (MW) return MW;
-  MW = [];
-  var r = NS.rng('mw');
-  for (var i = 0; i < 2400; i++) {
-    var l = r() * 360;
-    var b = r.norm(0, 7.2);
-    var bulge = Math.exp(-Math.pow(((l + 180) % 360 - 180) / 26, 2));
-    if (r() > 0.30 + 0.66 * bulge) continue;
-    var e = gal2eq(l, b);
-    MW.push([e[0], e[1], 0.20 + 0.55 * bulge * r() + 0.2 * r()]);
-  }
-  return MW;
-}
-
-/* 微光星の星野（実在の明るい星に加え、統計的に妥当な密度の暗い星を球面上へ固定配置する）。
-   位置はシード固定なので、天球と同じ速さ・同じ向きで正しく日周運動する。 */
-var FAINT = null;
-function faintStars() {
-  if (FAINT) return FAINT;
-  FAINT = [];
-  var r = NS.rng('faint-field');
-  for (var i = 0; i < 4200; i++) {
-    var ra, dec;
-    if (r() < 0.34) {                      /* 3 割強を銀河面に集める */
-      var e = gal2eq(r() * 360, r.norm(0, 9.5));
-      ra = e[0]; dec = e[1];
-    } else {                               /* 残りは球面上に一様 */
-      ra = r() * 24;
-      dec = Math.asin(2 * r() - 1) * NS.r2d;
-    }
-    /* 等級分布：暗いほど数が多い（N(<m) ∝ 10^0.6m の粗い近似） */
-    var m = 3.4 + 3.9 * Math.pow(r(), 0.40);
-    FAINT.push([ra, dec, m]);
-  }
-  return FAINT;
-}
-
-/* 赤道座標 → 地平座標 */
-NS.eq2h = function (raH, decDeg, lstDeg, latDeg) {
-  var ha = (lstDeg - raH * 15) * NS.d2r, dec = decDeg * NS.d2r, la = latDeg * NS.d2r;
-  var sinAlt = Math.sin(dec) * Math.sin(la) + Math.cos(dec) * Math.cos(la) * Math.cos(ha);
-  var alt = Math.asin(Math.max(-1, Math.min(1, sinAlt)));
-  var az = Math.atan2(-Math.cos(dec) * Math.sin(ha), Math.sin(dec) * Math.cos(la) - Math.cos(dec) * Math.sin(la) * Math.cos(ha));
-  return { alt:alt * NS.r2d, az:((az * NS.r2d) + 360) % 360 };
-};
-
 /* =============== 全天ビュー =============== */
 NS.AllSky = function (station, opts) {
   opts = opts || {};
   var size = opts.size || 420;
   var cv = NS.el('canvas', { class:'allsky', width:size * 2, height:size * 2, style:{ width:'100%', height:'auto' } });
-  var A = { node:cv, station:station, running:false, showConst:opts.showConst !== false, showGrid:opts.showGrid !== false,
+  var A = { node:cv, station:station, running:false, showConst:opts.showConst !== false, showNames:!!opts.showNames, showGrid:opts.showGrid !== false,
             speed:opts.speed || 1, meteors:[], sats:[], t0:NS.now(), started:performance.now() };
   var ctx = cv.getContext('2d');
   var CX = size / 2, CY = size / 2, R = size * 0.468;
@@ -131,8 +131,6 @@ NS.AllSky = function (station, opts) {
   bg.width = cv.width; bg.height = cv.height;
   var bctx = bg.getContext('2d');
   A._bgKey = null;
-  var FAINT_N = size >= 360 ? 4200 : size >= 260 ? 1700 : 900;
-  var MW_N = size >= 360 ? 1.0 : 0.45;
 
   function fish(alt, az) {   /* 等距離射影。北が上、東が左 */
     var r = R * (90 - alt) / 90, a = az * NS.d2r;
@@ -164,69 +162,93 @@ NS.AllSky = function (station, opts) {
     var vis = night ? 1 : dusk ? Math.max(0, (-w.sunAlt) / 12) : 0;
     var limMag = night ? (st.sqm - 14.5) : 1.2;   /* 高感度全天カメラの限界等級の代用 */
 
-    /* --- 天の川 --- */
+    /* ---- 天の川（Tycho-2 の星数密度グリッド） ---- */
+    var sky = NS.unpackSky();
+    var la = st.lat * NS.d2r, sinLat = Math.sin(la), cosLat = Math.cos(la);
+    var altaz = function (raDeg, sinD, cosD) {
+      var ha = (lst - raDeg) * NS.d2r, ch = Math.cos(ha), sh = Math.sin(ha);
+      var sa = sinD * sinLat + cosD * cosLat * ch;
+      if (sa < -0.02) return null;
+      var alt = Math.asin(sa > 1 ? 1 : sa) * NS.r2d;
+      var az = Math.atan2(-cosD * sh, sinD * cosLat - cosD * sinLat * ch) * NS.r2d;
+      return [alt, (az + 360) % 360];
+    };
     if (vis > 0.2) {
-      var mwArr = milkyWay(); var mwN = Math.floor(mwArr.length * MW_N);
-      for (var mi = 0; mi < mwN; mi++) { var p = mwArr[mi];
-        var h = NS.eq2h(p[0], p[1], lst, st.lat);
-        if (h.alt < 2) continue;
-        var xy = fish(h.alt, h.az);
-        var a = p[2] * vis * (0.38 + 0.60 * (1 - lp)) * (1 - w.cloud * 0.85);
-        if (a <= 0.01) continue;
-        bctx.fillStyle = 'rgba(214,222,240,' + a.toFixed(3) + ')';
-        bctx.fillRect(xy[0], xy[1], 1.25, 1.25);
+      var mwStep = size >= 360 ? 1 : 2;
+      var mwGain = vis * (0.30 + 0.55 * (1 - lp)) * (1 - w.cloud * 0.85);
+      var cell = (R / 90) * (mwStep === 1 ? 1.75 : 3.0);
+      for (var mi = 0; mi < sky.mn; mi += mwStep) {
+        var mh = altaz(sky.mra[mi], sky.msinD[mi], sky.mcosD[mi]);
+        if (!mh || mh[0] < 2) continue;
+        /* 低空は大気減光で急速に暗くなる */
+        var mext = Math.pow(Math.max(0.06, Math.sin(mh[0] * NS.d2r)), 0.45);
+        var a2 = Math.pow(sky.mv[mi], 2.4) * mwGain * 0.22 * mext;
+        if (a2 <= 0.006) continue;
+        var mxy = fish(mh[0], mh[1]);
+        var msz = cell;
+        bctx.fillStyle = 'rgba(198,208,232,' + a2.toFixed(3) + ')';
+        bctx.fillRect(mxy[0] - msz / 2, mxy[1] - msz / 2, msz, msz);
       }
     }
-    /* --- 星座線 --- */
-    if (A.showConst && vis > 0.4) {
-      bctx.strokeStyle = 'rgba(120,170,225,' + (0.30 * vis).toFixed(2) + ')'; bctx.lineWidth = 0.7;
-      NS.CONST.forEach(function (c) {
-        c.p.forEach(function (pr) {
-          var s1 = NS.STARS[pr[0]], s2 = NS.STARS[pr[1]];
-          if (!s1 || !s2) return;
-          var h1 = NS.eq2h(s1[1], s1[2], lst, st.lat), h2 = NS.eq2h(s2[1], s2[2], lst, st.lat);
-          if (h1.alt < 4 || h2.alt < 4) return;
-          var a = fish(h1.alt, h1.az), b = fish(h2.alt, h2.az);
-          bctx.beginPath(); bctx.moveTo(a[0], a[1]); bctx.lineTo(b[0], b[1]); bctx.stroke();
-        });
-      });
-    }
-    /* --- 恒星 --- */
-    var tw = NS.rng('tw' + Math.floor(t / 20000));   /* きらめきはレイヤ更新ごとに変わる */
-    NS.STARS.forEach(function (s, i) {
-      if (s[3] > limMag) return;
-      var h = NS.eq2h(s[1], s[2], lst, st.lat);
-      if (h.alt < 1.2) return;
-      var xy = fish(h.alt, h.az);
-      var ext = 0.28 / Math.max(0.13, Math.sin(Math.max(3, h.alt) * NS.d2r));  /* 大気減光 */
-      var m = s[3] + ext;
-      var br = Math.max(0, Math.min(1, (limMag - m) / 3.4)) * vis * (1 - w.cloud * 0.9);
-      if (br <= 0.02) return;
-      var rr = 0.55 + 2.5 * Math.pow(br, 1.5);
-      var scin = 1 - 0.24 * (1 - Math.sin(h.alt * NS.d2r)) * tw();
-      bctx.beginPath(); bctx.arc(xy[0], xy[1], rr, 0, 7);
-      bctx.fillStyle = 'rgba(255,253,246,' + (br * scin).toFixed(3) + ')'; bctx.fill();
-      if (rr > 2.0) {
-        bctx.beginPath(); bctx.arc(xy[0], xy[1], rr * 2.6, 0, 7);
-        bctx.fillStyle = 'rgba(210,225,255,' + (0.14 * br).toFixed(3) + ')'; bctx.fill();
+    /* ---- 星座線（IAU 公式星座図形） ---- */
+    var cloudCut0 = 1 - w.cloud * 0.9;
+    if (A.showConst && vis > 0.4 && cloudCut0 > 0.12) {
+      bctx.strokeStyle = 'rgba(118,168,224,' + (0.30 * vis * cloudCut0).toFixed(3) + ')';
+      bctx.lineWidth = size >= 360 ? 0.8 : 0.6;
+      bctx.beginPath();
+      for (var li = 0; li < sky.ln; li++) {
+        var i1 = sky.la[li], i2 = sky.lb[li];
+        var p1 = altaz(sky.ra[i1], sky.sinD[i1], sky.cosD[i1]); if (!p1 || p1[0] < 4) continue;
+        var p2 = altaz(sky.ra[i2], sky.sinD[i2], sky.cosD[i2]); if (!p2 || p2[0] < 4) continue;
+        var q1 = fish(p1[0], p1[1]), q2 = fish(p2[0], p2[1]);
+        if (Math.hypot(q1[0] - q2[0], q1[1] - q2[1]) > R * 0.75) continue;   /* 折り返しを描かない */
+        bctx.moveTo(q1[0], q1[1]); bctx.lineTo(q2[0], q2[1]);
       }
-    });
-    /* --- 微光星（星野） --- */
-    if (vis > 0.15 && limMag > 3.6) {
-      var ff = faintStars();
-      for (var fi = 0; fi < Math.min(ff.length, FAINT_N); fi++) {
-        var fs = ff[fi];
-        if (fs[2] > limMag) continue;
-        var fh = NS.eq2h(fs[0], fs[1], lst, st.lat);
-        if (fh.alt < 1.5) continue;
-        var fxy = fish(fh.alt, fh.az);
-        var fext = 0.28 / Math.max(0.13, Math.sin(Math.max(3, fh.alt) * NS.d2r));
-        var fbr = Math.max(0, Math.min(1, (limMag - fs[2] - fext) / 3.0)) * vis * (1 - w.cloud * 0.9);
-        if (fbr <= 0.02) continue;
-        bctx.beginPath();
-        bctx.arc(fxy[0], fxy[1], 0.42 + 1.15 * Math.pow(fbr, 1.6), 0, 7);
-        bctx.fillStyle = 'rgba(252,250,244,' + (fbr * 0.92).toFixed(3) + ')';
+      bctx.stroke();
+    }
+    /* ---- 恒星（Yale BSC5。明るい順に並んでいるので限界等級で打ち切る） ---- */
+    if (vis > 0.02) {
+      var names = (A.showNames && size >= 360) ? NS.starNameIndex() : null;
+      var labels = [];
+      var tw = NS.rng('tw' + Math.floor(t / 20000));
+      var cloudCut = 1 - w.cloud * 0.9;
+      for (var si = 0; si < sky.n; si++) {
+        var m0 = sky.mag[si];
+        if (m0 > limMag) break;
+        var h2 = altaz(sky.ra[si], sky.sinD[si], sky.cosD[si]);
+        if (!h2 || h2[0] < 1.2) continue;
+        var ext = 0.28 / Math.max(0.13, Math.sin(Math.max(3, h2[0]) * NS.d2r));
+        var m = m0 + ext;
+        if (m > limMag) continue;
+        var x = limMag - m;                                   /* 限界等級より何等明るいか */
+        var amp = Math.min(1, Math.max(0, x / 1.25)) * vis * cloudCut;
+        if (amp <= 0.03) continue;
+        var sxy = fish(h2[0], h2[1]);
+        var col = NS.bvColor(sky.bv[si]);
+        /* 暗い星ほど色が抜けて白く見える */
+        var sat = Math.min(1, Math.max(0, x / 3.2));
+        var cR = Math.round(248 + (col[1] - 248) * sat);
+        var cG = Math.round(248 + (col[2] - 248) * sat);
+        var cB = Math.round(248 + (col[3] - 248) * sat);
+        var rr = Math.min(3.3, 0.30 + 0.42 * Math.pow(Math.max(0, x), 0.85)) * (size >= 360 ? 1 : 0.82);
+        var scin = 1 - 0.20 * (1 - Math.sin(h2[0] * NS.d2r)) * tw();
+        bctx.beginPath(); bctx.arc(sxy[0], sxy[1], rr, 0, 7);
+        bctx.fillStyle = 'rgba(' + cR + ',' + cG + ',' + cB + ',' + (amp * scin).toFixed(3) + ')';
         bctx.fill();
+        if (rr > 1.75) {   /* 明るい星のにじみ */
+          var gg = bctx.createRadialGradient(sxy[0], sxy[1], 0, sxy[0], sxy[1], rr * 3.2);
+          gg.addColorStop(0, 'rgba(' + cR + ',' + cG + ',' + cB + ',' + (0.17 * amp).toFixed(3) + ')');
+          gg.addColorStop(1, 'rgba(' + cR + ',' + cG + ',' + cB + ',0)');
+          bctx.fillStyle = gg;
+          bctx.beginPath(); bctx.arc(sxy[0], sxy[1], rr * 3.2, 0, 7); bctx.fill();
+        }
+        if (names && names[si] && m0 <= 1.75 && cloudCut > 0.25) labels.push([sxy[0], sxy[1], names[si], rr]);
+      }
+      if (labels.length) {
+        bctx.font = '600 11px "Zen Kaku Gothic New", sans-serif';
+        bctx.textAlign = 'left'; bctx.textBaseline = 'middle';
+        bctx.fillStyle = 'rgba(186,206,240,' + (0.72 * cloudCut).toFixed(3) + ')';
+        labels.forEach(function (lb2) { bctx.fillText(lb2[2], lb2[0] + lb2[3] + 4, lb2[1]); });
       }
     }
     /* --- 太陽（昼間・薄明） --- */
@@ -262,7 +284,7 @@ NS.AllSky = function (station, opts) {
     var night0 = w.sunAlt < -12, dusk0 = w.sunAlt >= -12 && w.sunAlt < 0;
     var limMag0 = night0 ? (st.sqm - 14.5) : 1.2;
     var key = Math.round(lst * 12) + '|' + Math.round(w.sunAlt * 2) + '|' + Math.round(limMag0 * 4) +
-              '|' + (A.showConst ? 1 : 0) + '|' + Math.round(w.cloud * 6);
+              '|' + (A.showConst ? 1 : 0) + (A.showNames ? 'N' : '') + '|' + Math.round(w.cloud * 6);
     if (key !== A._bgKey) { A._bgKey = key; drawStatic(t, lst, sb, w); }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, cv.width, cv.height);
@@ -280,7 +302,7 @@ NS.AllSky = function (station, opts) {
       var TILE = R * 2.8;
       /* 風上から風下へ流す（w.dir は風が吹いてくる方位） */
       var wd = (w.dir + 180) * NS.d2r;
-      var spd = R * 0.0011 * (1 + w.wind / 3.0);          /* px/s：視野を十数分で横切る */
+      var spd = R * 0.00026 * (1 + w.wind / 4.5);         /* px/s：視野を 1 時間ほどかけて横切る */
       var ox = Math.sin(wd) * spd * (t / 1000);
       var oy = -Math.cos(wd) * spd * (t / 1000);
       var wrap = function (v) { return ((v % TILE) + TILE) % TILE; };
