@@ -1,0 +1,803 @@
+/* NU-SORA デモ / 画面：火球・隕石、デブリ再突入、インフラサウンド */
+'use strict';
+(function (NS) {
+var el = NS.el, s = NS.s, panel = NS.panel, badge = NS.badge, kpi = NS.kpi;
+
+/* ---------- 波形の合成（インフラサウンド） ---------- */
+NS.wavePacket = function (o) {
+  var n = o.n || 900, dur = o.dur || 30, f = 1 / o.P, r = NS.rng(o.seed), pts = [];
+  for (var i = 0; i < n; i++) {
+    var t = i / (n - 1) * dur - o.pre;
+    var env = Math.exp(-Math.pow((t - 0) / (o.width || 1.6), 2));
+    var v = o.amp * env * Math.sin(2 * Math.PI * f * t) * (1 + 0.25 * Math.sin(2 * Math.PI * f * 2.3 * t));
+    v += r.norm(0, o.noise == null ? 0.03 : o.noise);
+    pts.push([t, v]);
+  }
+  return pts;
+};
+
+/* =========================================================================
+   火球・隕石（G-1）
+   ========================================================================= */
+NS.V.fireball = function (root, go, arg) {
+  var evs = NS.EVENTS.filter(function (e) { return e.kind === 'fireball' || e.kind === 'meteor'; });
+  var sel = NS.EVMAP[arg] && NS.EVMAP[arg].kind !== 'reentry' ? NS.EVMAP[arg] : NS.FLAGSHIP.fireball;
+  var filt = { minMag:0, onlyMulti:false };
+
+  NS.add(root, el('div', { class:'page-h' }, [
+    el('h2', { text:'火球・隕石　多点観測と落下域確率地図' }),
+    el('p', { text:'多点三角測量で軌跡と突入前軌道を決め、光学とインフラサウンドで独立にエネルギーを推定する。暗黒飛行を自局の気象データで風補正し、落下域の確率地図を自治体へ配信する（サブテーマ G-1 / DT-1）。' })
+  ]));
+
+  var listWrap = el('div', { class:'evlist' });
+  function renderList() {
+    NS.clear(listWrap);
+    evs.filter(function (e) {
+      return e.absMag <= -filt.minMag && (!filt.onlyMulti || e.stationsDet >= 4);
+    }).slice(0, 40).forEach(function (e) {
+      NS.add(listWrap, NS.evRow(e, function (x) { sel = x; go('fireball', x.id); }, sel.id));
+    });
+  }
+  renderList();
+  var listPanel = panel('検出カタログ', { note:evs.length + ' 件（直近 14 日）',
+    tools:el('div', { class:'chips' }, [
+      el('button', { class:'chip', text:'すべて', 'aria-pressed':'true', onclick:function (e) { filt.minMag = 0; press(e); renderList(); } }),
+      el('button', { class:'chip', text:'0 等より明るい', onclick:function (e) { filt.minMag = 0.001; press(e); renderList(); } }),
+      el('button', { class:'chip', text:'−4 等以上', onclick:function (e) { filt.minMag = 4; press(e); renderList(); } }),
+      el('button', { class:'chip', text:'4 局以上', onclick:function (e) { filt.onlyMulti = !filt.onlyMulti; e.target.setAttribute('aria-pressed', filt.onlyMulti ? 'true' : 'false'); renderList(); } })
+    ]) }, []);
+  function press(e) {
+    Array.prototype.forEach.call(e.target.parentNode.children, function (x, i) { if (i < 3) x.setAttribute('aria-pressed', 'false'); });
+    e.target.setAttribute('aria-pressed', 'true');
+  }
+  listPanel.querySelector('.panel-b').classList.add('flush');
+  listPanel.querySelector('.panel-b').appendChild(listWrap);
+  listPanel.querySelector('.panel-b').style.maxHeight = '520px';
+  listPanel.querySelector('.panel-b').style.overflowY = 'auto';
+
+  var detail = el('div', { class:'grid', style:{ gap:'14px' } });
+  NS.add(root, el('div', { class:'grid g-1-2' }, [listPanel, detail]));
+  renderDetail();
+
+  function renderDetail() {
+    NS.clear(detail);
+    var e = sel;
+    if (e.auto) { NS.add(detail, autoDetail(e)); return; }
+    /* --- 要約 --- */
+    var ratio = e.EinfKt / e.EKt;
+    NS.add(detail, panel(e.name, { note:e.id + ' · ' + NS.fmtJST(e.t, { ms:true }) + ' JST（' + NS.fmtUTC(e.t, { ms:true }) + ' UTC）',
+      tools:badge(e.stationsDet + ' 局同時検出', 'ok') }, [
+      el('p', { style:{ margin:'0 0 12px', color:'var(--ink2)' }, text:e.summary }),
+      el('div', { class:'grid g4' }, [
+        kpi('最大絶対等級', NS.f(e.absMag, 1), '等', '継続 ' + NS.f(e.dur, 2) + ' 秒', { acc:true }),
+        kpi('突入速度', NS.f(e.vInf, 1), 'km/s', '経路角 ' + NS.f(e.entryAngle, 1) + '° · 方位 ' + NS.f(e.azimuth, 0) + '°'),
+        kpi('全エネルギー（光学）', NS.f(e.EKt * 4.184e3, 2), 'GJ', '放射 ' + NS.f(e.ErJ / 1e9, 3) + ' GJ → Brown et al. (2002)｜TNT 換算 ' + NS.f(e.EKt * 1e6, 0) + ' kg'),
+        kpi('同（インフラサウンド）', NS.f(e.EinfKt * 4.184e3, 2), 'GJ', '周期 ' + NS.f(e.infraP, 2) + ' s · AFTAC 式｜光学推定の ' + NS.f(ratio, 2) + ' 倍')
+      ]),
+      el('div', { class:'grid g4', style:{ marginTop:'10px' } }, [
+        kpi('光度質量', NS.f(e.massPhoto, 1), 'kg', '発光効率 τ = ' + (e.tau * 100) + '%'),
+        kpi('終端残存質量', NS.f(e.massTerminal, 2), 'kg', '減速終了高度 ' + NS.km(e.end.alt)),
+        kpi('発光区間', NS.f(e.begin.alt, 1) + '→' + NS.f(e.end.alt, 1), 'km', '水平距離 ' + NS.km(NS.dist(e.begin.lat, e.begin.lon, e.end.lat, e.end.lon), 0) + '・経路長 ' + NS.km((e.begin.alt - e.end.alt) / Math.sin(e.entryAngle * NS.d2r), 0)),
+        kpi('隕石落下の可能性', e.massTerminal > 0.1 ? '高い' : '低い', '', e.recovery ? e.recovery.area + ' · ' + e.recovery.status : '')
+      ])
+    ]));
+
+    /* --- 光度曲線 + 高度・速度 --- */
+    var series = e.det.filter(function (d) { return !d.cloud; }).map(function (d, i) {
+      var st = NS.ST[d.id], off = d.mag - e.absMag;
+      var r = NS.rng(e.id + d.id);
+      return { name:st.name, color:['var(--accent)','var(--c-info)','var(--c-ok)','var(--c-warn)','var(--c-sky)','var(--c-spec)','var(--c-met)'][i % 7],
+        pts:e.lightcurve.map(function (p) { return [p[0], p[1] + off + r.norm(0, 0.09)]; }), width:1.2, opacity:i === 0 ? 1 : 0.62 };
+    });
+    /* 高度・速度プロファイル */
+    var altPts = [], vPts = [], nA = 60;
+    for (var i = 0; i <= nA; i++) {
+      var f = i / nA, tt = f * e.dur;
+      var decel = Math.pow(f, 3.2) * e.decelMax || 0;
+      var alt = e.begin.alt - (e.begin.alt - e.end.alt) * (f - 0.06 * Math.pow(f, 2.6));
+      altPts.push([tt, Math.max(e.end.alt, alt)]);
+      vPts.push([tt, e.vInf - (e.decelMax || 2) * Math.pow(f, 4.2)]);
+    }
+    NS.add(detail, el('div', { class:'grid g2' }, [
+      panel('光度曲線（局別）', { note:'全天カメラの測光。局ごとの大気減光を補正した絶対等級' }, [
+        NS.chart.line({ series:series, width:450, height:230, xLabel:'発光開始からの秒数', yLabel:'絶対等級',
+          yDomain:[Math.max.apply(null, e.lightcurve.map(function (p) { return p[1]; })) + 0.6, e.absMag - 1.0],
+          xFmt:function (v) { return NS.f(v, 1) + 's'; }, yFmt:function (v) { return NS.f(v, 0); } }),
+        NS.chart.legend(series.map(function (x) { return [x.name, x.color, 'line']; })),
+        el('div', { class:'note', text:'ピーク付近の複数のフレアは、母天体の分裂（フラグメンテーション）に対応する。' })
+      ]),
+      panel('高度と速度の変化', { note:'多点三角測量による軌跡（残差 41 m）' }, [
+        NS.chart.line({ series:[{ name:'高度', color:'var(--c-info)', pts:altPts, area:true }],
+          width:450, height:128, margin:{ l:48, r:12, t:12, b:20 }, yLabel:'高度 km',
+          xFmt:function (v) { return NS.f(v, 1) + 's'; }, yFmt:function (v) { return NS.f(v, 0); } }),
+        NS.chart.line({ series:[{ name:'速度', color:'var(--c-warn)', pts:vPts }],
+          width:450, height:118, margin:{ l:48, r:12, t:10, b:26 }, xLabel:'発光開始からの秒数', yLabel:'速度 km/s',
+          xFmt:function (v) { return NS.f(v, 1) + 's'; }, yFmt:function (v) { return NS.f(v, 1); } }),
+        NS.kv([
+          ['発光開始', NS.km(e.begin.alt) + '　' + NS.latlon(e.begin.lat, e.begin.lon)],
+          ['発光終了', NS.km(e.end.alt) + '　' + NS.latlon(e.end.lat, e.end.lon)],
+          ['進行方位', NS.f(e.azimuth, 1) + '°（' + NS.compass(e.azimuth) + 'へ）'],
+          ['最大減速', NS.f(e.decelMax || 0, 1) + ' km/s'],
+          ['地心速度 v_g', NS.f(e.vg, 1) + ' km/s'], ['日心速度 v_h', NS.f(e.vh, 1) + ' km/s']
+        ], 'wide')
+      ])
+    ]));
+
+    /* --- 地図：軌跡・視線・落下域 --- */
+    var M = NS.Map({ onStation:function (st) { go('station', st.id); } });
+    M.drawStations({ state:function (st) { return NS.stationState(st, NS.now()); }, labels:true });
+    M.addOverlay(s('path', { d:NS.geoLinePath(e.begin, e.end), stroke:'var(--accent)', 'stroke-width':2.6, fill:'none',
+      'stroke-linecap':'round', 'vector-effect':'non-scaling-stroke' }));
+    e.det.forEach(function (d) {
+      var st = NS.ST[d.id]; if (!st) return;
+      M.addOverlay(s('path', { d:NS.geoLinePath({ lat:st.lat, lon:st.lon }, e.end, 16), stroke:d.cloud ? 'var(--muted)' : 'var(--c-info)',
+        'stroke-width':0.9, 'stroke-dasharray':'3 3', fill:'none', opacity:d.cloud ? 0.25 : 0.5, 'vector-effect':'non-scaling-stroke' }));
+    });
+    M.fit([e.begin, e.end].concat(e.strewn ? [e.strewn] : []), 1.15);
+    var pb = M.pt(e.begin.lon, e.begin.lat), pe = M.pt(e.end.lon, e.end.lat);
+    M.addOverlay(s('circle', { cx:pb[0], cy:pb[1], r:M.px(4.5), fill:'none', stroke:'var(--accent)', 'stroke-width':1.6, 'vector-effect':'non-scaling-stroke' }));
+    M.addOverlay(s('circle', { cx:pe[0], cy:pe[1], r:M.px(5), fill:'var(--accent)' }));
+    if (e.strewn) {
+      var sw = e.strewn, c = M.pt(sw.lon, sw.lat);
+      var kx = Math.abs(M.pt(sw.lon + 0.1, sw.lat)[0] - c[0]) / (0.1 * 111.32 * Math.cos(sw.lat * NS.d2r));
+      var ky = Math.abs(M.pt(sw.lon, sw.lat + 0.1)[1] - c[1]) / (0.1 * 111.32);
+      [[1, 0.10], [0.66, 0.20], [0.4, 0.3]].forEach(function (r2) {
+        M.addOverlay(s('ellipse', { cx:c[0], cy:c[1], rx:sw.a * kx * r2[0], ry:sw.b * ky * r2[0],
+          transform:'rotate(' + (90 - sw.az) + ' ' + c[0] + ' ' + c[1] + ')',
+          fill:'var(--c-crit)', 'fill-opacity':r2[1], stroke:'var(--c-crit)', 'stroke-width':1, 'vector-effect':'non-scaling-stroke' }));
+      });
+      sw.bins.forEach(function (b) {
+        var p = M.pt(b.lon, b.lat);
+        var g = M.addOverlay(s('g', null, [s('circle', { cx:p[0], cy:p[1], r:M.px(3), fill:'var(--ink)', stroke:'var(--sea)', 'stroke-width':0.8, 'vector-effect':'non-scaling-stroke' })]));
+        M.tipOn(g, '<b>' + b.m + '</b><span class="mt-d">推定 ' + b.n + ' 個 · ' + NS.latlon(b.lat, b.lon) + '</span>');
+      });
+    }
+    var mp = panel('地上軌跡と落下域確率地図', { note:'破線は各局の視線。楕円は暗黒飛行の風補正後の落下推定域（10 / 20 / 30 % 確率）',
+      tools:el('div', { class:'seg' }, [
+        el('button', { text:'イベント', 'aria-pressed':'true', onclick:function () { M.fit([e.begin, e.end].concat(e.strewn ? [e.strewn] : []), 1.15); } }),
+        el('button', { text:'関東', onclick:function () { M.goto('kanto', true); } }),
+        el('button', { text:'全国', onclick:function () { M.goto('all', true); } })
+      ]) }, []);
+    var mb = mp.querySelector('.panel-b'); mb.classList.add('flush'); mb.appendChild(M.node);
+    M.fit([e.begin, e.end].concat(e.strewn ? [e.strewn] : []), 1.15);
+
+    var detTable = panel('検出局と観測条件', { note:'視野内 ' + e.stationsFov + ' 局 / 検出 ' + e.stationsDet + ' 局' },
+      NS.table(['局', '最大等級', '仰角', 'S/N', 'インフラサウンド', '備考'],
+        e.det.map(function (d) {
+          var st = NS.ST[d.id];
+          return { attrs:{ class:'clk', onclick:function () { go('station', d.id); } }, cells:[
+            el('b', { text:st.name }),
+            { class:'r', html:d.mag == null ? '—' : NS.mag(d.mag) },
+            { class:'r', html:NS.f(d.elev, 1) + '°' },
+            { class:'r', html:d.snr == null ? '—' : NS.f(d.snr, 0) },
+            d.infra ? '＋' + NS.f(d.infra.dt, 1) + ' s / ' + NS.f(d.infra.amp, 2) + ' Pa' : '<span class="hint">未検出</span>',
+            d.cloud ? badge('曇天で不検出', 'warn') : (d.swir ? badge('SWIR 同時', 'info') : '')
+          ] };
+        })));
+    NS.add(detail, el('div', { class:'grid g-3-2' }, [mp, detTable]));
+
+    /* --- エネルギー二重推定・軌道 --- */
+    var eb = [];
+    [0.02, 0.05, 0.10].forEach(function (tau) {
+      eb.push({ y:NS.photoMass(e.ErJ, e.vInf, tau), label:'τ=' + (tau * 100) + '%', color:'var(--c-info)',
+        top:NS.f(NS.photoMass(e.ErJ, e.vInf, tau), 1) + ' kg' });
+    });
+    NS.add(detail, el('div', { class:'grid g3' }, [
+      panel('エネルギーの二重推定', { note:'光学と音響の独立推定' }, [
+        NS.chart.bars({ bars:[
+          { y:e.EKt * 4.184e3, label:'光学', color:'var(--c-info)', top:NS.f(e.EKt * 4.184e3, 2) + ' GJ' },
+          { y:e.EinfKt * 4.184e3, label:'インフラサウンド', color:'var(--c-infra)', top:NS.f(e.EinfKt * 4.184e3, 2) + ' GJ' }
+        ], width:300, height:170, yLabel:'全エネルギー GJ' }),
+        NS.kv([
+          ['放射エネルギー Er', NS.f(e.ErJ / 1e9, 3) + ' GJ'],
+          ['光学 全エネルギー', '<b>' + NS.f(e.EKt * 4.184e3, 2) + ' GJ</b>（' + e.EKt.toExponential(2) + ' kt・TNT ' + NS.f(e.EKt * 1e6, 0) + ' kg）'],
+          ['音響 全エネルギー', '<b>' + NS.f(e.EinfKt * 4.184e3, 2) + ' GJ</b>（' + e.EinfKt.toExponential(2) + ' kt・周期 ' + NS.f(e.infraP, 2) + ' s）'],
+          ['両者の比', NS.f(ratio, 2) + ' 倍　<span class="hint">' + (ratio < 2 && ratio > 0.5 ? '（因子 2 以内で整合）' : '（要検討）') + '</span>']
+        ], 'wide'),
+        el('div', { class:'note', text:'光学は Brown et al. (2002) の Er–E 関係、音響は AFTAC の周期–収量関係を用いた。独立な二つの推定が一致することが、単独センサー観測にない本観測網の強みである。' })
+      ]),
+      panel('光度質量の発光効率依存', { note:'m = 2·Er / (τ v²)' }, [
+        NS.chart.bars({ bars:eb, width:300, height:170, yLabel:'kg' }),
+        el('div', { class:'note', text:'発光効率 τ の不確かさが質量推定の最大の誤差要因。インフラサウンドによるエネルギー独立推定と減速からの動的質量を突き合わせて τ を制約する。' })
+      ]),
+      panel('突入前の日心軌道', { note:'黄道 J2000' }, [
+        NS.kv([
+          ['輻射点（J2000）', 'α ' + NS.f(e.radiant.ra, 1) + '° / δ ' + NS.f(e.radiant.dec, 1) + '°'],
+          ['視輻射点', 'α ' + NS.f(e.radiant.raApp, 1) + '° / δ ' + NS.f(e.radiant.decApp, 1) + '°'],
+          ['流星群', e.shower],
+          ['軌道長半径 a', NS.f(e.orbit.a, 3) + ' au'], ['離心率 e', NS.f(e.orbit.e, 3)],
+          ['軌道傾斜角 i', NS.f(e.orbit.i, 2) + '°'], ['近日点距離 q', NS.f(e.orbit.q, 3) + ' au'],
+          ['遠日点距離 Q', NS.f(e.orbit.Q, 3) + ' au'], ['近日点引数 ω', NS.f(e.orbit.w, 1) + '°'],
+          ['昇交点黄経 Ω', NS.f(e.orbit.node, 2) + '°'],
+          ['Tisserand T_J', NS.f(e.orbit.Tj, 2) + '　<span class="hint">（' + e.orbit.cls + '・小惑星起源）</span>']
+        ], 'wide'),
+        el('div', { class:'note', text:'T_J > 3 は小惑星的な軌道であることを示す。q = ' + NS.f(e.orbit.q, 2) + ' au、Q = ' + NS.f(e.orbit.Q, 2) + ' au は地球近傍小惑星（アポロ型）と整合する。' })
+      ])
+    ]));
+
+    /* --- インフラサウンド波形 --- */
+    var infraDet = e.det.filter(function (d) { return d.infra; });
+    if (infraDet.length) {
+      var ws = infraDet.map(function (d, i) {
+        return { name:NS.ST[d.id].name, color:['var(--accent)','var(--c-info)','var(--c-ok)','var(--c-warn)'][i % 4],
+          pts:NS.wavePacket({ P:d.infra.P, amp:d.infra.amp, seed:e.id + d.id, dur:26, pre:9, width:1.9, noise:0.018 })
+            .map(function (p) { return [p[0] + d.infra.dt, p[1] + (infraDet.length - 1 - i) * 1.1]; }), width:1.1 };
+      });
+      NS.add(detail, el('div', { class:'grid g-2-1' }, [
+        panel('インフラサウンド波形（局別・時刻同期）', { note:'GNSS 同期。横軸は発光ピークからの経過秒' }, [
+          NS.chart.line({ series:ws, width:560, height:220, xLabel:'発光からの経過秒', yLabel:'気圧変動（相対 Pa）',
+            xFmt:function (v) { return NS.f(v, 0) + 's'; }, yFmt:function () { return ''; },
+            rules:infraDet.map(function (d, i) { return { x:d.infra.dt, color:'var(--muted)', dash:'2 3', label:NS.ST[d.id].id }; }) }),
+          el('div', { class:'note', text:'到達時刻差から音源高度と位置を拘束する。見かけの音速は ' + NS.f(0.30, 2) + ' km/s 前後で、伝搬経路の高層風で変動する。' })
+        ]),
+        panel('到達時刻と方位', null, NS.table(['局', '到達', '周期 P', '振幅', '到来方位'],
+          infraDet.map(function (d) {
+            return [NS.ST[d.id].name, { class:'r', html:'＋' + NS.f(d.infra.dt, 1) + ' s' },
+              { class:'r', html:NS.f(d.infra.P, 2) + ' s' }, { class:'r', html:NS.f(d.infra.amp, 2) + ' Pa' },
+              { class:'r', html:NS.f(d.infra.az, 1) + '°' }];
+          })))
+      ]));
+    }
+
+    /* --- スペクトル --- */
+    NS.add(detail, specPanel(e));
+
+    /* --- 落下域・回収 --- */
+    if (e.strewn) {
+      NS.add(detail, el('div', { class:'grid g-2-1' }, [
+        panel('落下域（ストルーンフィールド）の推定', { note:'暗黒飛行を自局の気象データで風補正' }, [
+          NS.table(['質量区分', '推定個数', '推定落下位置', '備考'], e.strewn.bins.map(function (b) {
+            return [el('b', { text:b.m }), { class:'r', html:String(b.n) }, { class:'mono sm', html:NS.latlon(b.lat, b.lon) },
+              { class:'sm', html:'重い破片ほど風下側（' + NS.compass(e.strewn.az) + '）に届かず手前に落下' }];
+          })),
+          el('div', { class:'note', text:'中心 ' + NS.latlon(e.strewn.lat, e.strewn.lon) + '、長半径 ' + e.strewn.a + ' km・短半径 ' + e.strewn.b +
+            ' km、長軸方位 ' + e.strewn.az + '°。最大確率密度は ' + Math.round(e.strewn.pMax * 100) + ' %。' })
+        ]),
+        panel('回収調査の状況', { note:'文理学部・理工学部の合同班' }, [
+          NS.kv([['状態', e.recovery.status], ['担当', e.recovery.teams], ['捜索範囲', e.recovery.area], ['回収数', e.recovery.found + ' 個']], 'wide'),
+          el('div', { class:'note', text:'UAV による空撮と地上班の踏査を組み合わせ、確率密度の高い区画から順に捜索する。付属校の生徒が地元での聞き取りと目撃情報の収集を担当する。' })
+        ])
+      ]));
+    }
+
+    /* --- 通報 --- */
+    NS.add(detail, panel('通報と対応（G-7）', { note:'検出から自治体配信まで ' + NS.f(e.alert.issuedDt, 0) + ' 秒' }, [
+      el('ul', { class:'tl' }, NS.alertLog().filter(function (a) { return a.ev === e.id; }).reverse().map(function (a) {
+        return el('li', { class:a.lvl === '通報' ? '' : 'i-info' }, [
+          el('div', { class:'tt', text:NS.fmtJST(a.t) + ' JST（発生 +' + NS.f((a.t - e.t) / 1000, 0) + ' 秒）' }),
+          el('div', { class:'tx' }, [el('span', { class:'tg', text:a.lvl }), a.text])
+        ]);
+      })),
+      el('div', { class:'chips', style:{ marginTop:'8px' } }, e.alert.recipients.map(function (r) { return badge(r, 'info'); }))
+    ]));
+  }
+
+  function autoDetail(e) {
+    return panel(e.name, { note:e.id + ' · ' + NS.fmtJST(e.t) + ' JST', tools:badge('自動検出のみ', 'dim') }, [
+      el('div', { class:'grid g4' }, [
+        kpi('絶対等級', NS.f(e.absMag, 1), '等', e.shower),
+        kpi('同時検出', e.stationsDet, '局', '視野内 ' + e.stationsFov + ' 局'),
+        kpi('突入速度', NS.f(e.vInf, 1), 'km/s', '発光 ' + NS.km(e.begin.alt, 0) + ' → ' + NS.km(e.end.alt, 0)),
+        kpi('全エネルギー', NS.sig(e.EKt * 1e3), '× 10⁻³ kt', '光学推定のみ')
+      ]),
+      el('div', { class:'chips', style:{ marginTop:'12px' } }, [
+        e.hasInfra ? badge('インフラサウンド検出あり', 'ok') : badge('インフラサウンド未検出', 'dim'),
+        e.hasSpec ? badge('分光データあり', 'ok') : badge('分光なし', 'dim'),
+        badge('検出局：' + (e.stationIds || []).join(' / '), '')
+      ]),
+      el('div', { class:'note', text:'この事象はエッジ計算機の自動検出と多点対応づけのみが完了している。詳細な軌道決定・落下域推定は、絶対等級 −6 等より明るい事象、または隕石落下の可能性がある事象について実施する。左の一覧から「房総沖 大火球」を選ぶと、完全な解析例を表示する。' })
+    ]);
+  }
+};
+
+/* 分光パネル（火球・再突入共通）
+   自然天体の線同定と相対強度は実際の流星スペクトル（S. Abe et al. 2000 ほか）に、
+   デブリの分子バンドと局面の推移は Watanabe, Abe, Arima & Hanayama (ACM 2026) に基づく。 */
+function buildSpecSvg(o) {
+  var pts = o.pts, lines = o.lines, bands = o.bands || [], W = o.w || 900, H = 320;
+  var lo = 350, hi = 900, art = o.art, col = art ? 'var(--accent)' : 'var(--c-spec)';
+  var isMarker = function (e2) { return NS.ARTIFICIAL_MARKERS.indexOf(e2) >= 0; };
+  var m = { l:52, r:14, t:64, b:44 }, iw = W - m.l - m.r, ih = H - m.t - m.b;
+  var X = NS.chart.scale(lo, hi, m.l, m.l + iw), Y = NS.chart.scale(0, 1.1, m.t + ih, m.t);
+  var uid = (art ? 'a' : 'n') + (o.uid || '');
+  var g = NS.s('svg', { viewBox:'0 0 ' + W + ' ' + H, class:'chart', role:'img',
+    'aria-label':'発光スペクトル（波長 350〜900 nm）' });
+
+  /* 可視スペクトルの色帯 */
+  var defs = NS.s('defs'), lg = NS.s('linearGradient', { id:'vis' + uid, x1:'0', x2:'1' });
+  [[380,'#2A0A4A'],[420,'#3A12A8'],[450,'#1240E0'],[485,'#00B7C8'],[510,'#22C24A'],[550,'#B9DC1E'],
+   [580,'#F5D908'],[600,'#F58A08'],[640,'#E22B1C'],[700,'#7A0A08'],[740,'#2A0402']].forEach(function (c) {
+    NS.add(lg, NS.s('stop', { offset:((c[0] - 380) / 360 * 100).toFixed(1) + '%', 'stop-color':c[1] }));
+  });
+  NS.add(defs, lg); NS.add(g, defs);
+  NS.add(g, NS.s('rect', { x:X(380), y:m.t - 22, width:X(740) - X(380), height:11, fill:'url(#vis' + uid + ')', opacity:0.9 }));
+  NS.add(g, NS.s('text', { x:X(380) - 5, y:m.t - 13, class:'axl', 'text-anchor':'end', text:'可視' }));
+
+  /* 目盛 */
+  [0, 0.25, 0.5, 0.75, 1.0].forEach(function (v) {
+    NS.add(g, NS.s('line', { x1:m.l, x2:m.l + iw, y1:Y(v), y2:Y(v), class:'grid' }));
+    NS.add(g, NS.s('text', { x:m.l - 6, y:Y(v) + 3.5, class:'axl', 'text-anchor':'end', text:NS.f(v, 2) }));
+  });
+  for (var wl = 400; wl <= 900; wl += 50) {
+    NS.add(g, NS.s('line', { x1:X(wl), x2:X(wl), y1:m.t, y2:m.t + ih, class:'grid grid-v' }));
+    NS.add(g, NS.s('text', { x:X(wl), y:H - 24, class:'axl', 'text-anchor':'middle', text:String(wl) }));
+  }
+  NS.add(g, NS.s('text', { x:m.l + iw / 2, y:H - 8, class:'axt', 'text-anchor':'middle', text:'波長 [nm]' }));
+  NS.add(g, NS.s('text', { x:6, y:m.t - 34, class:'axt', text:'相対強度' }));
+
+  /* 分子バンドの寄与（帯と、寄与だけの曲線） */
+  bands.forEach(function (b) {
+    if (!(b.amp > 0.02)) return;
+    var D = b.def, red = D.deg === 'red', broad = D.deg === 'broad';
+    /* バンドヘッドを近いもの同士でまとめ、系列ごとに帯を描く */
+    var hs = D.heads.map(function (h) { return h[0]; }).sort(function (p, q) { return p - q; });
+    var cl = [], cur = [hs[0]];
+    for (var i2 = 1; i2 < hs.length; i2++) {
+      if (hs[i2] - cur[cur.length - 1] > 30) { cl.push(cur); cur = []; }
+      cur.push(hs[i2]);
+    }
+    cl.push(cur);
+    var big = cl.slice().sort(function (p, q) { return q.length - p.length; })[0];
+    cl.forEach(function (c) {
+      var x0 = c[0] - (broad ? D.tau * 2 : red ? 4 : D.tau * 2.0);
+      var x1 = c[c.length - 1] + (broad ? D.tau * 2 : red ? D.tau * 2.2 : 4);
+      NS.add(g, NS.s('rect', { x:X(x0), y:m.t + 16, width:Math.max(2, X(x1) - X(x0)), height:ih - 16,
+        fill:D.color, opacity:0.09 }));
+      if (c === big) NS.add(g, NS.s('text', { x:(X(x0) + X(x1)) / 2, y:m.t + 12, 'text-anchor':'middle',
+        style:'font-size:10px;font-weight:700', fill:D.color, text:D.name }));
+    });
+    var lo2 = hs[0] - (broad ? D.tau * 2.4 : red ? 6 : D.tau * 2.6);
+    var hi2b = hs[hs.length - 1] + (broad ? D.tau * 2.4 : red ? D.tau * 2.8 : 6);
+    var d2 = '';
+    for (var w2 = lo2; w2 <= hi2b; w2 += 0.5) {
+      var yv = b.amp * NS.bandValue(D, w2, 1.19);
+      d2 += (d2 ? 'L' : 'M') + X(w2).toFixed(2) + ' ' + Y(yv).toFixed(2);
+    }
+    NS.add(g, NS.s('path', { d:d2, fill:'none', stroke:D.color, 'stroke-width':1.1, 'stroke-dasharray':'3 2', opacity:0.9 }));
+  });
+
+  /* スペクトル本体 */
+  var d = pts.map(function (p, i) { return (i ? 'L' : 'M') + X(p[0]).toFixed(2) + ' ' + Y(p[1]).toFixed(2); }).join('');
+  NS.add(g, NS.s('path', { d:d + 'L' + X(hi).toFixed(2) + ' ' + Y(0) + 'L' + X(lo).toFixed(2) + ' ' + Y(0) + 'Z',
+    fill:col, opacity:0.13, stroke:'none' }));
+  NS.add(g, NS.s('path', { d:d, fill:'none', stroke:col, 'stroke-width':1.1, 'stroke-linejoin':'round' }));
+
+  /* 主要線のラベル */
+  var peakAt = function (wl0) {
+    var best = 0;
+    for (var i = 0; i < pts.length; i++) {
+      if (Math.abs(pts[i][0] - wl0) > 2.0) continue;
+      if (pts[i][1] > best) best = pts[i][1];
+    }
+    return best;
+  };
+  var thr = o.labelMin == null ? 0.30 : o.labelMin;
+  var lastX = [-1e9, -1e9];
+  lines.filter(function (l) { return l.s >= thr; }).sort(function (p, q) { return p.wl - q.wl; })
+    .forEach(function (l) {
+      var x = X(l.wl), row = 0;
+      if (x - lastX[0] < 26) { row = 1; if (x - lastX[1] < 26) return; }
+      lastX[row] = x;
+      var pk = peakAt(l.wl), y = Y(pk) - 8 - row * 12;
+      if (y < m.t + 22) y = m.t + 22 + row * 12;
+      var hi2 = art && isMarker(l.el);
+      NS.add(g, NS.s('line', { x1:x, x2:x, y1:Y(pk) - 3, y2:y + 2,
+        stroke:hi2 ? 'var(--accent)' : 'var(--muted)', 'stroke-width':0.7, opacity:0.6 }));
+      NS.add(g, NS.s('text', { x:x, y:y, 'text-anchor':'middle',
+        style:'font-size:9.5px;' + (hi2 ? 'font-weight:700;' : ''), fill:hi2 ? 'var(--accent)' : 'var(--ink2)',
+        text:l.el }));
+    });
+  return g;
+}
+
+/* 参照図（利用者が assets/ に画像を置いた場合のみ表示） */
+function specRefBox() {
+  var box = el('div', { class:'specref', hidden:'hidden' });
+  ['assets/spectrum_ref1.png', 'assets/spectrum_ref2.png', 'assets/spectrum_ref3.png'].forEach(function (src, i) {
+    var fig = el('figure', { class:'specfig', hidden:'hidden' });
+    var img = el('img', { src:src, alt:'参照スペクトル ' + (i + 1),
+      onload:function () { fig.hidden = false; box.hidden = false; },
+      onerror:function () { if (fig.parentNode) fig.parentNode.removeChild(fig); } });
+    NS.add(fig, [img, el('figcaption', { text:['参照：流星スペクトルの線同定例（350–900 nm）',
+      '参照：しし座流星群のスペクトル（S. Abe et al. 2000）',
+      '参照：ロケットデブリ再突入の分光（Watanabe et al., ACM 2026）'][i] })]);
+    NS.add(box, fig);
+  });
+  return box;
+}
+
+function specPanel(e, o) {
+  o = o || {};
+  var sp = e.spectrum, art = sp.kind === 'artificial', W = o.w || 900;
+  var isMarker = function (e2) { return NS.ARTIFICIAL_MARKERS.indexOf(e2) >= 0; };
+
+  /* ---- 自然天体：静的表示 ---- */
+  if (!art) {
+    var pts = NS.synthSpectrum(sp.lines, { seed:sp.seed, cont:sp.cont, fwhm:sp.fwhm || 2.8, lo:350, hi:900, n:1200 });
+    var strong = sp.lines.slice().sort(function (p, q) { return q.s - p.s; }).slice(0, 18);
+    return panel('発光スペクトル（4K 分光カメラ ＋ 回折格子 600 lpm）',
+      { note:(sp.station ? sp.station + ' · ' + sp.expo + ' · ' : '') + '自然天体（コンドライト的組成）',
+        tools:badge('自然天体と判定', 'ok') }, [
+      buildSpecSvg({ pts:pts, lines:sp.lines, art:false, w:W, uid:'f' }),
+      el('div', { class:'spec-lines' }, strong.map(function (l) {
+        return el('span', { class:'sl', text:l.el + ' ' + NS.f(l.wl, 1) + ' nm' });
+      })),
+      el('div', { class:'note', text:sp.note }),
+      el('div', { class:'note', text:'分子バンド（AlO 450–560 nm・CN 386–422 nm・TiO 515–725 nm）は検出されない。'
+        + 'これらはスペースデブリ再突入に特徴的で、自然天体と人工天体を分ける有力な指標になる（デブリ再突入の画面で ON / OFF を切り替えて比較できる）。' }),
+      specRefBox(),
+      el('div', { class:'src', text:'線同定と相対強度は、実際に取得された流星スペクトル（S. Abe et al., 2000, しし座流星群の分光観測 ほか）の代表例に合わせて構成した。表示している波形そのものはデモ用の合成スペクトルであり、実観測データではない。回折格子は 600 本/mm（600 lpm）を想定。' })
+    ]);
+  }
+
+  /* ---- 人工天体：局面 ＋ 分子バンドの ON / OFF ---- */
+  var state = { phase:'ablation', bands:{ AlO:true, CN:true, TiO:true, FeO:false } };
+  var chartBox = el('div'), infoBox = el('div'), chipsBox = el('div', { class:'spec-lines' });
+  var phaseNote = el('div', { class:'note' });
+
+  function redraw() {
+    var r = NS.debrisSpectrum({ phase:state.phase, bands:state.bands });
+    NS.clear(chartBox);
+    NS.add(chartBox, buildSpecSvg({ pts:r.pts, lines:r.lines, bands:r.bands, art:true, w:W, uid:'d', labelMin:0.22 }));
+    NS.clear(phaseNote);
+    NS.add(phaseNote, [
+      el('b', { text:r.phase.name + '（' + r.phase.ja + '）　高度 約 ' + r.phase.alt + ' km　黒体温度 約 ' + r.phase.T.toLocaleString() + ' K　' }),
+      r.phase.note
+    ]);
+    NS.clear(chipsBox);
+    var top = r.lines.slice().sort(function (p, q) { return q.s - p.s; }).slice(0, 14);
+    NS.add(chipsBox, top.map(function (l) {
+      return el('span', { class:'sl' + (isMarker(l.el) ? ' hi' : ''), text:l.el + ' ' + NS.f(l.wl, 1) + ' nm' });
+    }));
+    NS.add(chipsBox, r.bands.map(function (b) {
+      return el('span', { class:'sl band', style:{ borderColor:b.def.color, color:b.def.color },
+        text:b.def.name + '　' + b.def.Texc });
+    }));
+    NS.clear(infoBox);
+    NS.add(infoBox, NS.table(['分子種', 'バンド', '励起温度', '生成機構と意味', 'この局面での強度'],
+      NS.BANDS_DEBRIS.map(function (b) {
+        var amt = (NS.DEBRIS_PHASES.filter(function (p) { return p.key === state.phase; })[0].bands[b.key] || 0);
+        return { attrs:{ class:'clk' + (state.bands[b.key] ? ' on' : ''), onclick:function () { toggle(b.key); } }, cells:[
+          el('b', { style:{ color:b.def === undefined ? b.color : b.color }, text:b.name }),
+          { class:'sm', html:b.label.replace(/^[^（]*（/, '').replace(/）$/, '') },
+          { class:'sm', html:b.Texc },
+          { class:'sm', html:b.origin + '<br><span class="hint">' + b.ref + '</span>' },
+        ].concat([state.bands[b.key] ? NS.bar(amt, 'info') : el('span', { class:'hint', text:'OFF' })]) };
+      })));
+  }
+  function toggle(k) {
+    state.bands[k] = !state.bands[k];
+    var btn = document.getElementById('bandbtn-' + k);
+    if (btn) btn.setAttribute('aria-pressed', state.bands[k] ? 'true' : 'false');
+    redraw();
+  }
+
+  var phaseSeg = el('div', { class:'seg' }, NS.DEBRIS_PHASES.map(function (p) {
+    return el('button', { text:p.ja, title:p.name + '（高度 約 ' + p.alt + ' km）',
+      'aria-pressed':p.key === state.phase ? 'true' : 'false', onclick:function (ev) {
+        state.phase = p.key;
+        Array.prototype.forEach.call(ev.target.parentNode.children, function (x) { x.setAttribute('aria-pressed', 'false'); });
+        ev.target.setAttribute('aria-pressed', 'true');
+        redraw();
+      } });
+  }));
+  var bandChips = el('div', { class:'chips' }, NS.BANDS_DEBRIS.map(function (b) {
+    return el('button', { class:'chip band', id:'bandbtn-' + b.key, 'aria-pressed':state.bands[b.key] ? 'true' : 'false',
+      style:{ '--bc':b.color }, title:b.label, onclick:function () { toggle(b.key); } },
+      [el('i', { class:'bdot', style:{ background:b.color } }), b.name]);
+  }));
+
+  var pan = panel('発光スペクトル（4K 分光カメラ ＋ 回折格子 600 lpm）',
+    { note:(sp.station ? sp.station + ' · ' + sp.expo + ' · ' : '') + '人工物由来の金属線と酸化物バンドを検出',
+      tools:badge('人工天体と判定', 'crit') }, [
+    el('div', { class:'specbar' }, [
+      el('span', { class:'lbl', text:'再突入の局面' }), phaseSeg,
+      el('div', { class:'spacer' }),
+      el('span', { class:'lbl', text:'分子（酸化物）バンド' }), bandChips
+    ]),
+    phaseNote,
+    chartBox,
+    chipsBox,
+    el('div', { class:'note', text:sp.note }),
+    el('div', { style:{ marginTop:'10px' } }, infoBox),
+    specRefBox(),
+    el('div', { class:'src', text:'分子バンド（AlO・CN・TiO・FeO）の同定、励起温度、および 発光開始 → アブレーション → 爆発 → 分裂 → 終端 の推移は、'
+      + 'Watanabe, Abe, Arima & Hanayama「Spectroscopic Study of Rocket Debris during Atmospheric Re-entry」（ACM 2026）による '
+      + 'LM-3B 第 2 段の再突入分光観測（2024-12-21、石垣島天文台、Sony α7S ＋ SAMYANG 24mm F1.4 ＋ Edmund Optics 600 grooves/mm 透過型回折格子）に基づく。'
+      + '同観測では CN の励起温度 約 12,000 K、AlO の励起温度 約 5,000–9,000 K、平均表面温度 5,436 K（サンプルリターンカプセルの約 2 倍）が得られている。'
+      + '表示している波形そのものはデモ用の合成スペクトルであり、実観測データではない。' })
+  ]);
+  redraw();
+  return pan;
+}
+NS.specPanel = specPanel;
+
+/* =========================================================================
+   スペースデブリ再突入（G-2）
+   ========================================================================= */
+NS.V.reentry = function (root, go, arg) {
+  var e = NS.FLAGSHIP.reentry;
+  NS.add(root, el('div', { class:'page-h' }, [
+    el('h2', { text:'スペースデブリ再突入　光学・分光・音響観測' }),
+    el('p', { text:'公開軌道要素から再突入を予報し、光学・SWIR・分光・インフラサウンドで実観測する。破片化の過程と大気への金属注入量を地上から直接推定する（サブテーマ G-2 / DT-1）。' })
+  ]));
+
+  /* 予報リスト */
+  NS.add(root, panel('再突入 予報（今後 5 日）', { note:'公開軌道要素（TLE）＋大気密度モデルによる推定。予報窓は残存寿命に比例して広がる' },
+    NS.table(['対象', 'NORAD / COSPAR', '種別', '質量', '予報時刻 (JST)', '予報窓', '近地点/遠地点', '傾斜角', '日本上空', '可視の見込み'],
+      NS.FORECAST.map(function (f) {
+        return [el('b', { text:f.name }), { class:'mono sm', html:f.norad + '<br>' + f.cospar }, f.type,
+          { class:'r', html:f.mass + ' kg' }, { class:'mono', html:NS.fmtJST(f.t, { sec:false }) },
+          { class:'r', html:'± ' + NS.f(f.windowMin, 0) + ' 分' },
+          { class:'r mono sm', html:f.perigee + ' / ' + f.apogee + ' km' }, { class:'r', html:f.inc + '°' },
+          f.overJapan ? badge('通過あり', 'warn') : badge('なし', 'dim'),
+          NS.bar(f.pVisible, f.pVisible > 0.4 ? 'warn' : 'info')];
+      }))));
+
+  /* 観測事例 */
+  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel(e.name,
+    { note:e.id + ' · ' + NS.fmtJST(e.t, { ms:true }) + ' JST · ' + e.objName, tools:badge(e.stationsDet + ' 局同時検出', 'ok') }, [
+    el('p', { style:{ margin:'0 0 12px', color:'var(--ink2)' }, text:e.summary }),
+    el('div', { class:'grid g4' }, [
+      kpi('最大絶対等級', NS.f(e.absMag, 1), '等', '継続 ' + NS.f(e.dur, 1) + ' 秒', { acc:true }),
+      kpi('突入速度', NS.f(e.vInf, 2), 'km/s', '自然火球（11〜72 km/s）より明確に遅い'),
+      kpi('経路角', NS.f(e.entryAngle, 2), '°', '極めて浅い ＝ 人工天体の特徴'),
+      kpi('対象質量', e.objMass, 'kg', e.objArea)
+    ])
+  ])));
+
+  /* 予報精度 */
+  NS.add(root, el('div', { class:'grid g3', style:{ marginTop:'14px' } }, [
+    panel('予報と実測の比較', { note:'再突入予報の検証（G-2 の中核指標）' }, [
+      NS.kv([
+        ['予報発出', NS.f(-e.predict.issued, 1) + ' 時間前'],
+        ['使用軌道要素', e.predict.srcTLE],
+        ['予報窓', '± ' + e.predict.windowMin + ' 分'],
+        ['時刻誤差（実測−予報）', '<b>' + NS.f(e.predict.errMin, 1) + ' 分</b>'],
+        ['位置誤差', '<b>' + NS.f(e.predict.errKm, 0) + ' km</b>'],
+        ['判定', '予報窓内。位置誤差は軌道方向に沿った成分が支配的']
+      ], 'wide'),
+      el('div', { class:'note', text:'再突入予報の誤差は主に大気密度モデルと姿勢（断面積）の不確かさに由来する。実観測による検証データを蓄積し、JAXA 宇宙状況把握（SSA）へ共有する。' })
+    ]),
+    panel('破片化シーケンス', { note:'光度曲線のフレアと破片数の対応' },
+      NS.table(['経過', '高度', '破片数', '事象'], e.frag.map(function (f) {
+        return [{ class:'r mono', html:'+' + NS.f(f.t, 1) + ' s' }, { class:'r', html:NS.km(f.alt) },
+          { class:'r', html:String(f.n) }, { class:'sm', html:f.note }];
+      }))),
+    panel('大気への金属注入量の推定', { note:'アブレーション質量の元素分配' }, [
+      NS.chart.bars({ bars:[
+        { y:e.ablation.alKg, label:'Al', color:'var(--accent)', top:NS.f(e.ablation.alKg, 1) },
+        { y:e.ablation.cuKg, label:'Cu', color:'var(--c-warn)', top:NS.f(e.ablation.cuKg, 1) },
+        { y:e.ablation.liKg, label:'Li', color:'var(--c-info)', top:NS.f(e.ablation.liKg, 2) }
+      ], height:150, yLabel:'kg' }),
+      NS.kv([['総アブレーション質量', NS.f(e.ablation.totalKg, 0) + ' kg（対象質量の ' + Math.round(e.ablation.totalKg / e.objMass * 100) + '%）'],
+             ['その他', e.ablation.other]], 'wide'),
+      el('div', { class:'note', text:e.ablation.note })
+    ])
+  ]));
+
+  /* 光度曲線 + 地図 */
+  var series = e.det.map(function (d, i) {
+    var r = NS.rng(e.id + d.id), off = d.mag - e.absMag;
+    return { name:NS.ST[d.id].name, color:['var(--accent)','var(--c-info)','var(--c-ok)','var(--c-warn)','var(--c-sky)','var(--c-spec)'][i % 6],
+      pts:e.lightcurve.map(function (p) { return [p[0], p[1] + off + r.norm(0, 0.08)]; }), width:1.15, opacity:i === 0 ? 1 : 0.6 };
+  });
+  var M = NS.Map({ onStation:function (st) { go('station', st.id); } });
+  M.drawStations({ state:function (st) { return NS.stationState(st, NS.now()); } });
+  M.addOverlay(s('path', { d:NS.geoLinePath(e.begin, e.end), stroke:'var(--c-info)', 'stroke-width':2.6, fill:'none',
+    'stroke-linecap':'round', 'vector-effect':'non-scaling-stroke' }));
+  e.det.forEach(function (d) {
+    var st = NS.ST[d.id]; if (!st) return;
+    M.addOverlay(s('path', { d:NS.geoLinePath({ lat:st.lat, lon:st.lon }, { lat:(e.begin.lat + e.end.lat) / 2, lon:(e.begin.lon + e.end.lon) / 2 }, 16),
+      stroke:'var(--c-info)', 'stroke-width':0.9, 'stroke-dasharray':'3 3', fill:'none', opacity:0.45, 'vector-effect':'non-scaling-stroke' }));
+  });
+  M.fit([e.begin, e.end], 0.9);
+  e.frag.forEach(function (f) {
+    var lat = e.begin.lat + (e.end.lat - e.begin.lat) * (f.t / e.dur), lon = e.begin.lon + (e.end.lon - e.begin.lon) * (f.t / e.dur);
+    var p = M.pt(lon, lat);
+    var g = M.addOverlay(s('circle', { cx:p[0], cy:p[1], r:M.px(3.5 + f.n * 0.35), fill:'var(--accent)', 'fill-opacity':0.5, stroke:'var(--accent)', 'stroke-width':1, 'vector-effect':'non-scaling-stroke' }));
+    M.tipOn(g, '<b>+' + NS.f(f.t, 1) + ' s · ' + NS.km(f.alt) + '</b><span class="mt-d">破片 ' + f.n + ' 個</span><span class="mt-x">' + f.note + '</span>');
+  });
+  M.fit([e.begin, e.end], 0.9);
+  var mp = panel('地上軌跡と破片化地点', { note:'円の大きさは破片数' }, []);
+  var mb = mp.querySelector('.panel-b'); mb.classList.add('flush'); mb.appendChild(M.node);
+
+  NS.add(root, el('div', { class:'grid g2', style:{ marginTop:'14px' } }, [
+    panel('光度曲線（局別）', { note:'38 秒にわたる長い発光。4 回の主フレアが破片化に対応' }, [
+      NS.chart.line({ series:series, width:660, height:250, xLabel:'発光開始からの秒数', yLabel:'絶対等級',
+        yDomain:[2.6, -9.2], xFmt:function (v) { return NS.f(v, 0) + 's'; }, yFmt:function (v) { return NS.f(v, 0); },
+        rules:e.frag.map(function (f) { return { x:f.t, color:'var(--muted)', dash:'2 3' }; }) }),
+      NS.chart.legend(series.map(function (x) { return [x.name, x.color, 'line']; })),
+      el('div', { class:'note', text:'自然火球の継続時間は通常 1〜5 秒。38 秒という長い発光と浅い経路角は、円軌道からの人工天体の再突入に特有である。' })
+    ]),
+    mp
+  ]));
+
+  /* SWIR + 検出局 */
+  NS.add(root, el('div', { class:'grid g-2-1', style:{ marginTop:'14px' } }, [
+    panel('SWIR 冷却カメラによる熱放射観測', { note:'ZWO ASI992MM Pro（IMX992 InGaAs, 0.4–1.7 µm）· 設置 4 局中 ' + e.swirObs.stations.length + ' 局で取得' }, [
+      el('div', { class:'split' }, [
+        NS.chart.gauge({ value:e.swirObs.tempK, min:800, max:3000, unit:'K（破片表面）', text:String(e.swirObs.tempK),
+          color:'var(--accent)', zones:[[800, 930, 'var(--c-info)'], [930, 2400, 'var(--c-warn)'], [2400, 3000, 'var(--c-crit)']],
+          minLabel:'800', maxLabel:'3000' }),
+        el('div', { style:{ flex:'1', minWidth:'240px' } }, NS.kv([
+          ['観測波長帯', e.swirObs.band],
+          ['推定温度', e.swirObs.tempK + ' ± ' + e.swirObs.tempErr + ' K'],
+          ['アルミ合金の融点', '約 930 K'], ['酸化アルミの沸点', '約 3250 K'],
+          ['取得局', e.swirObs.stations.map(function (i) { return NS.ST[i].name; }).join('・')]
+        ], 'wide'))
+      ]),
+      el('div', { class:'note', text:e.swirObs.note })
+    ]),
+    panel('検出局', { note:'視野内 ' + e.stationsFov + ' 局 / 検出 ' + e.stationsDet + ' 局' },
+      NS.table(['局', '最大等級', '仰角', 'SWIR', '音響'], e.det.map(function (d) {
+        return { attrs:{ class:'clk', onclick:function () { go('station', d.id); } }, cells:[
+          NS.ST[d.id].name, { class:'r', html:NS.mag(d.mag) }, { class:'r', html:NS.f(d.elev, 1) + '°' },
+          d.swir ? badge('取得', 'info') : '<span class="hint">—</span>',
+          d.infra ? '＋' + NS.f(d.infra.dt, 0) + ' s' : '<span class="hint">—</span>'] };
+      })))
+  ]));
+
+  NS.add(root, el('div', { style:{ marginTop:'14px' } }, specPanel(e, { w:1180 })));
+
+  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('自然天体と人工天体の識別', { note:'本観測網が同一事象について同時に得る指標' },
+    NS.table(['指標', '自然火球（この観測網の典型値）', '人工天体の再突入', 'この事象'], [
+      ['突入速度', '11.2 – 72 km/s', '7.4 – 8.0 km/s', el('b', { text:NS.f(e.vInf, 2) + ' km/s → 人工' })],
+      ['経路角', '10 – 80°', '0.5 – 3°', el('b', { text:NS.f(e.entryAngle, 2) + '° → 人工' })],
+      ['継続時間', '0.5 – 8 秒', '20 – 120 秒', el('b', { text:NS.f(e.dur, 1) + ' 秒 → 人工' })],
+      ['分光の主要線', 'Mg I 518 / Na I 589 / Fe I 多重項', 'Al I 394・396 / Cu I 510・578 / Li I 671', el('b', { text:'Al・Cu・Li 検出 → 人工' })],
+      ['分子（酸化物）バンド', '検出されない', 'AlO 450–560 / CN 386–422 / TiO 515–725 nm', el('b', { text:'AlO・CN・TiO 検出 → 人工' })],
+      ['励起温度', '4,000 – 5,000 K 程度', 'CN 約 12,000 K / AlO 約 5,000–9,000 K', el('b', { text:'高温 → 人工' })],
+      ['破片の色', '黄白（Na 卓越）', '青白（Al 卓越）', el('b', { text:'青白 → 人工' })],
+      ['軌道要素との照合', '該当なし', '公開 TLE と一致', el('b', { text:'一致（' + e.predict.errMin + ' 分差）→ 人工' })]
+    ]))));
+};
+
+/* =========================================================================
+   インフラサウンド（G-4）
+   ========================================================================= */
+NS.V.infra = function (root, go, arg) {
+  var evs = NS.INFRA;
+  var sel = NS.EVMAP[arg] && (NS.EVMAP[arg].kind === 'infrasound' || NS.EVMAP[arg].kind === 'seismic') ? NS.EVMAP[arg] : evs[0];
+
+  NS.add(root, el('div', { class:'page-h' }, [
+    el('h2', { text:'インフラサウンド全国アレイ' }),
+    el('p', { text:'全 13 局に 2 台ずつ（基線約 60 m のペア配置）設置したインフラサウンドセンサーを GNSS で時刻同期し、全国を一つのアレイとして扱う。火山噴火・雷・ロケット・津波・火球衝撃波を検知・定位し、線状降水帯の早期検知や成層圏風の逆推定にも用いる（サブテーマ G-4 / DT-4）。' })
+  ]));
+
+  NS.add(root, el('div', { class:'grid g4' }, [
+    kpi('検出事象（24 時間）', 1846, '件', '雷 1,842 · 火山 1 · 火球 2 · ロケット 1', { icon:'〰', acc:true }),
+    kpi('見かけの音速', '0.30', 'km/s', '直達波（Iw）· 成層圏反射波は 0.28 km/s 前後'),
+    kpi('観測周波数帯', '0.1 – 1000', 'Hz', '株式会社サヤ INF03 · 130/110 dB SPL 切替'),
+    kpi('定位精度（較正事象）', '3.1', 'km', '種子島の打上げを既知音源として検証')
+  ]));
+
+  var listWrap = el('div', { class:'evlist' });
+  evs.forEach(function (e) {
+    NS.add(listWrap, NS.evRow(e, function (x) { go('infra', x.id); }, sel.id));
+  });
+  var listPanel = panel('主な検出事象', { note:(evs.length + 1) + ' 件' }, []);
+  listPanel.querySelector('.panel-b').classList.add('flush');
+  listPanel.querySelector('.panel-b').appendChild(listWrap);
+  var rb = NS.rainband();
+  NS.add(listWrap, el('div', { class:'evrow', role:'button', tabindex:'0', onclick:function () {
+      go('weather'); setTimeout(function () {
+        var t2 = document.getElementById('rainband'); if (t2) t2.scrollIntoView({ block:'start' }); }, 60);
+    } }, [
+    el('div', { class:'ei', text:'🌧' }),
+    el('div', null, [
+      el('div', { class:'en' }, [rb.name, badge('気象 →', 'info')]),
+      el('div', { class:'em', text:NS.fmtJST(rb.t, { sec:false }) + ' JST · ' + NS.ago(rb.t) })
+    ]),
+    el('div', { class:'ev' }, [rb.strikesTotal.toLocaleString() + ' 回', el('small', { text:rb.det.length + ' 局' })])
+  ]));
+
+  var detail = el('div', { class:'grid', style:{ gap:'14px' } });
+  NS.add(root, el('div', { class:'grid g-1-2', style:{ marginTop:'14px' } }, [listPanel, detail]));
+
+  var e = sel;
+  if (e.kind === 'seismic') { renderSeismic(); } else { renderInfra(); }
+
+  function renderInfra() {
+    NS.add(detail, panel(e.name, { note:e.id + ' · ' + NS.fmtJST(e.t) + ' JST · ' + e.cls,
+      tools:e.srcKnown ? badge('音源既知（較正可能）', 'ok') : badge('音源推定', 'info') }, [
+      el('p', { style:{ margin:'0 0 12px', color:'var(--ink2)' }, text:e.summary }),
+      el('div', { class:'grid g4' }, [
+        kpi('検出局数', e.det.length, '局', '全 13 局中'),
+        kpi('最大振幅', NS.f(e.peakPa, 2), 'Pa', '周波数帯 ' + e.freq),
+        kpi('定位誤差', '±' + NS.f(e.locErr, 1), 'km', e.srcKnown ? '既知の音源位置との差' : '交会法の 1σ'),
+        kpi('見かけの音速', NS.f(e.cel, 3), 'km/s', '到達時刻差から推定')
+      ])
+    ]));
+
+    /* 波形 */
+    var ws = e.det.map(function (d, i) {
+      return { name:NS.ST[d.id].name, color:['var(--c-infra)','var(--c-info)','var(--c-warn)','var(--accent)'][i % 4],
+        pts:NS.wavePacket({ P:d.P, amp:d.amp, seed:e.id + d.id, dur:Math.max(60, d.P * 22), pre:Math.max(60, d.P * 22) * 0.35, width:d.P * 2.4, noise:0.012 })
+          .map(function (p) { return [p[0] + d.dt, p[1] / Math.max(0.2, e.peakPa) * 1.0 + (e.det.length - 1 - i) * 1.5]; }), width:1.1 };
+    });
+    var tmax = Math.max.apply(null, e.det.map(function (d) { return d.dt; }));
+    var useMin = tmax > 900;
+    NS.add(detail, panel('波形（時刻同期・局別）', { note:'横軸は発生時刻からの経過時間。振幅は最大値で規格化して縦にずらして表示' }, [
+      NS.chart.line({ series:ws, width:900, height:250, xLabel:useMin ? '発生からの経過（分）' : '発生からの経過（秒）', yLabel:'気圧変動（規格化）',
+        xFmt:function (v) { return useMin ? NS.f(v / 60, 0) : NS.f(v, 0); }, yFmt:function () { return ''; },
+        rules:e.det.map(function (d) { return { x:d.dt, color:'var(--muted)', dash:'2 3', label:NS.ST[d.id].id }; }) }),
+      NS.chart.legend(e.det.map(function (d, i) { return [NS.ST[d.id].name + '（' + NS.f(d.dist, 0) + ' km）', ws[i].color, 'line']; }))
+    ]));
+
+    /* 地図：方位交会 */
+    var M = NS.Map({ onStation:function (st) { go('station', st.id); } });
+    M.drawStations({ state:function (st) { return NS.stationState(st, NS.now()); } });
+    e.det.forEach(function (d) {
+      var st = NS.ST[d.id];
+      var p0 = M.pt(st.lon, st.lat);
+      /* 到来方位から音源方向へ伸ばす扇（誤差角） */
+      var L = d.dist * 1.35;
+      [-d.azErr, 0, d.azErr].forEach(function (da, k) {
+        var az = (d.az + da) * NS.d2r;
+        var lat2 = st.lat + L * Math.cos(az) / 111.32, lon2 = st.lon + L * Math.sin(az) / (111.32 * Math.cos(st.lat * NS.d2r));
+        M.addOverlay(s('path', { d:NS.geoLinePath({ lat:st.lat, lon:st.lon }, { lat:lat2, lon:lon2 }, 12),
+          stroke:'var(--c-infra)', 'stroke-width':k === 1 ? 1.6 : 0.7, 'stroke-dasharray':k === 1 ? null : '3 3',
+          fill:'none', opacity:k === 1 ? 0.85 : 0.4, 'vector-effect':'non-scaling-stroke' }));
+      });
+      /* 到達時刻の等時線 */
+      M.addOverlay(s('path', { d:NS.geoCirclePath(st.lat, st.lon, d.dist), stroke:'var(--c-infra)', 'stroke-width':0.8,
+        'stroke-dasharray':'2 4', fill:'none', opacity:0.35, 'vector-effect':'non-scaling-stroke' }));
+    });
+    M.fit([e.src].concat(e.det.map(function (d) { return { lat:NS.ST[d.id].lat, lon:NS.ST[d.id].lon }; })), 0.35);
+    var sp = M.pt(e.src.lon, e.src.lat);
+    M.addOverlay(s('circle', { cx:sp[0], cy:sp[1], r:M.px(5.5), fill:'var(--accent)', stroke:'var(--panel)', 'stroke-width':1.4, 'vector-effect':'non-scaling-stroke' }));
+    var kx = Math.abs(M.pt(e.src.lon + 0.1, e.src.lat)[0] - sp[0]) / (0.1 * 111.32 * Math.cos(e.src.lat * NS.d2r));
+    M.addOverlay(s('circle', { cx:sp[0], cy:sp[1], r:e.locErr * kx, fill:'var(--accent)', 'fill-opacity':0.18,
+      stroke:'var(--accent)', 'stroke-width':1, 'vector-effect':'non-scaling-stroke' }));
+    M.fit([e.src].concat(e.det.map(function (d) { return { lat:NS.ST[d.id].lat, lon:NS.ST[d.id].lon }; })), 0.35);
+    var mp = panel('音源定位', { note:'実線は各局の到来方位、破線は方位誤差と到達時刻の等時線。赤丸は推定音源位置' }, []);
+    var mb = mp.querySelector('.panel-b'); mb.classList.add('flush'); mb.appendChild(M.node);
+
+    var tbl = panel('到達時刻・方位', { note:e.src.name },
+      NS.table(['局', '距離', '到達', '到来方位', '振幅', '周期', '位相'], e.det.map(function (d) {
+        return { attrs:{ class:'clk', onclick:function () { go('station', d.id); } }, cells:[
+          NS.ST[d.id].name, { class:'r', html:NS.f(d.dist, 1) + ' km' }, { class:'r mono', html:'＋' + NS.f(d.dt, 1) + ' s' },
+          { class:'r', html:NS.f(d.az, 1) + '° ±' + NS.f(d.azErr, 1) + '°' }, { class:'r', html:NS.f(d.amp, 2) + ' Pa' },
+          { class:'r', html:NS.f(d.P, 1) + ' s' }, { class:'sm', html:'<span style="white-space:nowrap">' + d.phase + '</span>' }] };
+      })));
+    NS.add(detail, el('div', { class:'grid g-3-2' }, [mp, tbl]));
+
+    NS.add(detail, panel('解釈と応用', null, [
+      el('p', { style:{ margin:0 }, text:e.note }),
+      e.strikes ? el('div', { class:'note', text:'落雷回数 ' + e.strikes.toLocaleString() + ' 回（6 時間）。気象センサーの気圧・雨量と同期させることで、降水帯の到達を数分先取りして学校へ伝えられる。' }) : null
+    ]));
+  }
+
+  function renderSeismic() {
+    NS.add(detail, panel(e.name, { note:e.id + ' · ' + NS.fmtJST(e.t) + ' JST · ' + e.cls }, [
+      el('p', { style:{ margin:'0 0 12px', color:'var(--ink2)' }, text:e.summary }),
+      el('div', { class:'grid g3' }, [
+        kpi('判定局数', e.det.length, '局', '全 13 局で常時微動を記録'),
+        kpi('最大 PGA', NS.f(e.det[0].pga, 1), 'gal', e.det[0].id + ' 局'),
+        kpi('判定', '全局 継続使用可', '', '固有振動数の低下 5% 未満')
+      ])
+    ]));
+    var bars = [];
+    e.det.forEach(function (d) {
+      bars.push({ y:d.f0pre, label:NS.ST[d.id].name + ' 前', color:'var(--muted)', top:NS.f(d.f0pre, 2) });
+      bars.push({ y:d.f0, label:'後', color:'var(--accent)', top:NS.f(d.f0, 2) });
+    });
+    NS.add(detail, el('div', { class:'grid g2' }, [
+      panel('校舎 1 次固有振動数の変化', { note:'常時微動計（DT-6）· 地震前後の比較' }, [
+        NS.chart.bars({ bars:bars, width:450, height:200, yLabel:'Hz', yMax:5 }),
+        el('div', { class:'note', text:'固有振動数は剛性の平方根に比例するため、低下率は構造損傷の指標になる。5 % を超えた場合に「点検要」を自動発報する。' })
+      ]),
+      panel('局別判定', null, NS.table(['局', '震央距離', '地震前 f₀', '地震後 f₀', '変化', 'PGA', '判定'],
+        e.det.map(function (d) {
+          return [NS.ST[d.id].name, { class:'r', html:NS.f(d.dist, 1) + ' km' }, { class:'r', html:NS.f(d.f0pre, 2) + ' Hz' },
+            { class:'r', html:NS.f(d.f0, 2) + ' Hz' }, { class:'r', html:NS.f(d.drift, 1) + ' %' },
+            { class:'r', html:NS.f(d.pga, 1) + ' gal' }, badge(d.judge, 'ok')];
+        })))
+    ]));
+    NS.add(detail, panel('意義', null, el('p', { style:{ margin:0 }, text:e.note +
+      ' 観測局を載せる校舎そのものを観測対象にすることで、地震直後に「この校舎を避難所として使えるか」を数分で判断できる。工学部（建築）・理工学部（建築・機械）・生産工学部が担当する。' })));
+  }
+};
+
+})(NS);
