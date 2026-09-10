@@ -554,51 +554,65 @@ NS.V.about = function (root, go) {
   ]));
 
   /* ---- 参考文献 ---- */
+  var lnk = function (href, label) {
+    return el('a', { href:href, target:'_blank', rel:'noopener', class:'doi', text:label });
+  };
   NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('参考文献',
-    { note:'本デモが依拠している研究代表者らの主な先行研究と、関連する実装' },
+    { note:'本デモが依拠している研究代表者らの主な先行研究と、関連する実装。表題をクリックすると原著にアクセスできる' },
     NS.table(['文献', 'デモ内での対応'], [
       [el('span', null, [
         el('b', { text:'Abe, S. ' }), '(2026), ',
         el('i', { text:'“A calibrated dust-trail model of the Leonid meteoroid stream and forecasts of the 2031–2035 encounters”' }),
-        ', ', el('a', { href:'https://arxiv.org/abs/2608.25456', target:'_blank', rel:'noopener', text:'arXiv:2608.25456' }),
-        '　', el('a', { href:'https://zenodo.org/records/22084210', target:'_blank', rel:'noopener', text:'［データ: Zenodo］' })
+        el('br'),
+        lnk('https://arxiv.org/abs/2608.25456', 'arXiv:2608.25456'),
+        lnk('https://zenodo.org/records/22084210', 'データ: Zenodo')
       ]),
        'しし座流星群のダストトレイルと地球軌道の交差から流星嵐を予報する。本観測網が検証対象とする「いつ・どこで・どれだけ流れるか」の理論側。DT-1（上空大気圏ツイン）の予報入力に対応する'],
       [el('span', null, [
         el('b', { text:'Abe, S., et al. ' }), '(2020), ',
         el('i', { text:'“Sodium variation in Geminid meteoroids from (3200) Phaethon”' }),
-        ', Planetary and Space Science, 194, 105040'
+        ', Planetary and Space Science, 194, 105040', el('br'),
+        lnk('https://doi.org/10.1016/j.pss.2020.105040', 'doi:10.1016/j.pss.2020.105040')
       ]),
        'ふたご座流星群の Na I 589 nm の強度変化から母天体（3200）Phaethon の熱進化を読む。「火球・隕石」画面の発光スペクトルで Na／Mg 比を組成の指標として扱う根拠（G-1）'],
       [el('span', null, [
         el('b', { text:'Abe, S., et al. ' }), '(2011), ',
         el('i', { text:'“Near-Ultraviolet and Visible Spectroscopy of HAYABUSA Spacecraft Re-Entry”' }),
-        ', Publications of the Astronomical Society of Japan, 63, 1011–1021'
+        ', Publications of the Astronomical Society of Japan, 63, 1011–1021', el('br'),
+        lnk('https://doi.org/10.1093/pasj/63.5.1011', 'doi:10.1093/pasj/63.5.1011')
       ]),
        '「はやぶさ」再突入の近紫外・可視分光。人工物の再突入を地上から分光観測した先行例であり、「デブリ再突入」画面の分光（G-2）が直接引き継ぐ手法'],
       [el('span', null, [
         el('b', { text:'Abe, S. ' }), '(2009), ',
         el('i', { text:'“Meteoroids and Meteors – Observations and Connection to Parent Bodies”' }),
-        ', Lecture Notes in Physics, 758, 129–166, Springer'
+        ', Lecture Notes in Physics, 758, 129–166, Springer', el('br'),
+        lnk('https://doi.org/10.1007/978-3-540-76935-4_5', 'doi:10.1007/978-3-540-76935-4_5')
       ]),
        '流星の観測手法（撮像・分光）と、軌道・密度・強度・組成から母天体へ遡る枠組みの総説。本デモ全体の観測設計と解析フローの土台'],
       [el('span', null, [
-        el('b', { text:'Watanabe, K., Abe, S., Arima, N. & Hanayama, H. ' }), '(2026), ',
-        el('i', { text:'“Spectroscopic Study of Rocket Debris during Atmospheric Re-entry”' }),
-        ', ACM 2026'
-      ]),
-       'LM-3B 第2段の再突入分光（石垣島天文台・600 grooves/mm）。「デブリ再突入」画面の分子（酸化物）バンド AlO・CN・TiO と、発光開始→アブレーション→爆発→分裂→終端の局面推移はこの成果に基づく'],
-      [el('span', null, [
-        el('b', { text:'S. Abe et al. ' }), '(2000), しし座流星群のスペクトル観測'
+        el('b', { text:'Abe, S., et al. ' }), '(2000), ',
+        el('i', { text:'“First Results of High-Definition TV Spectroscopic Observations of the 1999 Leonid Meteor Shower”' }),
+        ', Earth, Moon, and Planets, 82–83, 369–377', el('br'),
+        lnk('https://doi.org/10.1023/A:1017055120356', 'doi:10.1023/A:1017055120356')
       ]),
        '「火球・隕石」画面の自然天体スペクトルの線同定（Ca II・Mg I・Na I・Si II・O I・N I・N₂）と相対強度の基準'],
       [el('span', null, [
-        el('a', { href:'https://aero.cst.nihon-u.ac.jp/abe-s/2026/08/31/meteorium%ef%bc%88%e3%83%a1%e3%83%86%e3%82%aa%e3%83%aa%e3%82%a6%e3%83%a0%ef%bc%89/',
-          target:'_blank', rel:'noopener' }, el('b', { text:'Meteorium（メテオリウム）' })),
-        '　宇宙科学デジタルツイン アプリ、Abe Space Science Lab (2026)　',
-        el('a', { href:'https://apps.apple.com/app/id6798546441', target:'_blank', rel:'noopener', text:'［App Store］' })
+        el('b', { text:'Watanabe, K., Abe, S., Arima, N. & Hanayama, H. ' }), '(2026), ',
+        el('i', { text:'“Spectroscopic Study of Rocket Debris during Atmospheric Re-entry”' }),
+        ', ACM 2026（Asteroids, Comets, Meteors 2026 発表）'
       ]),
-       '太陽系を俯瞰してダストトレイルと地球軌道の交差を見せ、そのまま地上視点に降りて流星雨の見え方を再現する。論文の計算結果をそのまま動かせる「宇宙科学デジタルツイン」の先行実装であり、本観測網の PF-2（デジタルツイン）・DT-7（学びのツイン）が目指す形を、観測データ側から補完する']
+       'LM-3B 第2段の再突入分光（石垣島天文台・600 grooves/mm）。「デブリ再突入」画面の分子（酸化物）バンド AlO・CN・TiO と、発光開始→アブレーション→爆発→分裂→終端の局面推移はこの成果に基づく'],
+      [el('span', null, [
+        el('b', { text:'Meteorium（メテオリウム）' }), '　宇宙科学デジタルツイン アプリ、Abe Space Science Lab (2026)', el('br'),
+        lnk('https://aero.cst.nihon-u.ac.jp/abe-s/2026/08/31/meteorium%ef%bc%88%e3%83%a1%e3%83%86%e3%82%aa%e3%83%aa%e3%82%a6%e3%83%a0%ef%bc%89/', '紹介記事'),
+        lnk('https://apps.apple.com/app/id6798546441', 'App Store')
+      ]),
+       '太陽系を俯瞰してダストトレイルと地球軌道の交差を見せ、そのまま地上視点に降りて流星雨の見え方を再現する。論文の計算結果をそのまま動かせる「宇宙科学デジタルツイン」の先行実装であり、本観測網の PF-2（デジタルツイン）・DT-7（学びのツイン）が目指す形を、観測データ側から補完する'],
+      [el('span', null, [
+        el('b', { text:'Astrarium（アストラリウム）' }), '　星空アプリ、Abe Space Science Lab (2026)', el('br'),
+        lnk('https://apps.apple.com/app/id6795053748', 'App Store')
+      ]),
+       'その場の空に見える星座・天体を再現する星空アプリ。本デモの「全天カメラ（疑似ライブ）」が恒星の赤経・赤緯から地方恒星時で天球を再現しているのと同じ考え方であり、付属校の生徒が自分の空と観測画像を見比べる導入として、DT-7（学びのツイン）・G-8（探究）に接続する']
     ], { class:'refs' }))));
   NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('操作方法', null, NS.table(['操作', '内容'], [
     ['地図：ホイール / トラックパッド', '拡大・縮小'],

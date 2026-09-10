@@ -81,12 +81,13 @@ git add -A && git commit -m "Update NU-SORA demo" && git push
 
 - 観測局の配置・機材構成：令和9年度 日本大学特別研究の申請計画に基づく
 - **Abe, S.** (2026), *A calibrated dust-trail model of the Leonid meteoroid stream and forecasts of the 2031–2035 encounters*, [arXiv:2608.25456](https://arxiv.org/abs/2608.25456)（[データ: Zenodo](https://zenodo.org/records/22084210)）
-- **Abe, S., et al.** (2020), *Sodium variation in Geminid meteoroids from (3200) Phaethon*, Planetary and Space Science, **194**, 105040
-- **Abe, S., et al.** (2011), *Near-Ultraviolet and Visible Spectroscopy of HAYABUSA Spacecraft Re-Entry*, Publications of the Astronomical Society of Japan, **63**, 1011–1021
-- **Abe, S.** (2009), *Meteoroids and Meteors – Observations and Connection to Parent Bodies*, Lecture Notes in Physics, **758**, 129–166, Springer
+- **Abe, S., et al.** (2020), *Sodium variation in Geminid meteoroids from (3200) Phaethon*, Planetary and Space Science, **194**, 105040 — [doi:10.1016/j.pss.2020.105040](https://doi.org/10.1016/j.pss.2020.105040)
+- **Abe, S., et al.** (2011), *Near-Ultraviolet and Visible Spectroscopy of HAYABUSA Spacecraft Re-Entry*, PASJ, **63**, 1011–1021 — [doi:10.1093/pasj/63.5.1011](https://doi.org/10.1093/pasj/63.5.1011)
+- **Abe, S.** (2009), *Meteoroids and Meteors – Observations and Connection to Parent Bodies*, Lecture Notes in Physics, **758**, 129–166, Springer — [doi:10.1007/978-3-540-76935-4_5](https://doi.org/10.1007/978-3-540-76935-4_5)
+- **Abe, S., et al.** (2000), *First Results of High-Definition TV Spectroscopic Observations of the 1999 Leonid Meteor Shower*, Earth, Moon, and Planets, **82–83**, 369–377 — [doi:10.1023/A:1017055120356](https://doi.org/10.1023/A:1017055120356)
 - **Watanabe, K., Abe, S., Arima, N. & Hanayama, H.** (2026), *Spectroscopic Study of Rocket Debris during Atmospheric Re-entry*, ACM 2026
-- **S. Abe et al.** (2000), しし座流星群のスペクトル観測
-- **[Meteorium（メテオリウム）](https://aero.cst.nihon-u.ac.jp/abe-s/2026/08/31/meteorium%ef%bc%88%e3%83%a1%e3%83%86%e3%82%aa%e3%83%aa%e3%82%a6%e3%83%a0%ef%bc%89/)** — 宇宙科学デジタルツイン アプリ、Abe Space Science Lab (2026)（[App Store](https://apps.apple.com/app/id6798546441)）
+- **Meteorium（メテオリウム）** — 宇宙科学デジタルツイン アプリ、Abe Space Science Lab (2026)（[紹介記事](https://aero.cst.nihon-u.ac.jp/abe-s/2026/08/31/meteorium%ef%bc%88%e3%83%a1%e3%83%86%e3%82%aa%e3%83%aa%e3%82%a6%e3%83%a0%ef%bc%89/) ／ [App Store](https://apps.apple.com/app/id6798546441)）
+- **Astrarium（アストラリウム）** — 星空アプリ、Abe Space Science Lab (2026)（[App Store](https://apps.apple.com/app/id6795053748)）
 - 地図データ：dataofjapan/land（国土数値情報を簡略化）
 
-各文献のデモ内での対応は、[デモの「このデモについて」画面](nu-sora/)および [`nu-sora/README.md`](nu-sora/README.md) を参照。
+各文献のデモ内での対応は、デモの「このデモについて」画面および [`nu-sora/README.md`](nu-sora/README.md) を参照。
