@@ -618,6 +618,29 @@ NS.V.about = function (root, go) {
      '光学・分光・インフラサウンド・地震・電離圏を一つの事象に同時投入した地上観測キャンペーンの全体像。単発の遠征として行われたこの体制を、13 局の常設網として恒常化するのが本観測網の構想である']
   ]))));
 
+  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('参考文献 ― 電離圏・GNSS',
+    { note:'全 13 局の 2 周波 GNSS が担う電離圏観測（G-5 / DT-5）の設計根拠' }, refTable([
+    [cite('Kakinami, Y., Kamogawa, M., Tanioka, Y., Watanabe, S., Gusman, A. R., Liu, J.-Y., Watanabe, Y. & Mogi, T.', 2012,
+      'Tsunamigenic ionospheric hole', 'Geophysical Research Letters, 39, L00G27',
+      [['doi:10.1029/2011GL050159', 'https://doi.org/10.1029/2011GL050159']]),
+     '津波が電離圏に「穴」（電子密度の減少）を開けることを発見した研究。海面変動が大気を通じて電離圏まで伝わることを示し、DT-5（電離圏ツイン）で津波起源の擾乱を検出する根拠になる'],
+    [cite('Kakinami, Y., Kamogawa, M., Watanabe, S., Odaka, M., Mogi, T., Liu, J.-Y., Sun, Y.-Y. & Yamada, T.', 2013,
+      'Ionospheric ripples excited by superimposed wave fronts associated with Rayleigh waves in the thermosphere',
+      'Journal of Geophysical Research: Space Physics, 118, 905–911',
+      [['doi:10.1002/jgra.50099', 'https://doi.org/10.1002/jgra.50099']]),
+     '地震のレイリー波が熱圏で重なり合って電離圏にさざ波を立てる過程。地震・噴火起源の電離圏波動を読む手がかりであり、微動計（DT-6）と GNSS（DT-5）を同一局で持つことの意味を裏づける'],
+    [cite('Kamogawa, M., Orihara, Y., Tsurudome, C., Tomida, Y., Kanaya, T., Ikeda, D., Gusman, A. R., Kakinami, Y., Liu, J.-Y. & Toyoda, A.', 2016,
+      'A possible space-based tsunami early warning system using observations of the tsunami ionospheric hole',
+      'Scientific Reports, 6, 37989',
+      [['doi:10.1038/srep37989', 'https://doi.org/10.1038/srep37989']]),
+     '電離圏ホールの観測を津波の早期警戒に使う構想。観測を警報へつなぐという点で、本デモの通報ワークフロー（G-7）と同じ発想であり、GNSS 側からの入力に対応する'],
+    [cite('Kakinami, Y., Saito, H., Yamamoto, T., Chen, C.-H., Yamamoto, M.-Y., Nakajima, K., Liu, J.-Y. & Watanabe, S.', 2021,
+      'Onset Altitudes of Co-Seismic Ionospheric Disturbances Determined by Multiple Distributions of GNSS TEC After the Foreshock of the 2011 Tohoku Earthquake on March 9, 2011',
+      'Earth and Space Science, 8, e2020EA001217',
+      [['doi:10.1029/2020EA001217', 'https://doi.org/10.1029/2020EA001217']]),
+     'GNSS TEC の多点分布から擾乱の発生高度を決める手法。全 13 局の 2 周波 GNSS を GEONET と組み合わせて使う（G-5）ことの技術的な裏づけになる']
+  ]))));
+
   NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('関連する実装',
     { note:'同じ研究室が公開している、観測・理論を「動かして確かめる」ためのアプリ' }, refTable([
     [el('span', null, [

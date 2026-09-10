@@ -147,7 +147,21 @@ assets/             参照図の置き場（README 参照。画像を置くと�
 - **Fujita, K., Yamamoto, M.-Y., Abe, S., Ishihara, Y., Iiyama, O., Kakinami, Y., et al.** (2011), *An Overview of JAXA's Ground-Observation Activities for HAYABUSA Reentry*, Publications of the Astronomical Society of Japan, **63**, 961–969 — [doi:10.1093/pasj/63.5.961](https://doi.org/10.1093/pasj/63.5.961)
   — 光学・分光・インフラサウンド・地震・電離圏を一事象へ同時投入した地上観測キャンペーンの全体像。これを 13 局の常設網として恒常化するのが本観測網の構想
 
+### 電離圏・GNSS
+
+全 13 局の 2 周波 GNSS が担う電離圏観測（G-5 / DT-5）の設計根拠。
+
+- **Kakinami, Y., Kamogawa, M., Tanioka, Y., Watanabe, S., Gusman, A. R., Liu, J.-Y., Watanabe, Y. & Mogi, T.** (2012), *Tsunamigenic ionospheric hole*, Geophysical Research Letters, **39**, L00G27 — [doi:10.1029/2011GL050159](https://doi.org/10.1029/2011GL050159)
+  — 津波が電離圏に「穴」を開けることを発見。DT-5 で津波起源の擾乱を検出する根拠
+- **Kakinami, Y., Kamogawa, M., Watanabe, S., Odaka, M., Mogi, T., Liu, J.-Y., Sun, Y.-Y. & Yamada, T.** (2013), *Ionospheric ripples excited by superimposed wave fronts associated with Rayleigh waves in the thermosphere*, Journal of Geophysical Research: Space Physics, **118**, 905–911 — [doi:10.1002/jgra.50099](https://doi.org/10.1002/jgra.50099)
+  — 地震のレイリー波が電離圏に立てるさざ波。微動計（DT-6）と GNSS（DT-5）を同一局で持つ意味の裏づけ
+- **Kamogawa, M., Orihara, Y., Tsurudome, C., Tomida, Y., Kanaya, T., Ikeda, D., Gusman, A. R., Kakinami, Y., Liu, J.-Y. & Toyoda, A.** (2016), *A possible space-based tsunami early warning system using observations of the tsunami ionospheric hole*, Scientific Reports, **6**, 37989 — [doi:10.1038/srep37989](https://doi.org/10.1038/srep37989)
+  — 電離圏ホールを津波の早期警戒に使う構想。通報ワークフロー（G-7）への GNSS 側からの入力
+- **Kakinami, Y., Saito, H., Yamamoto, T., Chen, C.-H., Yamamoto, M.-Y., Nakajima, K., Liu, J.-Y. & Watanabe, S.** (2021), *Onset Altitudes of Co-Seismic Ionospheric Disturbances Determined by Multiple Distributions of GNSS TEC After the Foreshock of the 2011 Tohoku Earthquake on March 9, 2011*, Earth and Space Science, **8**, e2020EA001217 — [doi:10.1029/2020EA001217](https://doi.org/10.1029/2020EA001217)
+  — GNSS TEC の多点分布から擾乱の発生高度を決める。13 局の GNSS が GEONET を補完する（G-5）技術的裏づけ
+
 ### 関連する実装
+
 
 - **Meteorium（メテオリウム）** — 宇宙科学デジタルツイン アプリ、Abe Space Science Lab (2026)（[紹介記事](https://aero.cst.nihon-u.ac.jp/abe-s/2026/08/31/meteorium%ef%bc%88%e3%83%a1%e3%83%86%e3%82%aa%e3%83%aa%e3%82%a6%e3%83%a0%ef%bc%89/) ／ [App Store](https://apps.apple.com/app/id6798546441)）
   — 太陽系を俯瞰してダストトレイルと地球軌道の交差を見せ、そのまま地上視点に降りて流星雨を再現する。本観測網の PF-2（デジタルツイン）・DT-7（学びのツイン）が目指す形を、観測データ側から補完する
