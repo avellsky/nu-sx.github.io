@@ -88,6 +88,21 @@ NS.nextMidnight = function () {
   var base = Date.UTC(p.y, p.mo - 1, p.d) - NS.JST + 3600e3;   /* 今日の 01:00 JST */
   return p.h >= 1 ? base + 86400e3 : base;
 };
+/* 「今夜」の JST hh 時。夕方以降なら翌未明側、未明なら前夜側を指す */
+NS.tonightAt = function (hh) {
+  var p = NS.jstParts(NS.now());
+  var base = Date.UTC(p.y, p.mo - 1, p.d) - NS.JST;
+  var t = base + hh * 3600e3;
+  if (hh < 12 && p.h >= 12) t += 86400e3;
+  if (hh >= 12 && p.h < 12) t -= 86400e3;
+  return t;
+};
+/* 全天表示の既定時刻：いま夜なら現在時刻、昼・薄明なら今夜 23 時 */
+NS.defaultSkyTime = function () {
+  var now = NS.now();
+  var dark = NS.STATIONS.some(function (st) { return NS.solarAlt(now, st.lat, st.lon) < -12; });
+  return dark ? { t:now, live:true, label:'現在' } : { t:NS.tonightAt(23), live:false, label:'今夜 23:00' };
+};
 /* n 夜前の JST hh:mm:ss を UTC ミリ秒で返す（夜間イベントの配置用） */
 NS.night = function (nBack, hh, mm, ss, ms) {
   var p = NS.jstParts(NS.now());

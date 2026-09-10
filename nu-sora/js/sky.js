@@ -85,6 +85,29 @@ function milkyWay() {
   return MW;
 }
 
+/* 微光星の星野（実在の明るい星に加え、統計的に妥当な密度の暗い星を球面上へ固定配置する）。
+   位置はシード固定なので、天球と同じ速さ・同じ向きで正しく日周運動する。 */
+var FAINT = null;
+function faintStars() {
+  if (FAINT) return FAINT;
+  FAINT = [];
+  var r = NS.rng('faint-field');
+  for (var i = 0; i < 4200; i++) {
+    var ra, dec;
+    if (r() < 0.34) {                      /* 3 割強を銀河面に集める */
+      var e = gal2eq(r() * 360, r.norm(0, 9.5));
+      ra = e[0]; dec = e[1];
+    } else {                               /* 残りは球面上に一様 */
+      ra = r() * 24;
+      dec = Math.asin(2 * r() - 1) * NS.r2d;
+    }
+    /* 等級分布：暗いほど数が多い（N(<m) ∝ 10^0.6m の粗い近似） */
+    var m = 3.4 + 3.9 * Math.pow(r(), 0.40);
+    FAINT.push([ra, dec, m]);
+  }
+  return FAINT;
+}
+
 /* 赤道座標 → 地平座標 */
 NS.eq2h = function (raH, decDeg, lstDeg, latDeg) {
   var ha = (lstDeg - raH * 15) * NS.d2r, dec = decDeg * NS.d2r, la = latDeg * NS.d2r;
@@ -103,6 +126,13 @@ NS.AllSky = function (station, opts) {
             speed:opts.speed || 1, meteors:[], sats:[], t0:NS.now(), started:performance.now() };
   var ctx = cv.getContext('2d');
   var CX = size / 2, CY = size / 2, R = size * 0.468;
+  /* 恒星・天の川は毎フレーム描くと重いので、天球が 1/12 度回るごとにだけ描き直して使い回す */
+  var bg = document.createElement('canvas');
+  bg.width = cv.width; bg.height = cv.height;
+  var bctx = bg.getContext('2d');
+  A._bgKey = null;
+  var FAINT_N = size >= 360 ? 4200 : size >= 260 ? 1700 : 900;
+  var MW_N = size >= 360 ? 1.0 : 0.45;
 
   function fish(alt, az) {   /* 等距離射影。北が上、東が左 */
     var r = R * (90 - alt) / 90, a = az * NS.d2r;
@@ -110,48 +140,46 @@ NS.AllSky = function (station, opts) {
   }
   A.fish = fish;
 
-  function draw(nowMs) {
-    var t = A.t0 + (nowMs - A.started) * A.speed * (opts.timeScale || 1);
-    A.t = t;
-    var st = A.station, sb = NS.skyBrightness(st, t), w = sb.w;
-    var lst = NS.lst(t, st.lon);
-    ctx.setTransform(2, 0, 0, 2, 0, 0);
-    ctx.clearRect(0, 0, size, size);
-
+  /* 恒星・天の川・星座線・太陽・月を描くレイヤ。天球が少し回るごとにだけ更新する */
+  function drawStatic(t, lst, sb, w) {
+    var st = A.station;
+    bctx.setTransform(2, 0, 0, 2, 0, 0);
+    bctx.clearRect(0, 0, size, size);
     /* --- 空の地色（光害ドーム：地平線側が明るい） --- */
     var night = w.sunAlt < -12, dusk = w.sunAlt >= -12 && w.sunAlt < 0;
     var lp = Math.max(0, Math.min(1, (21.9 - st.sqm) / 4.2));
-    var g = ctx.createRadialGradient(CX, CY, 0, CX, CY, R);
+    var g = bctx.createRadialGradient(CX, CY, 0, CX, CY, R);
     if (night) {
-      g.addColorStop(0, 'rgb(' + Math.round(6 + 20 * lp) + ',' + Math.round(9 + 22 * lp) + ',' + Math.round(20 + 26 * lp) + ')');
-      g.addColorStop(0.62, 'rgb(' + Math.round(10 + 42 * lp) + ',' + Math.round(13 + 40 * lp) + ',' + Math.round(26 + 40 * lp) + ')');
-      g.addColorStop(1, 'rgb(' + Math.round(20 + 96 * lp) + ',' + Math.round(22 + 78 * lp) + ',' + Math.round(34 + 54 * lp) + ')');
+      g.addColorStop(0, 'rgb(' + Math.round(5 + 13 * lp) + ',' + Math.round(7 + 14 * lp) + ',' + Math.round(16 + 20 * lp) + ')');
+      g.addColorStop(0.60, 'rgb(' + Math.round(8 + 26 * lp) + ',' + Math.round(10 + 24 * lp) + ',' + Math.round(21 + 28 * lp) + ')');
+      g.addColorStop(1, 'rgb(' + Math.round(15 + 62 * lp) + ',' + Math.round(17 + 50 * lp) + ',' + Math.round(28 + 38 * lp) + ')');
     } else if (dusk) {
       g.addColorStop(0, '#1b2b4a'); g.addColorStop(0.6, '#3b4a6b'); g.addColorStop(1, '#8a6a58');
     } else {
       g.addColorStop(0, '#4b7fbd'); g.addColorStop(0.6, '#7ba5d0'); g.addColorStop(1, '#c3d4e4');
     }
-    ctx.beginPath(); ctx.arc(CX, CY, R, 0, 7); ctx.fillStyle = g; ctx.fill();
-    ctx.save(); ctx.beginPath(); ctx.arc(CX, CY, R, 0, 7); ctx.clip();
+    bctx.beginPath(); bctx.arc(CX, CY, R, 0, 7); bctx.fillStyle = g; bctx.fill();
+    bctx.save(); bctx.beginPath(); bctx.arc(CX, CY, R, 0, 7); bctx.clip();
 
     var vis = night ? 1 : dusk ? Math.max(0, (-w.sunAlt) / 12) : 0;
-    var limMag = night ? (st.sqm - 15.6) : 1.2;   /* 眼視限界等級の代用 */
+    var limMag = night ? (st.sqm - 14.5) : 1.2;   /* 高感度全天カメラの限界等級の代用 */
 
     /* --- 天の川 --- */
     if (vis > 0.2) {
-      milkyWay().forEach(function (p) {
+      var mwArr = milkyWay(); var mwN = Math.floor(mwArr.length * MW_N);
+      for (var mi = 0; mi < mwN; mi++) { var p = mwArr[mi];
         var h = NS.eq2h(p[0], p[1], lst, st.lat);
-        if (h.alt < 2) return;
+        if (h.alt < 2) continue;
         var xy = fish(h.alt, h.az);
-        var a = p[2] * vis * (0.30 + 0.5 * (1 - lp)) * (1 - w.cloud * 0.85);
-        if (a <= 0.01) return;
-        ctx.fillStyle = 'rgba(214,222,240,' + a.toFixed(3) + ')';
-        ctx.fillRect(xy[0], xy[1], 1.25, 1.25);
-      });
+        var a = p[2] * vis * (0.38 + 0.60 * (1 - lp)) * (1 - w.cloud * 0.85);
+        if (a <= 0.01) continue;
+        bctx.fillStyle = 'rgba(214,222,240,' + a.toFixed(3) + ')';
+        bctx.fillRect(xy[0], xy[1], 1.25, 1.25);
+      }
     }
     /* --- 星座線 --- */
     if (A.showConst && vis > 0.4) {
-      ctx.strokeStyle = 'rgba(120,170,225,' + (0.30 * vis).toFixed(2) + ')'; ctx.lineWidth = 0.7;
+      bctx.strokeStyle = 'rgba(120,170,225,' + (0.30 * vis).toFixed(2) + ')'; bctx.lineWidth = 0.7;
       NS.CONST.forEach(function (c) {
         c.p.forEach(function (pr) {
           var s1 = NS.STARS[pr[0]], s2 = NS.STARS[pr[1]];
@@ -159,12 +187,12 @@ NS.AllSky = function (station, opts) {
           var h1 = NS.eq2h(s1[1], s1[2], lst, st.lat), h2 = NS.eq2h(s2[1], s2[2], lst, st.lat);
           if (h1.alt < 4 || h2.alt < 4) return;
           var a = fish(h1.alt, h1.az), b = fish(h2.alt, h2.az);
-          ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke();
+          bctx.beginPath(); bctx.moveTo(a[0], a[1]); bctx.lineTo(b[0], b[1]); bctx.stroke();
         });
       });
     }
     /* --- 恒星 --- */
-    var tw = NS.rng('tw' + Math.floor(nowMs / 90));
+    var tw = NS.rng('tw' + Math.floor(t / 20000));   /* きらめきはレイヤ更新ごとに変わる */
     NS.STARS.forEach(function (s, i) {
       if (s[3] > limMag) return;
       var h = NS.eq2h(s[1], s[2], lst, st.lat);
@@ -176,49 +204,97 @@ NS.AllSky = function (station, opts) {
       if (br <= 0.02) return;
       var rr = 0.55 + 2.5 * Math.pow(br, 1.5);
       var scin = 1 - 0.24 * (1 - Math.sin(h.alt * NS.d2r)) * tw();
-      ctx.beginPath(); ctx.arc(xy[0], xy[1], rr, 0, 7);
-      ctx.fillStyle = 'rgba(255,253,246,' + (br * scin).toFixed(3) + ')'; ctx.fill();
+      bctx.beginPath(); bctx.arc(xy[0], xy[1], rr, 0, 7);
+      bctx.fillStyle = 'rgba(255,253,246,' + (br * scin).toFixed(3) + ')'; bctx.fill();
       if (rr > 2.0) {
-        ctx.beginPath(); ctx.arc(xy[0], xy[1], rr * 2.6, 0, 7);
-        ctx.fillStyle = 'rgba(210,225,255,' + (0.14 * br).toFixed(3) + ')'; ctx.fill();
+        bctx.beginPath(); bctx.arc(xy[0], xy[1], rr * 2.6, 0, 7);
+        bctx.fillStyle = 'rgba(210,225,255,' + (0.14 * br).toFixed(3) + ')'; bctx.fill();
       }
     });
+    /* --- 微光星（星野） --- */
+    if (vis > 0.15 && limMag > 3.6) {
+      var ff = faintStars();
+      for (var fi = 0; fi < Math.min(ff.length, FAINT_N); fi++) {
+        var fs = ff[fi];
+        if (fs[2] > limMag) continue;
+        var fh = NS.eq2h(fs[0], fs[1], lst, st.lat);
+        if (fh.alt < 1.5) continue;
+        var fxy = fish(fh.alt, fh.az);
+        var fext = 0.28 / Math.max(0.13, Math.sin(Math.max(3, fh.alt) * NS.d2r));
+        var fbr = Math.max(0, Math.min(1, (limMag - fs[2] - fext) / 3.0)) * vis * (1 - w.cloud * 0.9);
+        if (fbr <= 0.02) continue;
+        bctx.beginPath();
+        bctx.arc(fxy[0], fxy[1], 0.42 + 1.15 * Math.pow(fbr, 1.6), 0, 7);
+        bctx.fillStyle = 'rgba(252,250,244,' + (fbr * 0.92).toFixed(3) + ')';
+        bctx.fill();
+      }
+    }
     /* --- 太陽（昼間・薄明） --- */
     if (w.sunAlt > -6) {
       var sAz = ((180 + (NS.jstParts(t).h + NS.jstParts(t).mi / 60 - 12 + (st.lon - 135) / 15) * 15) % 360 + 360) % 360;
       var sxy = fish(Math.max(0, w.sunAlt), sAz);
-      var sg = ctx.createRadialGradient(sxy[0], sxy[1], 1, sxy[0], sxy[1], R * 0.30);
+      var sg = bctx.createRadialGradient(sxy[0], sxy[1], 1, sxy[0], sxy[1], R * 0.30);
       sg.addColorStop(0, 'rgba(255,248,220,0.85)'); sg.addColorStop(0.25, 'rgba(255,236,190,0.30)');
       sg.addColorStop(1, 'rgba(255,236,190,0)');
-      ctx.fillStyle = sg; ctx.beginPath(); ctx.arc(sxy[0], sxy[1], R * 0.30, 0, 7); ctx.fill();
-      ctx.beginPath(); ctx.arc(sxy[0], sxy[1], R * 0.022, 0, 7); ctx.fillStyle = 'rgba(255,253,244,0.95)'; ctx.fill();
+      bctx.fillStyle = sg; bctx.beginPath(); bctx.arc(sxy[0], sxy[1], R * 0.30, 0, 7); bctx.fill();
+      bctx.beginPath(); bctx.arc(sxy[0], sxy[1], R * 0.022, 0, 7); bctx.fillStyle = 'rgba(255,253,244,0.95)'; bctx.fill();
     }
     /* --- 月 --- */
     var mAlt = NS.moonAlt(t, st.lat, st.lon), ill = NS.moonIllum(t);
     if (mAlt > 0.5) {
       var mAz = ((NS.lst(t, st.lon) - NS.moonPhase(t) * 360 + 180) % 360 + 360) % 360;
       var mxy = fish(mAlt, mAz);
-      var gr = ctx.createRadialGradient(mxy[0], mxy[1], 1, mxy[0], mxy[1], 30);
+      var gr = bctx.createRadialGradient(mxy[0], mxy[1], 1, mxy[0], mxy[1], 30);
       gr.addColorStop(0, 'rgba(255,250,232,' + (0.5 * ill * vis).toFixed(2) + ')');
       gr.addColorStop(1, 'rgba(255,250,232,0)');
-      ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(mxy[0], mxy[1], 30, 0, 7); ctx.fill();
-      ctx.beginPath(); ctx.arc(mxy[0], mxy[1], 4.6, 0, 7);
-      ctx.fillStyle = 'rgba(255,251,236,' + (0.35 + 0.6 * ill).toFixed(2) + ')'; ctx.fill();
+      bctx.fillStyle = gr; bctx.beginPath(); bctx.arc(mxy[0], mxy[1], 30, 0, 7); bctx.fill();
+      bctx.beginPath(); bctx.arc(mxy[0], mxy[1], 4.6, 0, 7);
+      bctx.fillStyle = 'rgba(255,251,236,' + (0.35 + 0.6 * ill).toFixed(2) + ')'; bctx.fill();
     }
-    /* --- 雲 --- */
+    bctx.restore();
+  }
+
+  function draw(nowMs) {
+    var t = A.t0 + (nowMs - A.started) * A.speed * (opts.timeScale || 1);
+    A.t = t;
+    var st = A.station, sb = NS.skyBrightness(st, t), w = sb.w;
+    var lst = NS.lst(t, st.lon);
+    var night0 = w.sunAlt < -12, dusk0 = w.sunAlt >= -12 && w.sunAlt < 0;
+    var limMag0 = night0 ? (st.sqm - 14.5) : 1.2;
+    var key = Math.round(lst * 12) + '|' + Math.round(w.sunAlt * 2) + '|' + Math.round(limMag0 * 4) +
+              '|' + (A.showConst ? 1 : 0) + '|' + Math.round(w.cloud * 6);
+    if (key !== A._bgKey) { A._bgKey = key; drawStatic(t, lst, sb, w); }
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    ctx.drawImage(bg, 0, 0);
+    ctx.setTransform(2, 0, 0, 2, 0, 0);
+
+    var night = night0, dusk = dusk0, limMag = limMag0;
+    var vis = night ? 1 : dusk ? Math.max(0, (-w.sunAlt) / 12) : 0;
+    var lp = Math.max(0, Math.min(1, (21.9 - st.sqm) / 4.2));
+    ctx.save(); ctx.beginPath(); ctx.arc(CX, CY, R, 0, 7); ctx.clip();
+    /* --- 雲（風向に沿って平行移動する。天頂を中心に回転させない） --- */
     if (w.cloud > 0.04) {
-      var cr = NS.rng(st.id + 'cl' + Math.floor(t / 3600e3));
-      var n = Math.round(3 + w.cloud * 10);
-      var drift = (t / 1000) * 0.0016 * (1 + w.wind / 6);
+      var cr = NS.rng(st.id + 'cl' + Math.floor(t / 7200e3));
+      var n = Math.round(3 + w.cloud * 11);
+      var TILE = R * 2.8;
+      /* 風上から風下へ流す（w.dir は風が吹いてくる方位） */
+      var wd = (w.dir + 180) * NS.d2r;
+      var spd = R * 0.0011 * (1 + w.wind / 3.0);          /* px/s：視野を十数分で横切る */
+      var ox = Math.sin(wd) * spd * (t / 1000);
+      var oy = -Math.cos(wd) * spd * (t / 1000);
+      var wrap = function (v) { return ((v % TILE) + TILE) % TILE; };
       for (var i2 = 0; i2 < n; i2++) {
-        var ang = cr() * 6.283 + drift * (0.6 + cr() * 0.9);
-        var rad = Math.pow(cr(), 0.55) * R * 1.05;
-        var cx = CX + rad * Math.cos(ang), cy = CY + rad * Math.sin(ang);
-        var rr2 = R * (0.13 + 0.30 * cr()) * (0.55 + w.cloud);
+        var bx = cr() * TILE, by = cr() * TILE;
+        var cx = CX - R * 1.4 + wrap(bx + ox);
+        var cy = CY - R * 1.4 + wrap(by + oy);
+        var rr2 = R * (0.13 + 0.28 * cr()) * (0.55 + w.cloud);
+        if (Math.hypot(cx - CX, cy - CY) > R + rr2) continue;
         var cg = ctx.createRadialGradient(cx, cy, 0, cx, cy, rr2);
-        var lum = night ? Math.round(46 + 120 * lp) : 210;
-        var op = Math.min(0.94, w.cloud * (0.42 + 0.5 * cr()));
+        var lum = night ? Math.round(40 + 118 * lp) : 214;
+        var op = Math.min(0.82, w.cloud * (0.32 + 0.40 * cr()));
         cg.addColorStop(0, 'rgba(' + lum + ',' + lum + ',' + (lum + 8) + ',' + op.toFixed(2) + ')');
+        cg.addColorStop(0.55, 'rgba(' + lum + ',' + lum + ',' + (lum + 8) + ',' + (op * 0.45).toFixed(2) + ')');
         cg.addColorStop(1, 'rgba(' + lum + ',' + lum + ',' + (lum + 8) + ',0)');
         ctx.fillStyle = cg; ctx.beginPath(); ctx.arc(cx, cy, rr2, 0, 7); ctx.fill();
       }
@@ -279,16 +355,20 @@ NS.AllSky = function (station, opts) {
       var p = fish(-4.6, c[1]); ctx.fillText(c[0], p[0], p[1]);
     });
     /* --- オーバーレイ情報 --- */
+    var small = size < 340;
     ctx.textAlign = 'left'; ctx.textBaseline = 'top';
-    ctx.font = '11px ui-monospace, "SFMono-Regular", monospace';
+    ctx.font = (small ? 9 : 11) + 'px ui-monospace, "SFMono-Regular", monospace';
     ctx.fillStyle = 'rgba(232,238,248,0.92)';
-    ctx.fillText(st.id + ' ' + st.name + '  ' + NS.fmtJST(t) + ' JST', 8, 7);
-    ctx.fillStyle = 'rgba(200,212,230,0.75)';
-    ctx.fillText('SQM ' + (sb.mag == null ? '— (薄明)' : NS.f(sb.mag, 2) + ' mag/arcsec²') +
-      '   雲量 ' + Math.round(w.cloud * 100) + '%   限界等級 ' + (night ? NS.f(limMag, 1) : '—'), 8, 22);
-    ctx.textAlign = 'right';
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.fillText('模擬映像（デモ）', size - 8, 7);
+    ctx.fillText(st.id + '  ' + NS.fmtJST(t, { sec:!small }) + (small ? '' : ' JST'), 7, 6);
+    ctx.fillStyle = 'rgba(200,212,230,0.72)';
+    ctx.fillText('SQM ' + (sb.mag == null ? '—' : NS.f(sb.mag, 2)) +
+      '  雲 ' + Math.round(w.cloud * 100) + '%' +
+      (small ? '' : '  限界等級 ' + (night ? NS.f(limMag, 1) : '—')), 7, small ? 18 : 22);
+    if (!small) {
+      ctx.textAlign = 'right';
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      ctx.fillText('模擬映像（デモ）', size - 8, 6);
+    }
 
     if (A.running) requestAnimationFrame(draw);
   }
@@ -305,6 +385,10 @@ NS.AllSky = function (station, opts) {
     var az0 = r() * 360;
     return { az0:az0, alt0:6 + r() * 20, az1:az0 + (r() > 0.5 ? 150 : -150), alt1:6 + r() * 76, age:0, life:9 + r() * 8 };
   }
+  A.setTime = function (t, live) {
+    A.t0 = t; A.live = live !== false; A.started = performance.now();
+    if (!A.running) A.render();
+  };
   A.start = function () { if (A.running) return; A.running = true; A.started = performance.now(); requestAnimationFrame(draw); };
   A.stop = function () { A.running = false; };
   A.render = function () { draw(performance.now()); };

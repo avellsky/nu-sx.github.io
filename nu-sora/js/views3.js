@@ -502,7 +502,7 @@ NS.V.data = function (root, go, arg) {
 NS.V.about = function (root, go) {
   NS.add(root, el('div', { class:'page-h' }, [
     el('h2', { text:'このデモについて' }),
-    el('p', { text:'令和9年度 日本大学特別研究の申請に向けた、観測ポータル「そら」のデモ版である。観測網の設計は申請書のとおりだが、表示されている観測値とイベントはすべて模擬データである。' })
+    el('p', { text:'令和9年度 日本大学特別研究の申請に向けた、観測ポータル「ソラ」のデモ版である。観測網の設計は申請書のとおりだが、表示されている観測値とイベントはすべて模擬データである。' })
   ]));
   NS.add(root, el('div', { class:'grid g2' }, [
     panel('実データ（申請書に基づく）', { note:'このデモで正確に反映している内容' },
@@ -533,7 +533,7 @@ NS.V.about = function (root, go) {
   NS.add(root, el('div', { class:'grid g2', style:{ marginTop:'14px' } }, [
     panel('観測網の名称', null, NS.kv([
       ['正式名称（英）', 'Nihon University Sky Observation and Resilience Array（NU-SORA）'],
-      ['和名', '日本大学 全学屋上観測網「そら」'],
+      ['和名', '日本大学 全学屋上観測網「ソラ」'],
       ['主幹', '理工学部（理工学研究所）・宇宙科学研究ユニット NU-SX'],
       ['局数', '13 局（大学キャンパス拠点 6・付属校拠点 7）'],
       ['南北の広がり', '北端：<b>札幌局</b>（札幌日本大学高等学校・中学校）42.98°N<br>南端：<b>宮崎局</b>（宮崎日本大学高等学校・中学校）31.93°N'],

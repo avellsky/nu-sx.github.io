@@ -79,7 +79,7 @@ function buildHeader() {
   NS.add(head, el('div', { class:'top-in' }, [
     el('div', { class:'brand' }, [
       el('div', { class:'eyebrow', text:'NU-SORA · Nihon University Sky Observation and Resilience Array' }),
-      el('h1', { text:'日本大学 全学屋上観測網「そら」' }),
+      el('h1', { text:'日本大学 全学屋上観測網「ソラ」' }),
       el('div', { class:'sub', text:'観測ポータル デモ版　全国 13 局 ／ 全天光学カメラ・4K分光カメラ・インフラサウンド・気象・夜空輝度計・GNSS' })
     ]),
     el('div', { class:'hstat' }, [

@@ -396,19 +396,47 @@ NS.V.stations = function (root, go) {
         ] };
       })))));
 
-  /* 全局の疑似ライブサムネイル */
-  var skies = [];
+  /* 全局の全天カメラ（表示時刻を切り替えられる） */
+  var skies = [], def = NS.defaultSkyTime();
   var grid = el('div', { class:'skygrid' }, NS.STATIONS.map(function (st) {
-    var A = NS.AllSky(st, { size:240, showConst:false, showGrid:false });
+    var A = NS.AllSky(st, { size:260, showConst:false, showGrid:false });
+    A.setTime(def.t, def.live);
     skies.push(A);
-    var s2 = NS.stationState(st, t);
+    var mode = el('span', { class:'hint' });
+    A._mode = mode;
     return el('div', { class:'skycard', onclick:function () { go('station', st.id); } }, [
       A.node,
-      el('div', { class:'sc-h' }, [el('b', { text:st.name }), el('span', { class:'hint', text:s2.obsMode })])
+      el('div', { class:'sc-h' }, [el('b', { text:st.name }), mode])
     ]);
   }));
-  var p = panel('全天カメラ（全局・疑似ライブ）', { note:'恒星の配置は実際の天球（J2000・地方恒星時から計算）。雲・流星・空の明るさは模擬' }, grid);
-  NS.add(root, el('div', { style:{ marginTop:'14px' } }, p));
+  function applySkyTime(t, live, label) {
+    skies.forEach(function (A) {
+      A.setTime(t, live);
+      var s2 = NS.stationState(A.station, t);
+      NS.clear(A._mode);
+      NS.add(A._mode, live ? s2.obsMode : label + '（再現）');
+    });
+    NS.clear(skyNote);
+    NS.add(skyNote, live
+      ? '現在時刻の空。' + (def.live ? '' : '')
+      : '現在は昼間・薄明のため、' + NS.fmtJST(t, { sec:false }) + ' JST の星空を再現して表示している。');
+  }
+  var skyNote = el('span', { class:'panel-note' });
+  var TIMES = [['現在', null], ['今夜 20:00', 20], ['今夜 23:00', 23], ['今夜 02:00', 2], ['今夜 04:00', 4]];
+  var seg = el('div', { class:'seg' }, TIMES.map(function (x) {
+    var pressed = (x[1] === null) ? def.live : (!def.live && x[0] === def.label);
+    return el('button', { text:x[0], 'aria-pressed':pressed ? 'true' : 'false', onclick:function (e) {
+      Array.prototype.forEach.call(e.target.parentNode.children, function (c) { c.setAttribute('aria-pressed', 'false'); });
+      e.target.setAttribute('aria-pressed', 'true');
+      if (x[1] === null) applySkyTime(NS.now(), true, '現在');
+      else applySkyTime(NS.tonightAt(x[1]), false, x[0]);
+    } });
+  }));
+  var p2 = panel('全天カメラ（全 13 局）',
+    { note:'恒星の位置は赤経・赤緯から地方恒星時で計算した実際の天球。雲・流星・人工衛星の軌跡・空の明るさは模擬',
+      tools:seg }, [el('div', { style:{ marginBottom:'8px' } }, skyNote), grid]);
+  NS.add(root, el('div', { style:{ marginTop:'14px' } }, p2));
+  applySkyTime(def.t, def.live, def.label);
   skies.forEach(function (A) { A.start(); });
   NS.onLeave(function () { skies.forEach(function (A) { A.stop(); }); });
 };
@@ -434,20 +462,41 @@ NS.V.station = function (root, go, arg) {
 
   /* 疑似ライブ + 現況 */
   var A = NS.AllSky(st, { size:460 });
-  var skyPanel = panel('全天カメラ（疑似ライブ）', {
+  var defT = NS.defaultSkyTime();
+  A.setTime(defT.t, defT.live);
+  var skyNote2 = el('div', { class:'note' });
+  function setSky(t, live, label) {
+    A.setTime(t, live);
+    NS.clear(skyNote2);
+    NS.add(skyNote2, '恒星の位置は赤経・赤緯から地方恒星時で計算した実際の天球（等距離魚眼投影・北が上・東が左）。'
+      + (live ? '現在時刻の空を表示している。' : '現在は昼間・薄明のため、' + NS.fmtJST(t, { sec:false }) + ' JST の星空を再現して表示している。')
+      + '雲・流星・人工衛星の軌跡・空の明るさはデモ用の模擬である。');
+  }
+  var TSEG = [['現在', null], ['今夜 20:00', 20], ['今夜 23:00', 23], ['今夜 02:00', 2], ['今夜 04:00', 4]];
+  var tseg = el('div', { class:'seg' }, TSEG.map(function (x) {
+    var pressed = (x[1] === null) ? defT.live : (!defT.live && x[0] === defT.label);
+    return el('button', { text:x[0], 'aria-pressed':pressed ? 'true' : 'false', onclick:function (e) {
+      Array.prototype.forEach.call(e.target.parentNode.children, function (c) { c.setAttribute('aria-pressed', 'false'); });
+      e.target.setAttribute('aria-pressed', 'true');
+      if (x[1] === null) setSky(NS.now(), true, '現在'); else setSky(NS.tonightAt(x[1]), false, x[0]);
+    } });
+  }));
+  var skyPanel = panel('全天カメラ', {
     note:'IMX664 全天カメラ ×2 · UFOCaptureIP',
     tools:el('div', { class:'split' }, [
+      tseg,
       el('button', { class:'iconbtn', text:'星座線', onclick:function (e) { A.showConst = !A.showConst; e.target.style.opacity = A.showConst ? 1 : 0.5; } }),
       el('button', { class:'iconbtn', text:'目盛', onclick:function (e) { A.showGrid = !A.showGrid; e.target.style.opacity = A.showGrid ? 1 : 0.5; } }),
-      el('button', { class:'iconbtn', text:'早送り ×120', onclick:function (e) {
-        A.speed = A.speed === 1 ? 1 : 1; A.timeScale = 1;
+      el('button', { class:'iconbtn', text:'早送り ×120', 'data-on':'0', onclick:function (e) {
         var on = e.target.getAttribute('data-on') === '1';
         e.target.setAttribute('data-on', on ? '0' : '1');
         e.target.textContent = on ? '早送り ×120' : '実時間に戻す';
+        A.t0 = A.t; A.started = performance.now();
         A.speed = on ? 1 : 120;
       } })
     ])
-  }, [A.node, el('div', { class:'note', text:'恒星の位置は赤経・赤緯から地方恒星時で計算した実際の天球（等距離魚眼投影・北が上・東が左）。雲・流星・人工衛星の軌跡・空の明るさはデモ用の模擬である。' })]);
+  }, [A.node, skyNote2]);
+  setSky(defT.t, defT.live, defT.label);
   A.start();
   NS.onLeave(function () { A.stop(); });
 

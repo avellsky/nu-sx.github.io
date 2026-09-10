@@ -1,4 +1,4 @@
-# 日本大学 全学屋上観測網「そら」（NU-SORA）観測ポータル — デモ版
+# 日本大学 全学屋上観測網「ソラ」（NU-SORA）観測ポータル — デモ版
 
 **NU-SORA** — Nihon University Sky Observation and Resilience Array
 
