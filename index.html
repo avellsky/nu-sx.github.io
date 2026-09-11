@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>NU-SX ｜ 日本大学 宇宙科学研究ユニット — 公開デモ</title>
+<title>日本大学 宇宙科学研究ユニット(NU-SX) 公開デモ</title>
 <meta name="description" content="日本大学 理工学部 宇宙科学研究ユニット NU-SX が公開する Web デモの一覧。">
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -43,12 +43,42 @@ h1{font-size:30px;line-height:1.25;margin:6px 0 6px;text-wrap:balance}
   font-size:12.5px;color:var(--ink2);margin:26px 0 0}
 .notice b{color:var(--ink)}
 footer{border-top:1px solid var(--rule);margin-top:34px;padding-top:18px;font-size:11.5px;color:var(--muted);line-height:1.8}
+
+/* ---- 観測局と機材構成のダイジェスト ---- */
+:root{--c-ok:#3FA07A;--c-warn:#D98A1C;--c-crit:#D6405F;--c-info:#4585CC;--c-sky:#7C6FD0;--bg2:#0D1014;--ink2:#AEB6C0}
+@media (prefers-color-scheme: light){:root{--c-ok:#2E8B6A;--c-warn:#D98A1C;--c-crit:#B5123E;--c-info:#1F5FA8;--c-sky:#5A4CB0;--bg2:#EAECEA;--ink2:#575E66}}
+.dg{margin-top:34px}
+.dg-h{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;padding-bottom:10px;border-bottom:1px solid var(--rule)}
+.dg-h h2{font-size:18px}
+.dg-h .sub{font-size:11.5px;color:var(--muted);flex:1}
+.dg-h a{font-size:12.5px;font-weight:700;text-decoration:none;white-space:nowrap}
+.dg-stations{display:flex;gap:5px;flex-wrap:wrap;margin:14px 0 4px}
+.dg-st{font-size:10.5px;border:1px solid var(--rule);border-radius:3px;padding:2px 7px;color:var(--ink2);
+  background:var(--panel);white-space:nowrap}
+.dg-st.u{border-left:2px solid var(--accent)}
+.dg-st.s{border-left:2px solid #4585CC}
+.dg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:12px;margin-top:14px;align-items:start}
+.dg-tile{background:var(--panel);border:1px solid var(--rule);border-radius:6px;padding:10px 11px 9px;overflow:hidden}
+.dg-tile .t-h{display:flex;align-items:baseline;gap:6px;margin-bottom:7px}
+.dg-tile .t-h b{font-size:12.5px}
+.dg-tile .t-h span{font-size:10px;color:var(--muted)}
+.dg-tile .t-b{min-height:96px;display:flex;align-items:center;justify-content:center}
+.dg-tile canvas{display:block;width:100%;height:auto;border-radius:3px}
+.dg-tile .t-f{font-size:10.5px;color:var(--muted);margin-top:7px;line-height:1.5}
+.dg-num{font-family:"Shippori Mincho",serif;font-size:27px;line-height:1.15;font-variant-numeric:tabular-nums;
+  display:flex;align-items:baseline;gap:4px;flex-wrap:wrap}
+.dg-num small{font-size:10.5px;font-family:"Zen Kaku Gothic New",sans-serif;color:var(--ink2)}
+.dg-rows{display:grid;grid-template-columns:1fr 1fr;gap:1px 10px;font-size:11px;color:var(--ink2);
+  font-variant-numeric:tabular-nums;margin-top:6px;width:100%}
+.dg-wrap{width:100%}
+.dg-note{font-size:11px;color:var(--muted);margin-top:12px;line-height:1.7}
+svg.spark{display:block}
 </style>
 </head>
 <body>
 <div class="page">
   <div class="eyebrow">NU-SX · Nihon University Space Science Research Unit</div>
-  <h1>日本大学 宇宙科学研究ユニット　公開デモ</h1>
+  <h1>日本大学 宇宙科学研究ユニット(NU-SX)　公開デモ</h1>
   <p class="lead">理工学部 航空宇宙工学科を中心とする宇宙科学研究ユニット NU-SX が公開する Web デモの一覧です。
   いずれも検討中の構想を可視化したもので、表示される観測値は模擬データです。</p>
 
@@ -68,6 +98,17 @@ footer{border-top:1px solid var(--rule);margin-top:34px;padding-top:18px;font-si
     <span class="go">デモを開く →</span>
   </a>
 
+  <section class="dg" id="digest">
+    <div class="dg-h">
+      <h2>観測局と機材構成</h2>
+      <span class="sub">全国 13 拠点の屋上に同一構成の観測局を置く。下は各センサーの実況のダイジェスト</span>
+      <a href="nu-sora/#stations">全画面で見る →</a>
+    </div>
+    <div class="dg-stations" id="dgStations"></div>
+    <div class="dg-grid" id="dgGrid"></div>
+    <div class="dg-note" id="dgNote">読み込み中…</div>
+  </section>
+
   <div class="notice">
     <b>デモについて</b>　各デモに表示される観測値・イベントはすべて模擬データであり、実際の観測結果ではありません。
     観測局の配置・機材構成・解析手法は検討中の計画に基づきます。物理関係式・スペクトルの線同定・恒星位置など、
@@ -79,5 +120,129 @@ footer{border-top:1px solid var(--rule);margin-top:34px;padding-top:18px;font-si
     <a href="https://aero.cst.nihon-u.ac.jp/nu-sx/" target="_blank" rel="noopener">NU-SX 公式サイト</a>
   </footer>
 </div>
+<script>
+/* デモ本体のモジュールを読み込んで、観測局と機材構成のダイジェストを描く。
+   初回表示を妨げないよう load 後に読み込み、失敗しても本文は壊れない。 */
+(function () {
+  var FILES = ['core.js', 'data.js', 'map.js', 'starcatalog.js', 'sky.js', 'infra.js', 'sensors.js'];
+  function load(i) {
+    if (i >= FILES.length) {
+      try { build(); } catch (e) { if (window.console) console.error(e); fail(); }
+      return;
+    }
+    var s = document.createElement('script');
+    s.src = 'nu-sora/js/' + FILES[i];
+    s.onload = function () { load(i + 1); };
+    s.onerror = fail;
+    document.head.appendChild(s);
+  }
+  function fail() {
+    var n = document.getElementById('dgNote');
+    if (n) n.textContent = 'ダイジェストを読み込めませんでした。デモ本体は「デモを開く」から利用できます。';
+  }
+  function tile(title, sub, bodyNode, foot) {
+    var NS = window.NS;
+    return NS.el('div', { class:'dg-tile' }, [
+      NS.el('div', { class:'t-h' }, [NS.el('b', { text:title }), NS.el('span', { text:sub })]),
+      NS.el('div', { class:'t-b' }, bodyNode),
+      NS.el('div', { class:'t-f', text:foot })
+    ]);
+  }
+  function build() {
+    var NS = window.NS;
+    if (!NS || !NS.STATIONS) { fail(); return; }
+    /* 13 局のチップ */
+    var chips = document.getElementById('dgStations');
+    NS.STATIONS.forEach(function (st) {
+      chips.appendChild(NS.el('span', { class:'dg-st ' + st.kind,
+        title:st.pref + ' ' + st.city + '　' + st.host, text:st.name }));
+    });
+
+    var g = document.getElementById('dgGrid'), t = NS.now();
+    var alive = [];
+
+    /* 全天カメラ */
+    var skySt = NS.ST.NGN, def = NS.defaultSkyTime();
+    var A = NS.AllSky(skySt, { size:190, showConst:true, showGrid:false });
+    A.setTime(def.t, def.live); A.start(); alive.push(A);
+    g.appendChild(tile('全天カメラ', skySt.name, A.node,
+      '高感度全天カメラ 2 台。恒星はエール輝星星表（BSC5）9,096 個、星座線は IAU 公式星座図形'));
+
+    /* インフラサウンド */
+    var infSt = NS.ST.FNB;
+    var S = NS.InfraStrip(infSt, { chans:['HF', 'MF', 'LF'], win:300, width:300 });
+    S.start(); alive.push(S);
+    g.appendChild(tile('インフラサウンド', infSt.name, S.node,
+      'HF 1–20 Hz／MF 0.1–1 Hz／LF 0.005–0.1 Hz。火球の衝撃波・雷・火山・津波を一つの装置で捉える'));
+
+    /* 電波流星 FFT */
+    var hroSt = NS.ST.KYM;
+    var F = NS.HroFft(hroSt, { win:600 });
+    F.start(); alive.push(F);
+    g.appendChild(tile('電波流星受信機', hroSt.name + '・FFT 画面', F.node,
+      'HRO 53.755 MHz の前方散乱。輝点が流星エコー。昼間・曇天でも流星を数え続けられる'));
+
+    /* 複合気象センサー */
+    var mSt = NS.ST.SNN, w = NS.weather(mSt, t), wl = NS.wbgtLevel(w.wbgt);
+    g.appendChild(tile('複合気象センサー', mSt.name, NS.el('div', { class:'dg-wrap' }, [
+      NS.el('div', { class:'dg-num' }, [NS.f(w.temp, 1), NS.el('small', { text:'℃' }),
+        NS.el('small', { text:'湿度 ' + NS.f(w.rh, 0) + ' %' })]),
+      NS.el('div', { class:'dg-rows' }, [
+        NS.el('span', { html:'気圧 <b>' + NS.f(w.press, 1) + '</b> hPa' }),
+        NS.el('span', { html:'風 <b>' + NS.f(w.wind, 1) + '</b> m/s' }),
+        NS.el('span', { html:'雨量 <b>' + NS.f(w.rain, 1) + '</b> mm/h' }),
+        NS.el('span', { html:'日射 <b>' + NS.f(w.solar, 2) + '</b> kW/m²' }),
+        NS.el('span', { html:'WBGT <b style="color:' + wl.color + '">' + NS.f(w.wbgt, 1) + '</b> ℃' }),
+        NS.el('span', { html:'雲量 <b>' + Math.round(w.cloud * 100) + '</b> %' })])]),
+      '気温・湿度・気圧・風向風速・雨量・日射。WBGT と暗黒飛行（ダークフライト）の風補正に使う'));
+
+    /* 夜空輝度計 */
+    var qSt = NS.ST.NGN, sb = NS.skyBrightness(qSt, t);
+    var mag = sb.mag == null ? qSt.sqm : sb.mag, bt = NS.bortle(mag);
+    g.appendChild(tile('夜空輝度計', qSt.name, NS.el('div', { class:'dg-wrap' }, [
+      NS.el('div', { class:'dg-num', style:{ color:NS.SQM_SCALE(mag) } }, [NS.f(mag, 2),
+        NS.el('small', { text:'mag/arcsec²' }),
+        sb.mag == null ? NS.el('small', { text:'平常値' }) : null]),
+      NS.el('div', { class:'dg-rows' }, [
+        NS.el('span', { html:'Bortle <b>' + bt.n + '</b>' }),
+        NS.el('span', { html:bt.label }),
+        NS.el('span', { html:'光害量 <b>' + NS.f(21.9 - qSt.sqm, 2) + '</b> 等' }),
+        NS.el('span', { html:'月 <b>' + Math.round(NS.moonIllum(t) * 100) + '</b> %' })])]),
+      'Unihedron SQM-LU-DL。全国 13 点の夜空の明るさを連続測定し、光害と衛星の寄与を分ける'));
+
+    /* 2 周波 GNSS */
+    var gSt = NS.ST.FNB, gs = NS.gnssState(gSt, t), tp = [];
+    for (var k = -12; k <= 0; k++) tp.push(NS.gnssState(gSt, t + k * 3600e3).tec);
+    g.appendChild(tile('2 周波 GNSS 受信機', gSt.name, NS.el('div', { class:'dg-wrap' }, [
+      NS.el('div', { class:'dg-num' }, [NS.f(gs.tec, 1), NS.el('small', { text:'TECU' }),
+        NS.el('small', { text:'鉛直全電子数' })]),
+      NS.el('div', { class:'dg-rows' }, [
+        NS.el('span', { html:'受信衛星 <b>' + gs.n + '</b> 機' }),
+        NS.el('span', { html:'PDOP <b>' + NS.f(gs.pdop, 2) + '</b>' }),
+        NS.el('span', { html:'PPS <b>' + (gs.ppsNs > 0 ? '+' : '') + NS.f(gs.ppsNs, 0) + '</b> ns' }),
+        NS.el('span', { html:'L1 / L2 二周波' })]),
+      NS.chart.spark(tp, { color:'var(--c-info)', width:200, height:22 })]),
+      '全局の時刻同期（< 1 ms）と電離圏 TEC。多点三角測量と音の到達時刻差はこの精度に支えられる'));
+
+    document.getElementById('dgNote').innerHTML =
+      '観測局は大学キャンパス拠点 6 局（船橋・郡山・湘南・三島・桜上水・駿河台）と付属校拠点 7 局'
+      + '（札幌・山形・長野・土浦・大垣・長崎・宮崎）。全局が同一のフル構成で、上の 6 系統に加えて'
+      + 'カラー補助カメラ・4K 分光カメラ・微動計・制御 PC を備える。船橋・湘南・郡山・三島の 4 局には'
+      + 'SWIR 冷却カメラを追加する。<b>表示している値はすべて模擬データである。</b>';
+
+    /* 画面から外れたら止める */
+    if (window.IntersectionObserver) {
+      var io = new IntersectionObserver(function (es) {
+        es.forEach(function (e) {
+          alive.forEach(function (o) { if (e.isIntersecting) o.start(); else o.stop(); });
+        });
+      }, { rootMargin:'120px' });
+      io.observe(document.getElementById('digest'));
+    }
+  }
+  if (document.readyState === 'complete') load(0);
+  else window.addEventListener('load', function () { load(0); });
+})();
+</script>
 </body>
 </html>
