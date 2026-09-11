@@ -242,6 +242,9 @@ NS.V.fireball = function (root, go, arg) {
       ])
     ]));
 
+    /* --- 太陽系 3D --- */
+    if (NS.orbit3dPanel) NS.add(detail, el('div', { style:{ marginTop:'14px' } }, NS.orbit3dPanel(e)));
+
     /* --- インフラサウンド波形 --- */
     var infraDet = e.det.filter(function (d) { return d.infra; });
     if (infraDet.length) {
@@ -558,7 +561,8 @@ function specPanel(e, o) {
       nDraw();
     };
     var natPan = panel('発光スペクトル（4K 分光カメラ ＋ 回折格子 600 lpm）',
-      { note:(sp.station ? sp.station + ' · ' + sp.expo + ' · ' : '') + '自然天体（コンドライト的組成）',
+      { note:(sp.station ? sp.station + ' · ' + sp.expo + ' · ' : '') + '自然天体（コンドライト的組成）· 連続光は約 '
+             + NS.CONT_T_NATURAL.toLocaleString() + ' K の黒体',
         tools:badge('自然天体と判定', 'ok') }, [
       el('div', { class:'specbar' }, [
         el('span', { class:'lbl', text:'組成' }),
@@ -568,6 +572,9 @@ function specPanel(e, o) {
       nChips,
       el('div', { style:{ marginTop:'10px' } }, nInfo),
       el('div', { class:'note', text:sp.note }),
+      el('div', { class:'note', html:'背景の連続光は、衝撃加熱された空気とアブレーション・プラズマの熱放射である。'
+        + 'ここでは約 <b>' + NS.CONT_T_NATURAL.toLocaleString() + ' K の黒体</b>としてプランクの式から与えており、'
+        + 'ウィーンの変位則どおり <b>580 nm 付近</b>でなだらかな極大をとる。輝線はこの弱い連続光の上に乗る。' }),
       el('div', { class:'note', text:'分子バンド（AlO 450–560 nm・CN 386–422 nm・TiO 515–725 nm）は検出されない。'
         + 'これらはスペースデブリ再突入に特徴的で、自然天体と人工天体を分ける有力な指標になる（デブリ再突入の画面で ON / OFF を切り替えて比較できる）。' }),
       specRefBox(),
@@ -844,6 +851,11 @@ NS.V.reentry = function (root, go, arg) {
           d.infra ? '＋' + NS.f(d.infra.dt, 0) + ' s' : '<span class="hint">—</span>'] };
       })))
   ]));
+
+  /* 地球上の推定軌道とフィッティング（軌道デブリのときだけ。弾道飛翔体は周回しない） */
+  if (!bal && NS.debrisTrackPanel) {
+    NS.add(root, el('div', { class:'grid', style:{ gap:'14px', marginTop:'14px' } }, NS.debrisTrackPanel(e, go)));
+  }
 
   NS.add(root, el('div', { style:{ marginTop:'14px' } }, specPanel(e, { w:1180 })));
 

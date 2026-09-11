@@ -66,12 +66,31 @@ NS.LINES_NATURAL = [
   { wl:785.0, el:'N I',   s:0.39 }, { wl:822.3, el:'N I',   s:0.58 }, { wl:844.6, el:'O I',   s:0.30 },
   { wl:849.8, el:'Ca II', s:0.26 }, { wl:868.0, el:'N I',   s:0.54 }, { wl:871.9, el:'N I',   s:0.50 }
 ];
-/* 自然天体の連続光（波長 nm, 相対強度）。実スペクトルの背景形状に合わせた折れ線 */
-NS.CONT_NATURAL = [[350,0.00],[358,0.02],[366,0.13],[372,0.16],[380,0.20],[400,0.18],[420,0.22],
-  [440,0.24],[455,0.22],[470,0.13],[482,0.12],[492,0.15],[505,0.19],[518,0.20],[532,0.22],[546,0.19],
-  [558,0.20],[576,0.24],[592,0.25],[606,0.21],[622,0.24],[640,0.27],[660,0.25],[682,0.19],[700,0.16],
-  [720,0.20],[742,0.19],[762,0.09],[778,0.11],[792,0.12],[805,0.08],[822,0.07],[842,0.09],[862,0.09],
-  [880,0.04],[900,0.03]];
+/* ---------- 連続光（黒体放射） ----------
+   流星の発光は、原子の輝線に加えて、衝撃加熱された空気とアブレーションで生じた
+   高温プラズマの熱放射（連続光）を伴う。自然天体の火球ではこの連続成分が
+   およそ 5,000 K の黒体として現れるので、手で描いた折れ線ではなく
+   プランクの式からそのまま作る。 */
+NS.H_PLANCK = 6.62607015e-34; NS.C_LIGHT = 2.99792458e8; NS.K_BOLTZ = 1.380649e-23;
+NS.planck = function (wlNm, T) {
+  var l = wlNm * 1e-9;
+  var x = NS.H_PLANCK * NS.C_LIGHT / (l * NS.K_BOLTZ * T);
+  return (2 * NS.H_PLANCK * NS.C_LIGHT * NS.C_LIGHT) / (Math.pow(l, 5) * (Math.exp(x) - 1));
+};
+/* 波長 lo–hi nm を n 点に刻み、最大値が peak になるように規格化した [波長, 強度] の表 */
+NS.blackbodyCont = function (T, peak, lo, hi, n) {
+  var out = [], max = 0, i, w;
+  for (i = 0; i <= n; i++) {
+    w = lo + (hi - lo) * i / n;
+    var v = NS.planck(w, T);
+    if (v > max) max = v;
+    out.push([Math.round(w * 10) / 10, v]);
+  }
+  return out.map(function (p) { return [p[0], Math.round(p[1] / max * peak * 1e4) / 1e4]; });
+};
+/* 自然天体：約 5,000 K の弱い黒体。ウィーンの変位則により極大は 580 nm 付近になる。 */
+NS.CONT_T_NATURAL = 5000;
+NS.CONT_NATURAL = NS.blackbodyCont(NS.CONT_T_NATURAL, 0.26, 350, 900, 110);
 
 /* 人工天体（スペースデブリ再突入）。アルミ合金・銅配線・リチウム電池に由来する線が卓越し、
    自然天体で最強の Mg I 518 / Na I 589 が相対的に弱いことが識別の決め手になる。 */
@@ -687,6 +706,22 @@ function routineEvents() {
 }
 
 /* ---------- 再突入予報（今後） ---------- */
+/* ---------- 再突入体の候補カタログ（フィッティング用） ----------
+   観測から求まるのは軌道傾斜角・周期・速度で、そこへ公開カタログを突き合わせて物体を絞る。
+   下は本デモ用の仮想の物体で、実在の衛星ではない。 */
+NS.DEBRIS_CANDIDATES = [
+  { name:'デモ衛星 A', norad:'99214', cospar:'2024-DEMO-A', inc:136.3, alt:172, mass:264,
+    type:'通信衛星', tOff:11.4 },
+  { name:'デモ衛星 B', norad:'99331', cospar:'2023-DEMO-C', inc: 51.6, alt:198, mass:1180,
+    type:'通信衛星（第2世代）', tOff:-36.2 },
+  { name:'デモ上段 C', norad:'99418', cospar:'2026-DEMO-B', inc: 97.4, alt:154, mass:920,
+    type:'ロケット上段', tOff:64.8 },
+  { name:'デモ衛星 D', norad:'99502', cospar:'2025-DEMO-F', inc: 62.5, alt:210, mass:260,
+    type:'地球観測衛星', tOff:-88.1 },
+  { name:'デモ破片 E', norad:'99677', cospar:'2019-DEMO-K', inc: 22.8, alt:141, mass:45,
+    type:'衝突破片', tOff:142.6 }
+];
+
 function reentryForecast() {
   var now = NS.now(), out = [];
   var objs = [
@@ -717,6 +752,7 @@ NS.buildCatalog = function () {
   NS.EVENTS.forEach(function (e) { NS.EVMAP = NS.EVMAP || {}; NS.EVMAP[e.id] = e; });
   NS.INFRA.forEach(function (e) { NS.EVMAP[e.id] = e; });
   NS.EVMAP[bal.id] = bal;        /* 想定シナリオは一覧には出さず、画面から辿れるようにだけしておく */
+  NS.DEBRIS_CANDIDATES.forEach(function (c) { c.t = re.t + c.tOff * 60000; });
   return NS.EVENTS;
 };
 

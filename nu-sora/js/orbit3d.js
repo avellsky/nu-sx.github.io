@@ -1,0 +1,286 @@
+/* NU-SORA デモ / 太陽系の 3D 描画
+   火球の突入前軌道を、惑星の軌道と同じ黄道座標系に置いて描く。
+   マウスの左ドラッグで視点を回し、ホイールで拡大縮小する。
+   惑星の位置は JPL「Keplerian Elements for Approximate Positions of the Major Planets」
+   （1800–2050 年に有効な近似要素）で求めている。 */
+'use strict';
+(function (NS) {
+var el = NS.el, D2R = Math.PI / 180;
+
+/* [a, e, I, L, ϖ, Ω] と 100 年あたりの変化率。a は au、角度は度。 */
+NS.PLANETS = [
+  { n:'水星', en:'Mercury', c:'#9AA3AE', r:2.4,
+    e0:[0.38709927, 0.20563593,  7.00497902, 252.25032350,  77.45779628,  48.33076593],
+    ed:[0.00000037, 0.00001906, -0.00594749, 149472.67411175, 0.16047689, -0.12534081] },
+  { n:'金星', en:'Venus', c:'#D9B26B', r:3.2,
+    e0:[0.72333566, 0.00677672,  3.39467605, 181.97909950, 131.60246718,  76.67984255],
+    ed:[0.00000390,-0.00004107, -0.00078890,  58517.81538729, 0.00268329, -0.27769418] },
+  { n:'地球', en:'Earth', c:'#4585CC', r:3.4,
+    e0:[1.00000261, 0.01671123, -0.00001531, 100.46457166, 102.93768193,   0.0],
+    ed:[0.00000562,-0.00004392, -0.01294668,  35999.37244981, 0.32327364,  0.0] },
+  { n:'火星', en:'Mars', c:'#C0563C', r:2.8,
+    e0:[1.52371034, 0.09339410,  1.84969142,  -4.55343205, -23.94362959,  49.55953891],
+    ed:[0.00001847, 0.00007882, -0.00813131,  19140.30268499, 0.44441088, -0.29257343] },
+  { n:'木星', en:'Jupiter', c:'#C9A227', r:6.0,
+    e0:[5.20288700, 0.04838624,  1.30439695,  34.39644051,  14.72847983, 100.47390909],
+    ed:[-0.00011607,-0.00013253,-0.00183714,   3034.74612775, 0.21252668,  0.20469106] },
+  { n:'土星', en:'Saturn', c:'#B9A16B', r:5.2,
+    e0:[9.53667594, 0.05386179,  2.48599187,  49.95424423,  92.59887831, 113.66242448],
+    ed:[-0.00125060,-0.00050991, 0.00193609,   1222.49362201,-0.41897216, -0.28867794] }
+];
+
+/* J2000.0 からのユリウス世紀 */
+NS.julianCentury = function (t) { return (t / 86400e3 + 2440587.5 - 2451545.0) / 36525; };
+
+/* ケプラー方程式 M = E − e sin E を解く（ニュートン法） */
+NS.kepler = function (M, e) {
+  M = ((M + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
+  var E = M + e * Math.sin(M);
+  for (var i = 0; i < 24; i++) {
+    var d = (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+    E -= d;
+    if (Math.abs(d) < 1e-12) break;
+  }
+  return E;
+};
+
+/* 軌道要素 → 黄道直交座標（au）。ν は真近点角。 */
+NS.orbXYZ = function (a, e, iDeg, wDeg, nodeDeg, nu) {
+  var p = a * (1 - e * e), r = p / (1 + e * Math.cos(nu));
+  var u = wDeg * D2R + nu, i = iDeg * D2R, O = nodeDeg * D2R;
+  var cu = Math.cos(u), su = Math.sin(u), ci = Math.cos(i), si = Math.sin(i);
+  return [ r * (Math.cos(O) * cu - Math.sin(O) * su * ci),
+           r * (Math.sin(O) * cu + Math.cos(O) * su * ci),
+           r * (su * si) ];
+};
+
+/* ある時刻の惑星の位置 */
+NS.planetAt = function (pl, t) {
+  var T = NS.julianCentury(t), E = pl.e0, R = pl.ed;
+  var a = E[0] + R[0] * T, e = E[1] + R[1] * T, I = E[2] + R[2] * T;
+  var L = E[3] + R[3] * T, wbar = E[4] + R[4] * T, O = E[5] + R[5] * T;
+  var w = wbar - O, M = (L - wbar) * D2R;
+  var Ecc = NS.kepler(M, e);
+  var nu = 2 * Math.atan2(Math.sqrt(1 + e) * Math.sin(Ecc / 2), Math.sqrt(1 - e) * Math.cos(Ecc / 2));
+  return { xyz:NS.orbXYZ(a, e, I, w, O, nu), a:a, e:e, i:I, w:w, node:O, nu:nu };
+};
+
+/* 軌道を 1 周ぶんサンプルする */
+function orbitPts(a, e, i, w, node, n) {
+  var out = [];
+  for (var k = 0; k <= n; k++) out.push(NS.orbXYZ(a, e, i, w, node, k / n * 2 * Math.PI));
+  return out;
+}
+
+/* =========================================================================
+   描画本体
+   ========================================================================= */
+NS.SolarSystem3D = function (opts) {
+  opts = opts || {};
+  var orb = opts.orbit, t = opts.t || NS.now();
+  var size = opts.size || 560, H = opts.height || 420;
+  var cv = el('canvas', { width:size * 2, height:H * 2, class:'ss3d',
+    style:{ width:'100%', maxWidth:size + 'px', height:'auto', display:'block', touchAction:'none' } });
+  var ctx = cv.getContext('2d');
+  ctx.scale(2, 2);
+
+  var A = { az:-35, el:24, zoom:1, showPlanets:true, showLabels:true, showNode:true, node:cv, spin:false };
+  var drag = null;
+
+  /* 視点：黄道面を基準に方位角 az と仰角 el で回す */
+  function project(p) {
+    var ca = Math.cos(A.az * D2R), sa = Math.sin(A.az * D2R);
+    var ce = Math.cos(A.el * D2R), se = Math.sin(A.el * D2R);
+    var x =  p[0] * ca + p[1] * sa;
+    var y = -p[0] * sa + p[1] * ca;
+    var z =  p[2];
+    return [x, y * ce - z * se, y * se + z * ce];   /* 3 番目は奥行き（描画順に使う） */
+  }
+  function scr(p) {
+    var q = project(p), s = scale();
+    return [size / 2 + q[0] * s, H / 2 - q[1] * s, q[2]];
+  }
+  function scale() {
+    var span = Math.max(1.2, (orb ? orb.Q : 2) * 1.15);
+    return Math.min(size, H) / 2 / span * 0.94 * A.zoom;
+  }
+
+  function line(pts, color, width, dash, alpha) {
+    ctx.save();
+    ctx.strokeStyle = color; ctx.lineWidth = width || 1;
+    ctx.globalAlpha = alpha == null ? 1 : alpha;
+    if (dash) ctx.setLineDash(dash);
+    ctx.beginPath();
+    for (var i = 0; i < pts.length; i++) {
+      var p = scr(pts[i]);
+      if (i === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]);
+    }
+    ctx.stroke(); ctx.restore();
+  }
+  function dot(p, r, color, label, lcolor) {
+    var q = scr(p);
+    ctx.beginPath(); ctx.arc(q[0], q[1], r, 0, 7);
+    ctx.fillStyle = color; ctx.fill();
+    if (label && A.showLabels) {
+      ctx.font = '10px ui-monospace, monospace';
+      ctx.fillStyle = lcolor || 'rgba(200,212,230,0.85)';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(label, q[0] + r + 3, q[1]);
+    }
+    return q;
+  }
+
+  function draw() {
+    var css = getComputedStyle(document.documentElement);
+    var ink = (css.getPropertyValue('--ink2') || '#AEB6C0').trim();
+    var mut = (css.getPropertyValue('--muted') || '#7E8792').trim();
+    ctx.clearRect(0, 0, size, H);
+
+    /* 黄道面のグリッド（同心円と 30° ごとの放射線） */
+    var span = Math.max(1.2, (orb ? orb.Q : 2) * 1.15);
+    var step = span > 4 ? 2 : span > 2 ? 1 : 0.5;
+    for (var rr = step; rr <= span; rr += step) {
+      var ring = [];
+      for (var k = 0; k <= 72; k++) ring.push([rr * Math.cos(k / 72 * 2 * Math.PI), rr * Math.sin(k / 72 * 2 * Math.PI), 0]);
+      line(ring, mut, 0.6, null, 0.16);
+    }
+    for (var ang = 0; ang < 360; ang += 30) {
+      line([[0, 0, 0], [span * Math.cos(ang * D2R), span * Math.sin(ang * D2R), 0]], mut, 0.5, [2, 4], 0.12);
+    }
+    /* 春分点方向（黄経 0°） */
+    line([[0, 0, 0], [span * 0.98, 0, 0]], mut, 0.9, null, 0.4);
+    if (A.showLabels) {
+      var vq = scr([span * 0.98, 0, 0]);
+      ctx.font = '9px ui-monospace, monospace'; ctx.fillStyle = mut;
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      ctx.fillText(NS.t('♈ 黄経 0°'), vq[0] + 4, vq[1]);
+    }
+
+    /* 惑星の軌道と位置 */
+    if (A.showPlanets) {
+      NS.PLANETS.forEach(function (pl) {
+        var st = NS.planetAt(pl, t);
+        if (st.a > span * 1.4) return;
+        line(orbitPts(st.a, st.e, st.i, st.w, st.node, 180), pl.c, 1, null, 0.42);
+        /* 地球は下で「衝突」マーカーを重ねるので、ここではラベルを出さない */
+        dot(st.xyz, pl.r * 0.55 + 1.4, pl.c, (orb && pl.en === 'Earth') ? null : NS.t(pl.n), pl.c);
+      });
+    }
+
+    /* 太陽 */
+    var sq = scr([0, 0, 0]);
+    var g = ctx.createRadialGradient(sq[0], sq[1], 0, sq[0], sq[1], 16);
+    g.addColorStop(0, 'rgba(255,214,120,0.95)'); g.addColorStop(1, 'rgba(255,214,120,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(sq[0], sq[1], 16, 0, 7); ctx.fill();
+    ctx.fillStyle = '#FFD678'; ctx.beginPath(); ctx.arc(sq[0], sq[1], 3.6, 0, 7); ctx.fill();
+
+    /* 流星体の軌道 */
+    if (orb) {
+      var pts = orbitPts(orb.a, orb.e, orb.i, orb.w, orb.node, 240);
+      /* 黄道面より下（z<0）の部分を薄く描き、上下関係が分かるようにする */
+      var above = [], below = [];
+      pts.forEach(function (p) { (p[2] >= 0 ? above : below).push(p); });
+      line(pts, '#D6405F', 1.2, [3, 3], 0.35);
+      line(above, '#D6405F', 2.2, null, 1);
+
+      /* 昇交点・降交点 */
+      if (A.showNode) {
+        var pN = NS.orbXYZ(orb.a, orb.e, orb.i, orb.w, orb.node, -orb.w * D2R);
+        var pD = NS.orbXYZ(orb.a, orb.e, orb.i, orb.w, orb.node, Math.PI - orb.w * D2R);
+        line([pN, pD], '#7C6FD0', 1.1, [5, 4], 0.85);
+        dot(pN, 2.4, '#7C6FD0', A.showLabels ? NS.t('☊ 昇交点') : null, '#9C92DF');
+        dot(pD, 2.4, '#7C6FD0', null);
+      }
+      /* 近日点 */
+      dot(NS.orbXYZ(orb.a, orb.e, orb.i, orb.w, orb.node, 0), 2.6, '#F2C14E',
+          A.showLabels ? 'q = ' + orb.q.toFixed(3) + ' au' : null, '#F2C14E');
+      /* 衝突点＝発生時の地球の位置 */
+      var ea = NS.planetAt(NS.PLANETS[2], t);
+      var eq = dot(ea.xyz, 4.2, '#D6405F', null);
+      ctx.save();
+      ctx.strokeStyle = '#D6405F'; ctx.lineWidth = 1.4; ctx.globalAlpha = 0.9;
+      ctx.beginPath(); ctx.arc(eq[0], eq[1], 8, 0, 7); ctx.stroke();
+      ctx.restore();
+      if (A.showLabels) {
+        ctx.font = '10px ui-monospace, monospace'; ctx.fillStyle = '#E8798F';
+        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        ctx.fillText(NS.t('地球（衝突）'), eq[0] + 11, eq[1]);
+      }
+    }
+
+    /* 視点の表示 */
+    ctx.font = '9.5px ui-monospace, monospace'; ctx.fillStyle = mut;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+    ctx.fillText(NS.t('方位 ') + Math.round(((A.az % 360) + 360) % 360) + NS.t('°  仰角 ') + Math.round(A.el) +
+                 '°  ×' + A.zoom.toFixed(2), 8, 6);
+    ctx.textAlign = 'right';
+    ctx.fillText(NS.t('ドラッグで回転 / ホイールで拡大'), size - 8, 6);
+  }
+
+  /* --- マウス・タッチ --- */
+  cv.addEventListener('pointerdown', function (e2) {
+    drag = { x:e2.clientX, y:e2.clientY, az:A.az, el:A.el };
+    cv.setPointerCapture(e2.pointerId);
+    A.spin = false;
+  });
+  cv.addEventListener('pointermove', function (e2) {
+    if (!drag) return;
+    A.az = drag.az + (e2.clientX - drag.x) * 0.5;
+    A.el = Math.max(-89, Math.min(89, drag.el + (e2.clientY - drag.y) * 0.45));
+    draw();
+  });
+  cv.addEventListener('pointerup', function () { drag = null; });
+  cv.addEventListener('pointercancel', function () { drag = null; });
+  cv.addEventListener('wheel', function (e2) {
+    e2.preventDefault();
+    A.zoom = Math.max(0.35, Math.min(8, A.zoom * Math.exp(-e2.deltaY * 0.0014)));
+    draw();
+  }, { passive:false });
+
+  A.draw = draw;
+  A.setView = function (az, elv, z) { A.az = az; A.el = elv; if (z) A.zoom = z; draw(); };
+  A.node = cv;
+  draw();
+  return A;
+};
+
+/* 太陽系 3D のパネル（火球画面から呼ぶ） */
+NS.orbit3dPanel = function (e) {
+  var orb = e.orbit;
+  var S = NS.SolarSystem3D({ orbit:orb, t:e.t, size:620, height:430 });
+  var seg = el('div', { class:'seg' }, [
+    ['斜めから', -35, 24], ['黄道面の真上', 0, 89], ['黄道面を横から', -35, 2], ['近日点の方向', orb.node + orb.w - 90, 18]
+  ].map(function (v, i) {
+    return el('button', { text:v[0], 'aria-pressed':i === 0 ? 'true' : 'false', onclick:function (ev) {
+      Array.prototype.forEach.call(ev.currentTarget.parentNode.children, function (c) { c.setAttribute('aria-pressed', 'false'); });
+      ev.currentTarget.setAttribute('aria-pressed', 'true');
+      S.setView(v[1], v[2]);
+    } });
+  }));
+  var toggles = el('div', { class:'split' }, [
+    el('button', { class:'iconbtn', text:'惑星', onclick:function (ev) {
+      S.showPlanets = !S.showPlanets; ev.currentTarget.style.opacity = S.showPlanets ? 1 : 0.5; S.draw(); } }),
+    el('button', { class:'iconbtn', text:'ラベル', onclick:function (ev) {
+      S.showLabels = !S.showLabels; ev.currentTarget.style.opacity = S.showLabels ? 1 : 0.5; S.draw(); } }),
+    el('button', { class:'iconbtn', text:'交点線', onclick:function (ev) {
+      S.showNode = !S.showNode; ev.currentTarget.style.opacity = S.showNode ? 1 : 0.5; S.draw(); } }),
+    el('button', { class:'iconbtn', text:'初期視点', onclick:function () { S.setView(-35, 24, 1); } })
+  ]);
+
+  return NS.panel('突入前の軌道（太陽系 3D）', {
+    note:'黄道座標系。マウスの左ドラッグで視点を回し、ホイールで拡大縮小できる',
+    tools:NS.badge(orb.cls, 'info') }, [
+    el('div', { class:'specbar' }, [el('span', { class:'lbl', text:'視点' }), seg, el('div', { class:'spacer' }), toggles]),
+    S.node,
+    NS.chart.legend([['流星体の軌道', '#D6405F', 'line'], ['黄道面より下', '#D6405F', 'dash'],
+                     ['交点線', '#7C6FD0', 'dash'], ['近日点', '#F2C14E', 'dot'], ['地球', '#4585CC', 'dot']]),
+    el('div', { class:'note', html:'赤の実線が黄道面より上、破線が下。紫の破線は軌道面と黄道面が交わる<b>交点線</b>で、'
+      + 'その向きが昇交点黄経 &Omega; = ' + NS.f(orb.node, 2) + '&deg; にあたる。地球はこの交点の近くを通るときにだけ流星体と出会える。'
+      + '惑星の位置は JPL の近似要素（1800–2050 年に有効）で、発生時刻 ' + NS.fmtJST(e.t, { sec:false }) + ' JST のものを描いている。' }),
+    el('div', { class:'src', text:'軌道要素は多点三角測量で求めた対地速度・輻射点から、地球の公転速度を差し引いて日心軌道に直したもの。'
+      + '惑星の位置は JPL「Keplerian Elements for Approximate Positions of the Major Planets」による近似計算で、'
+      + '描画は黄道座標系の正射影である。' })
+  ]);
+};
+
+})(NS);
