@@ -3,20 +3,22 @@
 (function (NS) {
 var el = NS.el;
 
+/* 画面は 2 段に分ける。1 段目＝横断的な画面、2 段目＝観測テーマごとの画面 */
 var TABS = [
-  { id:'dashboard', label:'ダッシュボード',   tag:'OVERVIEW' },
-  { id:'map',       label:'観測局マップ',     tag:'NETWORK' },
-  { id:'fireball',  label:'火球・隕石',       tag:'G-1' },
-  { id:'reentry',   label:'デブリ再突入',     tag:'G-2' },
-  { id:'infra',     label:'インフラサウンド', tag:'G-4' },
-  { id:'weather',   label:'気象・熱中症',     tag:'G-6' },
-  { id:'quake',     label:'地震・津波',       tag:'G-5 / DT-5' },
-  { id:'skyglow',   label:'夜空の明るさ',     tag:'G-3' },
-  { id:'alerts',    label:'通報・社会実装',   tag:'G-7' },
-  { id:'stations',  label:'観測局・機材',     tag:'PF-1' },
-  { id:'data',      label:'データ・API',      tag:'PF-2' },
-  { id:'about',     label:'このデモについて', tag:'' }
+  { id:'dashboard', label:'ダッシュボード',   tag:'OVERVIEW',      icon:'◎', row:0 },
+  { id:'map',       label:'観測局マップ',     tag:'NETWORK',       icon:'⊕', row:0 },
+  { id:'stations',  label:'観測局・機材',     tag:'PF-1',          icon:'⚙', row:0 },
+  { id:'data',      label:'データ・API',      tag:'PF-2',          icon:'⌗', row:0 },
+  { id:'about',     label:'このデモについて', tag:'',              icon:'ⓘ', row:0 },
+  { id:'fireball',  label:'火球・隕石',       tag:'G-1',           icon:'☄', row:1 },
+  { id:'reentry',   label:'デブリ再突入',     tag:'G-2',           icon:'🛰', row:1 },
+  { id:'infra',     label:'インフラサウンド', tag:'G-4',           icon:'〰', row:1 },
+  { id:'quake',     label:'地震・津波',       tag:'G-5 / DT-5',    icon:'▤', row:1 },
+  { id:'weather',   label:'気象・熱中症',     tag:'G-6',           icon:'🌧', row:1 },
+  { id:'skyglow',   label:'夜空の明るさ',     tag:'G-3',           icon:'✦', row:1 },
+  { id:'alerts',    label:'通報・社会実装',   tag:'G-7',           icon:'⚑', row:1 }
 ];
+var ROW_LABEL = ['観測網', '観測テーマ'];
 var PARENT = { station:'stations' };
 
 var leaveFns = [];
@@ -95,10 +97,17 @@ function buildHeader() {
       clock, themeBtn
     ])
   ]));
-  NS.add(head, el('nav', { class:'tabs', role:'tablist' }, TABS.map(function (t) {
-    return el('button', { role:'tab', 'data-v':t.id, 'aria-selected':'false', onclick:function () { go(t.id); } }, [
-      t.label, t.tag ? el('span', { class:'tg', text:t.tag }) : null
-    ]);
+  NS.add(head, el('nav', { class:'tabs', role:'tablist' }, [0, 1].map(function (row) {
+    return el('div', { class:'tabrow' }, [
+      el('span', { class:'grp', text:ROW_LABEL[row] })
+    ].concat(TABS.filter(function (t) { return t.row === row; }).map(function (t) {
+      return el('button', { role:'tab', 'data-v':t.id, 'aria-selected':'false',
+        title:t.label + (t.tag ? '（' + t.tag + '）' : ''), onclick:function () { go(t.id); } }, [
+        el('span', { class:'ic', text:t.icon }),
+        el('span', { class:'lb', text:t.label }),
+        t.tag ? el('span', { class:'tg', text:t.tag }) : null
+      ]);
+    })));
   })));
 }
 

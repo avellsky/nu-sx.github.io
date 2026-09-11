@@ -51,6 +51,87 @@ function couplingDiagram(ts) {
   return g;
 }
 
+
+/* 観測 → 特徴量 → サロゲートモデル → 配信 のパイプライン図 */
+function surrogatePipeline() {
+  var W = 1000, H = 168;
+  var g = s('svg', { viewBox:'0 0 ' + W + ' ' + H, class:'chart', role:'img',
+    'aria-label':'観測からサロゲートモデルを経て配信に至るパイプライン' });
+  var STAGES = [
+    { name:'観測', lines:['微動計 100 Hz', 'GNSS TEC 30 s', 'インフラサウンド', '気圧 1 min'], c:'#C9A227' },
+    { name:'特徴量抽出', lines:['P 波初動振幅', 'TEC 減少率・共振振幅', '大気重力波の振幅', '到達時刻差'], c:'#3FA07A' },
+    { name:'サロゲートモデル', lines:['事前学習済みの代理モデル', '入力 24 次元 → 出力 6 次元', '推論 12 ms', '不確かさも同時に出力'], c:'#D6405F' },
+    { name:'判定・整形', lines:['閾値とフェイルセーフ', '気象庁情報との突き合わせ', '文面の自動生成', '配信先の選択'], c:'#4585CC' },
+    { name:'配信', lines:['Web ポータル', 'スマートフォン通知', 'SNS（人の確認後）', '自治体 API・学校端末'], c:'#7C6FD0' }
+  ];
+  var bw = W / STAGES.length;
+  STAGES.forEach(function (st, i) {
+    var x = i * bw + 5, iw = bw - 26;
+    NS.add(g, s('rect', { x:x, y:24, width:iw, height:H - 48, rx:5, fill:st.c, 'fill-opacity':0.10,
+      stroke:st.c, 'stroke-opacity':0.55, 'stroke-width':1.2 }));
+    NS.add(g, s('text', { x:x + 11, y:16, style:'font-size:12px;font-weight:700', fill:st.c, text:st.name }));
+    st.lines.forEach(function (l, k) {
+      NS.add(g, s('text', { x:x + 11, y:45 + k * 15, class:'axl', fill:'var(--ink2)', text:l }));
+    });
+    if (i < STAGES.length - 1) {
+      var ax = x + iw + 4;
+      NS.add(g, s('path', { d:'M' + ax + ' ' + (H / 2) + ' l11 0 m-5 -5 l5 5 l-5 5',
+        stroke:'var(--muted)', 'stroke-width':1.5, fill:'none' }));
+    }
+  });
+  return g;
+}
+
+/* 配信文面の自動生成（チャネルごとに長さと体裁を変える） */
+function draftFor(ch, ts) {
+  var when = NS.fmtJST(ts.t, { sec:false });
+  var wave = NS.f(ts.estWave, 1) + ' ± ' + NS.f(ts.estErr, 1) + ' m';
+  var head = 'NU-SORA 津波規模の独立推定';
+  if (ch === 'push') {
+    return { title:'【NU-SORA】津波規模の推定値',
+      body:'推定沿岸波高 ' + wave + '（' + ts.quake.name + ' M' + ts.quake.mw + '）。'
+        + '気象庁の津波警報が優先します。詳細はポータルへ。',
+      meta:'スマートフォン通知（全角 70 字以内）' };
+  }
+  if (ch === 'sns') {
+    return { title:'SNS 下書き（投稿前に人が確認）',
+      body:'【' + head + '】' + when + ' の' + ts.quake.name + '（M' + ts.quake.mw + '）について、'
+        + '電離圏 TEC の減少率と大気重力波から沿岸波高を ' + wave + ' と推定しました。'
+        + '気象庁の津波警報・注意報が優先します。避難は警報に従ってください。'
+        + '推定の根拠 → https://example.nu-sora/ts/' + ts.id + ' #NUSORA #津波',
+      meta:'SNS（140 字程度・自動投稿はせず下書きのみ生成）' };
+  }
+  if (ch === 'api') {
+    return { title:'自治体向け API（JSON）', json:{
+      schema:'nu-sora/alert/v1', id:ts.id, kind:'tsunami_scale_estimate',
+      issued_utc:new Date(ts.t + 28 * 60000).toISOString(),
+      source_event:{ name:ts.quake.name, mw:ts.quake.mw, depth_km:ts.quake.depth,
+        lat:ts.quake.lat, lon:ts.quake.lon, origin_utc:new Date(ts.t).toISOString() },
+      estimate:{ coastal_wave_height_m:ts.estWave, uncertainty_m:ts.estErr,
+        method:'surrogate model on ionospheric TEC depletion and atmospheric gravity waves',
+        inference_ms:12, latency_min:28 },
+      observations:{ gnss_tec_stations:5, infrasound_stations:2, seismometer_stations:13,
+        tec_depletion_tecu:ts.holeMax, tec_rate_tecu_per_min:ts.holeRate },
+      priority_notice:'JMA tsunami warning takes precedence over this estimate.',
+      distribution:['sip4d', 'municipal_portal', 'school_terminal'] },
+      meta:'SIP4D への流し込みを想定した JSON' };
+  }
+  return { title:'Web ポータル（全文）',
+    body:'■ ' + head + '\n'
+      + '発生：' + when + ' JST　' + ts.quake.name + '　M' + ts.quake.mw + '　深さ ' + ts.quake.depth + ' km\n'
+      + '推定沿岸波高：' + wave + '（地震発生から 28 分後に確定）\n\n'
+      + '■ 根拠\n'
+      + '・電離圏 TEC の減少：' + NS.f(ts.holeMax, 2) + ' TECU（減少率 ' + NS.f(ts.holeRate, 2) + ' TECU/分）を 5 局の 2 周波 GNSS で観測\n'
+      + '・大気重力波：0.8–4 mHz 帯の気圧変動を 2 局のインフラサウンドで観測\n'
+      + '・微動計：全 13 局で P 波を検知、校舎の固有振動数に有意な変化なし\n'
+      + '・これらを入力としたサロゲートモデルの推論結果（推論時間 12 ms）\n\n'
+      + '■ 注意\n'
+      + '・本推定は気象庁の津波警報・注意報を置き換えるものではありません。避難は警報に従ってください。\n'
+      + '・本推定は警報の後に「どれくらいの規模か」を独立に見積もり、避難の継続判断を補うためのものです。\n'
+      + '・推定には ±' + NS.f(ts.estErr, 1) + ' m の不確かさがあります。',
+    meta:'Web ポータル（全文・根拠と注意を必ず併記）' };
+}
+
 NS.V.quake = function (root, go, arg) {
   var ts = NS.tsunami(), q = ts.quake, t = NS.now();
   var seis = NS.EVMAP['NUS-IS-Q-0106'];
@@ -142,6 +223,98 @@ NS.V.quake = function (root, go, arg) {
       el('button', { class:'iconbtn', style:{ marginTop:'8px' }, text:'通報ワークフロー（津波）を見る →',
         onclick:function () { go('alerts'); } })
     ])
+  ]));
+
+  /* ---- サロゲートモデルによる即時推定と通報（稼働状態） ---- */
+  var live = { n:0, ms:12.4, t0:NS.now() };
+  var liveNode = el('div', { class:'srg-live' });
+  function renderLive() {
+    var up = (NS.now() - live.t0) / 1000;
+    live.n = 41280 + Math.floor(up / 30);                 /* 30 秒ごとに 1 回推論する想定 */
+    var r = NS.rng('srg' + Math.floor(NS.now() / 2000));
+    live.ms = 10.5 + r() * 4.5;
+    NS.clear(liveNode);
+    NS.add(liveNode, [
+      el('span', { class:'srg-dot' }),
+      el('b', { text:'稼働中' }),
+      el('span', { class:'srg-kv', html:'最終推論 <b>' + NS.fmtJST(NS.now()) + '</b>' }),
+      el('span', { class:'srg-kv', html:'推論時間 <b>' + NS.f(live.ms, 1) + '</b> ms' }),
+      el('span', { class:'srg-kv', html:'本日の推論 <b>' + (2880).toLocaleString() + '</b> 回（30 秒ごと）' }),
+      el('span', { class:'srg-kv', html:'累計 <b>' + live.n.toLocaleString() + '</b> 回' }),
+      el('span', { class:'srg-kv', html:'配信キュー <b>0</b> 件' }),
+      el('span', { class:'srg-kv', html:'現在の判定 <b style="color:var(--c-ok)">平常</b>' })
+    ]);
+  }
+  renderLive();
+  var liveTimer = setInterval(renderLive, 2000);
+  NS.onLeave(function () { clearInterval(liveTimer); });
+
+  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('サロゲートモデルによる即時推定と通報',
+    { note:'観測が入った瞬間に推定して配信する。数値計算そのものは間に合わないため、事前に学習させた代理モデルに置き換える',
+      tools:NS.refreshTool(function () { renderLive(); }) },
+    [liveNode, surrogatePipeline(),
+     el('div', { class:'note', html:'津波の伝播・浸水は非線形長波方程式を解いて求めるが、高解像度で計算すると数十分から数時間かかり、避難の判断には間に合わない。そこで断層すべりと海底地形の組み合わせを変えた多数のシナリオをあらかじめ計算しておき、その入出力関係を学習した<b>サロゲートモデル（代理モデル）</b>に置き換える。推論は 12 ミリ秒で終わるので、観測が届いた瞬間に沿岸波高・到達時刻・不確かさを返せる。デジタルツインが「見せるだけ」で終わらないのは、この置き換えがあるためである。' })])));
+
+  NS.add(root, el('div', { class:'grid g2', style:{ marginTop:'14px' } }, [
+    panel('サロゲートモデルの諸元', { note:'事前学習は学内クラウドで行い、推論は各局のエッジ計算機と中央の両方で走らせる' },
+      NS.kv([
+        ['入力', '24 次元（TEC 減少率・共振振幅・大気重力波振幅・気圧変動・P 波初動・到達時刻差・震源の緯度経度深さ・Mw）'],
+        ['出力', '6 次元（沿岸波高・到達時刻・浸水域の広がり・それぞれの不確かさ）'],
+        ['学習データ', '断層すべり分布と潮位条件を変えた数値計算 <b>18,000 シナリオ</b>（南海トラフ・日本海溝・日本海東縁）'],
+        ['検証', 'シナリオの 15 % を検証用に残し、沿岸波高の平均絶対誤差 <b>0.31 m</b>'],
+        ['推論時間', '<b>12 ms</b>（中央）／ 38 ms（エッジ計算機）'],
+        ['更新頻度', '平常時は 30 秒ごと、地震検知後は 1 秒ごと'],
+        ['再学習', '事象ごとに実測（検潮所・S-net）と突き合わせ、四半期ごとに係数を更新'],
+        ['限界', '学習範囲の外（想定外の断層・遠地津波）では外挿になるため、不確かさを大きく出して人の判断に委ねる']
+      ], 'wide')),
+    panel('フェイルセーフ', { note:'誤報を出さないための設計。危機管理学部・法学部と整備する' },
+      NS.table(['条件', '扱い'], [
+        ['単独センサーのみの検知', '発報しない（監視状態に留める）'],
+        ['気象庁の警報と矛盾', '<b>気象庁の警報が優先</b>。本推定は参考値として併記するに留める'],
+        ['学習範囲外の入力', '不確かさを拡大して出力し、自動配信は止めて人の確認へ回す'],
+        ['推論時間が閾値超過', '前回の推定を保持し、劣化モード（単純な経験式）に切り替える'],
+        ['配信後に推定が変わった', '訂正を同じ経路で必ず配信する。取り消しは行わず訂正として残す'],
+        ['SNS への投稿', '自動投稿はしない。下書きを生成し、人が確認してから投稿する']
+      ]))
+  ]));
+
+  /* ---- 配信文面のプレビュー ---- */
+  var chState = { ch:'web' };
+  var draftBox = el('div');
+  function renderDraft() {
+    var d = draftFor(chState.ch, ts);
+    NS.clear(draftBox);
+    NS.add(draftBox, [
+      el('div', { class:'split', style:{ marginBottom:'8px' } }, [
+        el('b', { text:d.title }), el('span', { class:'hint', text:d.meta })]),
+      d.json ? el('div', { class:'api', text:JSON.stringify(d.json, null, 2) })
+             : el('div', { class:'draft', text:d.body }),
+      chState.ch === 'sns'
+        ? el('div', { class:'note', text:'SNS は自動投稿しない。この下書きを担当者が確認し、必要なら手を入れてから投稿する。未確定の推定値を含むため、取り消しではなく訂正で運用する。' })
+        : el('div', { class:'note', text:'どの経路でも「気象庁の警報が優先する」ことと不確かさを必ず併記する。文面は法学部・危機管理学部と整備した定型から自動生成する。' })
+    ]);
+  }
+  var chSeg = el('div', { class:'seg' }, [['Web ポータル', 'web'], ['スマートフォン通知', 'push'],
+    ['SNS 下書き', 'sns'], ['自治体 API', 'api']].map(function (x) {
+    return el('button', { text:x[0], 'aria-pressed':x[1] === chState.ch ? 'true' : 'false', onclick:function (ev) {
+      chState.ch = x[1];
+      Array.prototype.forEach.call(ev.target.parentNode.children, function (c) { c.setAttribute('aria-pressed', 'false'); });
+      ev.target.setAttribute('aria-pressed', 'true');
+      renderDraft();
+    } });
+  }));
+  renderDraft();
+  NS.add(root, el('div', { class:'grid g-3-2', style:{ marginTop:'14px' } }, [
+    panel('配信文面（自動生成）', { note:'同じ推定結果から、経路ごとに長さと体裁を変えて出す', tools:chSeg }, draftBox),
+    panel('配信経路', { note:'到達手段を複数持つことが、届かない事態を防ぐ' },
+      NS.table(['経路', '所要', '対象'], [
+        ['Web ポータル（本デモ）', '即時', '誰でも。根拠と不確かさを全文で示す'],
+        ['スマートフォン通知（Push）', '数秒', '登録した教職員・自治体担当・保護者'],
+        ['学校端末・デジタルサイネージ', '数秒', '各付属校の職員室・昇降口'],
+        ['自治体向け API（SIP4D 準拠）', '即時', '防災担当の既存システムへ流し込む'],
+        ['SNS', '人の確認後', '一般向け。自動投稿はしない'],
+        ['メール・FAX', '1 分以内', '通信手段が限られる連絡先への冗長経路']
+      ]))
   ]));
 
   /* ---- 校舎の判定（DT-6） ---- */
