@@ -33,15 +33,27 @@ NS.SCOPE_MODES = {
   wide:   { name:'広角',         icon:'◍', note:'視野 85.7° の広角カメラ。天の川を丸ごと写す' }
 };
 
-/* 月面衝突閃光が観測できる次の夜。月齢 3–10 と 20–27 のあいだで、
-   夜側（地球照側）が地球を向いている時期に限られる。 */
-NS.nextLifNight = function () {
-  var base = NS.tonightAt(23);
-  for (var d = 0; d < 40; d++) {
-    var tt = base + d * 86400e3, age = NS.moonPhase(tt) * 29.530588853;
-    if ((age >= 3 && age <= 10) || (age >= 20 && age <= 27)) return tt;
+/* 月面衝突閃光が観測できる夜。夜側（地球照側）が地球を向いているのは
+   月齢 3–10 と 20–27 のあいだで、なかでも上弦ごろの月齢 7 は夜側が広く取れて
+   条件がよい。既定ではその月齢にいちばん近い夜へ送る。 */
+NS.LIF_AGE = 7;
+NS.nextLifNight = function (want, station) {
+  var st = station || NS.ST.FNB;
+  var base = NS.tonightAt(18), aim = want == null ? NS.LIF_AGE : want;
+  var best = null, bd = 1e9, alt = base, ad = 1e9;
+  /* 夜（18:00 から翌 04:00 まで）を 15 分きざみに見て、月が十分高く、
+     月齢が目標にいちばん近い時刻を選ぶ。月齢 7 なら宵のうちに高く昇っている。 */
+  for (var d = 0; d < 32; d++) {
+    for (var q = 0; q < 40; q++) {
+      var tt = base + d * 86400e3 + q * 900e3;
+      var age = NS.moonPhase(tt) * 29.530588853;
+      var dif = Math.abs(age - aim);
+      if (dif < ad) { ad = dif; alt = tt; }         /* 高度を問わない控えの候補 */
+      if (NS.moonAlt(tt, st.lat, st.lon) < 25) continue;
+      if (dif < bd) { bd = dif; best = tt; }
+    }
   }
-  return base;
+  return best || alt;
 };
 
 /* 観測目標。α・δ は J2000。 */
