@@ -143,7 +143,7 @@ NS.V.dashboard = function (root, go) {
   var ee = M.pt(fbShow.end.lon, fbShow.end.lat);
   M.addOverlay(s('circle', { cx:ee[0], cy:ee[1], r:M.px(4), fill:'var(--accent)' }));
 
-  mapPanel = panel('観測局配置と現況', { note:'ホイールで拡大・ドラッグで移動 / 局をクリックで詳細',
+  mapPanel = panel('観測局配置と現況', { note:'ホイールで拡大・ドラッグで移動／局をクリックするとその局の全データ一覧へ',
     tools:el('div', { class:'split' }, [NS.refreshTool(function () { NS.rerender(); }),
     el('div', { class:'seg' }, ['all', 'kanto', 'kyushu', 'tohoku'].map(function (k) {
       var b = el('button', { text:NS.VIEWS[k].name, 'aria-pressed':k === 'all' ? 'true' : 'false',
@@ -203,7 +203,7 @@ NS.V.dashboard = function (root, go) {
     ]);
   }));
   NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('観測局の稼働状況（13 局）',
-    { note:'全局が同一のフル構成。SWIR 冷却カメラは船橋・湘南・郡山・三島の 4 局',
+    { note:'全局が同一のフル構成。カードをクリックするとその局の全データ一覧へ',
       tools:el('button', { class:'iconbtn', text:'観測局一覧 →', onclick:function () { go('stations'); } }) }, cards)));
 };
 
@@ -213,7 +213,7 @@ NS.V.dashboard = function (root, go) {
 NS.V.map = function (root, go, arg) {
   NS.add(root, el('div', { class:'page-h' }, [
     el('h2', { text:'観測局マップ' }),
-    el('p', { text:'13 局の配置・視野・観測値を地図上で重ねて見る。視野円は高度 100 km の発光点を各仰角以上で見込める地表範囲を示し、円が重なる領域で多点同時観測（三角測量）が成立する。' })
+    el('p', { text:'13 局の配置・視野・観測値を地図上で重ねて見る。視野円は高度 100 km の発光点を各仰角以上で見込める地表範囲を示し、円が重なる領域で多点同時観測（三角測量）が成立する。局のマーカーをクリックすると、その局の全データ一覧（全天カメラ・インフラサウンド・気象・夜空輝度・電波流星 FFT・GNSS・微動計）へ移動する。' })
   ]));
   var state = { layer:'status', elevs:{ 5:false, 10:false, 15:false, 20:false, 30:true, 45:false }, ev:null };
   var M = NS.Map({ onStation:function (st) { go('station', st.id); } });
@@ -338,7 +338,7 @@ NS.V.map = function (root, go, arg) {
   ]);
   var legend = el('div', { class:'maplegend' });
   var refresh = NS.refreshTool(function () { paint(); });
-  var p = panel('全国 13 局', { note:'高度 100 km 基準の視野円。更新しても表示範囲とレイヤはそのまま保たれる',
+  var p = panel('全国 13 局', { note:'高度 100 km 基準の視野円。局をクリックで全データ一覧へ。更新しても表示範囲とレイヤは保たれる',
     tools:refresh }, []);
   var body = p.querySelector('.panel-b'); body.classList.add('flush');
   NS.add(body, [bar, M.node, legend]);
@@ -384,7 +384,7 @@ NS.V.stations = function (root, go) {
     }))));
 
   NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('観測局 一覧（13 局）',
-    { note:'局をクリックすると詳細（疑似ライブ映像・機材状態・観測値）を開く' },
+    { note:'局をクリックすると、その局の全データ一覧（全センサーの実況と諸元）を開く' },
     NS.table(['局', 'ID', '所在地', '種別', '設置機関', '座標 / 標高', '状態', '稼働率'],
       NS.STATIONS.map(function (st) {
         var s2 = NS.stationState(st, t);
@@ -571,8 +571,17 @@ NS.V.station = function (root, go, arg) {
           onclick:function () { go('station', x.id); } });
       }))
     ]),
-    el('h2', { text:st.name + '　' + st.en + ' Station', style:{ marginTop:'8px' } }),
-    el('p', { html:st.pref + ' ' + st.city + '　' + st.host + '　<span class="mono">' + NS.latlon(st.lat, st.lon) + ' · 標高 ' + st.alt + ' m</span>' })
+    el('h2', { text:st.name + '　' + st.en + ' Station　全データ一覧', style:{ marginTop:'8px' } }),
+    el('p', { html:st.pref + ' ' + st.city + '　' + st.host + '　<span class="mono">' + NS.latlon(st.lat, st.lon) + ' · 標高 ' + st.alt + ' m</span>' }),
+    el('div', { class:'chips', style:{ marginTop:'8px' } },
+      [['全天カメラ', 'sky'], ['インフラサウンド', 'inf'], ['気象・WBGT', 'met'], ['夜空輝度', 'sqm'],
+       ['電波流星 FFT', 'hro'], ['2 周波 GNSS', 'gnss'], ['微動計', 'seis'], ['機材・実績', 'eq']]
+      .map(function (x) {
+        return el('button', { class:'chip', text:x[0], onclick:function () {
+          var n = document.getElementById('sec-' + x[1]);
+          if (n) n.scrollIntoView({ behavior:'smooth', block:'start' });
+        } });
+      }))
   ]));
 
   /* 疑似ライブ + 現況 */
@@ -639,7 +648,7 @@ NS.V.station = function (root, go, arg) {
       ['一次保存', NS.f(s2.disk, 0) + ' % 使用']
     ], 'wide')
   ]);
-  NS.add(root, el('div', { class:'grid g-3-2' }, [skyPanel, nowPanel]));
+  NS.add(root, el('div', { class:'grid g-3-2', id:'sec-sky' }, [skyPanel, nowPanel]));
 
   /* 24 時間の時系列 */
   var hrs = [], sqmPts = [], tempPts = [], wbgtPts = [], cloudPts = [];
@@ -651,7 +660,7 @@ NS.V.station = function (root, go, arg) {
     if (bb.mag != null) sqmPts.push([hh, bb.mag]);
   }
   var xf = function (v) { return NS.fmtJST(t + v * 3600e3, { timeOnly:true, sec:false }); };
-  NS.add(root, el('div', { class:'grid g2', style:{ marginTop:'14px' } }, [
+  NS.add(root, el('div', { class:'grid g2', style:{ marginTop:'14px' }, id:'sec-met' }, [
     panel('夜空輝度の 24 時間推移', { note:'夜間（太陽高度 −12° 以下）のみ測定' },
       sqmPts.length > 3 ? [NS.chart.line({ series:[{ name:'SQM', color:'var(--c-sky)', pts:sqmPts, area:true, dots:0 }],
         width:660, height:180, yLabel:'mag/arcsec²（上ほど暗い）', xFmt:xf, yFmt:function (v) { return NS.f(v, 1); },
@@ -669,9 +678,125 @@ NS.V.station = function (root, go, arg) {
     ])
   ]));
 
+  /* ---- この局のインフラサウンド（6 チャンネル） ---- */
+  var stInf = { chans:['HF', 'MF', 'LF', 'X', 'Y', 'Z'], win:300 };
+  var S1 = NS.InfraStrip(st, { chans:stInf.chans, win:stInf.win, width:640, rowH:30 });
+  var infSeg = el('div', { class:'seg' }, [['1 分', 60], ['5 分', 300], ['10 分', 600], ['30 分', 1800], ['1 時間', 3600]]
+    .map(function (x) {
+      return el('button', { text:x[0], 'aria-pressed':x[1] === stInf.win ? 'true' : 'false', onclick:function (ev) {
+        stInf.win = x[1];
+        Array.prototype.forEach.call(ev.target.parentNode.children, function (c) { c.setAttribute('aria-pressed', 'false'); });
+        ev.target.setAttribute('aria-pressed', 'true');
+        S1.setWin(x[1]);
+      } });
+    }));
+  var infStat = s2.sub.filter(function (x) { return x.key === 'infra'; })[0];
+  NS.add(root, el('div', { class:'grid g-2-1', style:{ marginTop:'14px' }, id:'sec-inf' }, [
+    panel('インフラサウンド 実況グラフ', { note:'サヤ INF03 ×2（基線約 60 m）。0.5 秒ごとに更新', tools:infSeg },
+      [S1.node, el('div', { class:'note', text:'HF は雷放電・爆発音・近傍の人工雑音、MF は海洋起源の脈動微気圧振動（マイクロバロム）と火球の衝撃波、LF は大気重力波・津波・気圧変動。X・Y・Z は 3 成分加速度で常時微動を記録する。窓が長く搬送波を解像できない帯域は ±包絡線の帯として描いている。' })]),
+    panel('インフラサウンドの諸元', null, [
+      NS.kv([
+        ['機材', '株式会社サヤ INF03 × 2'],
+        ['配置', 'ペア配置（基線 約 60 m）'],
+        ['周波数帯', '0.1 – 1000 Hz'],
+        ['測定範囲', '130 / 110 dB SPL 切替'],
+        ['時刻同期', 'GNSS 同期ロガー（< 1 ms）'],
+        ['単独局でできること', '到来方位の推定'],
+        ['全国アレイでできること', '音源の定位・規模推定・成層圏風の逆推定'],
+        ['状態', infStat && infStat.ok ? '正常' : (infStat ? infStat.note : '—')]
+      ], 'wide'),
+      el('button', { class:'iconbtn', style:{ marginTop:'8px' }, text:'全国アレイの解析を見る →',
+        onclick:function () { go('infra'); } })
+    ])
+  ]));
+
+  /* ---- この局の夜空輝度計 ---- */
+  var sbNow = NS.skyBrightness(st, t), magNow = sbNow.mag == null ? st.sqm : sbNow.mag, btNow = NS.bortle(magNow);
+  /* ---- この局の 2 周波 GNSS ---- */
+  var gs = NS.gnssState(st, t), tecPts = [];
+  for (var gi = -24; gi <= 0; gi++) tecPts.push([gi, NS.gnssState(st, t + gi * 3600e3).tec]);
+  /* ---- この局の微動計 ---- */
+  var seisR = NS.rng(st.id + '|seis');
+  var f0 = 2.6 + seisR() * 1.9, pga = 0.6 + seisR() * 1.4;
+  NS.add(root, el('div', { class:'grid g3', style:{ marginTop:'14px' } }, [
+    el('div', { id:'sec-sqm' }, panel('夜空輝度計', { note:'Unihedron SQM-LU-DL ＋ 窓付き野外ハウジング' }, [
+      el('div', { class:'big', style:{ color:NS.SQM_SCALE(magNow) } },
+        NS.f(magNow, 2) + ' mag/arcsec²' + (sbNow.mag == null ? '（平常値）' : '')),
+      NS.kv([
+        ['Bortle 等級', btNow.n + '　' + btNow.label],
+        ['この局の平常値', NS.f(st.sqm, 2) + ' mag/arcsec²'],
+        ['光害量', NS.f(21.9 - st.sqm, 2) + ' 等（自然夜空 21.9 に対して）'],
+        ['月の寄与', sbNow.mag == null ? '—' : NS.f(sbNow.moonEffect, 2) + ' 等'],
+        ['雲の寄与', sbNow.mag == null ? '—' : NS.f(sbNow.cloudEffect, 2) + ' 等'],
+        ['衛星の寄与', sbNow.mag == null ? '—' : NS.f(sbNow.satEffect, 3) + ' 等'],
+        ['視野', 'FWHM 約 20°（天頂向き）'],
+        ['サンプリング', '1 – 80 秒、IR カット']
+      ], 'wide'),
+      el('button', { class:'iconbtn', style:{ marginTop:'8px' }, text:'全国の夜空輝度マップ →', onclick:function () { go('skyglow'); } })
+    ])),
+    el('div', { id:'sec-gnss' }, panel('2 周波 GNSS 受信機', { note:'測地級 L1/L2、PPS 出力' }, [
+      el('div', { class:'big' }, NS.f(gs.tec, 1) + ' TECU'),
+      NS.chart.line({ series:[{ name:'TEC', color:'var(--c-info)', pts:tecPts, area:true }],
+        width:300, height:110, margin:{ l:40, r:10, t:10, b:22 }, xLabel:'時間', yLabel:'TECU',
+        xFmt:function (v) { return NS.f(v, 0) + 'h'; }, yFmt:function (v) { return NS.f(v, 0); } }),
+      NS.kv([
+        ['受信衛星', gs.n + ' 機（GPS ' + gs.sats.GPS + ' / QZSS ' + gs.sats.QZSS + ' / Galileo ' + gs.sats.Galileo + ' / GLONASS ' + gs.sats.GLONASS + '）'],
+        ['PDOP', NS.f(gs.pdop, 2)],
+        ['PPS 同期', (gs.ppsNs > 0 ? '+' : '') + NS.f(gs.ppsNs, 0) + ' ns'],
+        ['取得間隔', gs.rate],
+        ['用途', '全局の時刻同期／電離圏 TEC／GNSS 気象学（可降水量）']
+      ], 'wide')
+    ])),
+    el('div', { id:'sec-seis' }, panel('微動計・そのほか', { note:'3 成分加速度計（常時微動）' }, [
+      NS.kv([
+        ['校舎 1 次固有振動数', '<b>' + NS.f(f0, 2) + ' Hz</b>（常時微動から同定）'],
+        ['直近の最大加速度', NS.f(pga, 2) + ' gal'],
+        ['判定', '継続使用可（低下 5 % 未満）'],
+        ['サンプリング', '100 Hz・3 成分'],
+        ['用途', '地震直後の校舎の使用可否判定（DT-6）'],
+        ['電波流星受信機', 'HRO 53.755 MHz ＋ 3 素子八木　' + Math.round(NS.hroRate(st, t)) + ' echo/h'],
+        ['4K 分光カメラ', 'Sony ZV-E10 ＋ 回折格子 600 lpm'],
+        ['SWIR 冷却カメラ', st.swir ? 'ZWO ASI992MM Pro（設置局）' : '未設置（船橋・湘南・郡山・三島の 4 局のみ）'],
+        ['制御 PC', '8 コア 16 スレッド / 32 GB / NVMe 2 TB'],
+        ['一次保存', NS.f(s2.disk, 0) + ' % 使用　伝送遅延 ' + NS.f(s2.latency, 0) + ' ms']
+      ], 'wide')
+    ]))
+  ]));
+
+  /* ---- この局の電波流星 FFT ---- */
+  var stHro = { win:600 };
+  var F1 = NS.HroFft(st, { win:stHro.win, width:640, height:150 });
+  var hroSeg2 = el('div', { class:'seg' }, [['5 分', 300], ['10 分', 600], ['30 分', 1800], ['1 時間', 3600]].map(function (x) {
+    return el('button', { text:x[0], 'aria-pressed':x[1] === stHro.win ? 'true' : 'false', onclick:function (ev) {
+      stHro.win = x[1];
+      Array.prototype.forEach.call(ev.target.parentNode.children, function (c) { c.setAttribute('aria-pressed', 'false'); });
+      ev.target.setAttribute('aria-pressed', 'true');
+      F1.setWin(x[1]);
+    } });
+  }));
+  NS.add(root, el('div', { class:'grid g-2-1', style:{ marginTop:'14px' }, id:'sec-hro' }, [
+    panel('電波流星受信機（FFT 画面）', { note:'HRO 53.755 MHz の前方散乱。HROFFT 形式のスペクトログラム', tools:hroSeg2 },
+      [F1.node, el('div', { class:'hrolegend' }, [
+        el('span', null, [el('i', { class:'gradbar', style:{ width:'110px', background:'linear-gradient(90deg,#040610,#0c1c5c,#0a6e96,#14a55a,#d2c828,#eb6e1e,#f53c3c,#fff6ee)' } }), ' 弱 ← 受信強度 → 強']),
+        el('span', { html:'0 Hz＝直接波' }), el('span', { html:'短い輝点＝過疎エコー' }),
+        el('span', { html:'太い横帯＝過密エコー' }), el('span', { html:'周波数降下＝ヘッドエコー' })])]),
+    panel('流星エコーの計数', null, [
+      NS.kv([
+        ['現在の発生率', '<b>' + Math.round(NS.hroRate(st, t)) + '</b> echo/h'],
+        ['日周変化', '明け方（6 時ごろ）に極大、夕方に極小'],
+        ['受信対象', '53.755 MHz 連続波ビーコンの前方散乱'],
+        ['アンテナ', '3 素子八木'],
+        ['光学との関係', '昼間・曇天・満月期でも計数できるため、全天カメラの検出効率の較正に使う'],
+        ['エコー継続時間', '流星の明るさとおおむね対応（過疎エコー 0.1 秒未満／過密エコー 数秒〜数十秒）']
+      ], 'wide')
+    ])
+  ]));
+  S1.start(); F1.start();
+  NS.onLeave(function () { S1.stop(); F1.stop(); });
+
   /* 機材状態 */
   var eq = NS.eqAt(st);
-  NS.add(root, el('div', { class:'grid g-2-1', style:{ marginTop:'14px' } }, [
+  NS.add(root, el('div', { class:'grid g-2-1', style:{ marginTop:'14px' }, id:'sec-eq' }, [
     panel('搭載機材と稼働状態', { note:eq.length + ' 系統' },
       NS.table(['系統', '機材', '型式・仕様', '状態'], eq.map(function (e) {
         var sub = s2.sub.filter(function (x) { return x.key === e.key; })[0];
