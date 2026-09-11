@@ -3555,6 +3555,7 @@ var NS_EN = {
 "副鏡 200 mm ＋ ASI174MM（65.0′ × 40.8′）": "200 mm secondary with ASI174MM (65.0′ × 40.8′)",
 "1936 × 1216（5.86 µm 角）": "1936 × 1216 (5.86 µm square)",
 "閃光候補": "Flash candidate",
+"観測視野": "Field of view",
 "同じ事象を、広さの違う視野で順に受け渡す。数字は ZWO ASI174MM の公称 5.86 µm 角から求めた値": "One event passed from a wide field to a narrow one. The figures follow from the ZWO ASI174MM’s nominal 5.86 µm square pixels.",
 "1.083° × 0.680°（65.0′ × 40.8′）": "1.083° × 0.680° (65.0′ × 40.8′)",
 "0.285° × 0.179°（17.1′ × 10.7′）": "0.285° × 0.179° (17.1′ × 10.7′)",

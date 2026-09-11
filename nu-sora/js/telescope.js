@@ -8,6 +8,9 @@ var el = NS.el, panel = NS.panel, kv = NS.kv, badge = NS.badge, f = NS.f, D2R = 
 NS.V = NS.V || {};        /* views より先に読み込まれても壊れないようにする */
 
 /* ---------------- 望遠鏡 ---------------- */
+/* 月の平均視直径（度）。31.09′。視野との大小比較に使う。 */
+NS.MOON_DIAM_DEG = 0.5181;
+
 NS.SCOPES = [
   /* 視野は ZWO ASI174MM の公称 5.86 µm 角・1936 × 1216（実寸 11.34 × 7.13 mm）と焦点距離から求めた値 */
   { id:'GDM-P', name:'ガンダム望遠鏡 主鏡', short:'主鏡 600', st:'FNB', ap:600, fl:2280, fr:3.8,
@@ -246,7 +249,12 @@ NS.ScopeView = function (opts) {
 
   /* --- 月（月面衝突閃光モード） --- */
   function drawMoon(S) {
-    var R = Math.min(W, H) * 0.40, CX = W / 2, CY = H / 2 + 6;
+    /* 月と視野を同じ角スケールで描く。月の視直径は平均 31.09′（＝0.5181°）。
+       視野が月より広い副鏡では月が小さく、狭い主鏡では月が大きく見える。 */
+    var sc = S.scope;
+    var halfDeg = Math.max(NS.MOON_DIAM_DEG / 2, sc.fovX / 2, sc.fovY / 2) * 1.16;
+    var pxDeg = Math.min(W, H) * 0.5 / halfDeg;    /* 1 度あたりの px */
+    var R = NS.MOON_DIAM_DEG / 2 * pxDeg, CX = W / 2, CY = H / 2 + 4;
     var ph = NS.moonPhase(S.t);                    /* 0 = 新月, 0.5 = 満月 */
     var fI = NS.moonIllum(S.t);                    /* 輝面比 */
     var waxing = ph < 0.5;                         /* 上弦へ向かう＝西（画面右）が光る */
@@ -281,15 +289,20 @@ NS.ScopeView = function (opts) {
     ctx.strokeStyle = 'rgba(150,165,190,0.45)'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(CX, CY, R, 0, 7); ctx.stroke();
 
-    /* 夜側に「検出対象」の印をつける */
-    var nx = CX + (waxing ? -R * 0.55 : R * 0.55);
-    ctx.setLineDash([4, 4]); ctx.strokeStyle = 'rgba(214,64,95,0.55)'; ctx.lineWidth = 1.2;
-    ctx.beginPath(); ctx.arc(nx, CY, R * 0.42, 0, 7); ctx.stroke(); ctx.setLineDash([]);
-    /* ラベルは円の外側（月の外）へ出す。閃光と重ならないようにするため。 */
-    ctx.font = '10px ui-monospace, monospace'; ctx.fillStyle = 'rgba(232,121,143,0.9)';
-    ctx.textBaseline = 'middle';
-    if (waxing) { ctx.textAlign = 'right'; ctx.fillText(NS.t('夜側（地球照）＝検出対象'), nx - R * 0.42 - 8, CY); }
-    else        { ctx.textAlign = 'left';  ctx.fillText(NS.t('夜側（地球照）＝検出対象'), nx + R * 0.42 + 8, CY); }
+    /* 観測視野（カメラが実際に写す範囲）を長方形で示す。夜側の中心に向ける。 */
+    var fw = sc.fovX * pxDeg, fh = sc.fovY * pxDeg;
+    var nx = CX + (waxing ? -R * 0.42 : R * 0.42);
+    /* 視野が月より狭いときだけ夜側へ寄せる。広いときは月を収めるため中心に置く */
+    if (fw > R * 1.6) nx = CX;
+    ctx.save();
+    ctx.setLineDash([5, 4]); ctx.strokeStyle = 'rgba(214,64,95,0.72)'; ctx.lineWidth = 1.2;
+    ctx.strokeRect(nx - fw / 2, CY - fh / 2, fw, fh);
+    ctx.restore();
+    /* ラベルは長方形の左上、枠の外に出す */
+    ctx.font = '10px ui-monospace, monospace'; ctx.fillStyle = 'rgba(232,121,143,0.92)';
+    ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
+    ctx.fillText(NS.t('観測視野') + '  ' + f(sc.fovX * 60, 1) + '′ × ' + f(sc.fovY * 60, 1) + '′',
+                 nx - fw / 2, CY - fh / 2 - 4);
     ctx.textBaseline = 'bottom'; ctx.fillStyle = 'rgba(170,182,200,0.75)';
     ctx.fillText(NS.t('月齢 ') + f(ph * 29.53, 1) + NS.t('　輝面比 ') + Math.round(fI * 100) + ' %', CX, CY - R - 8);
 
@@ -299,8 +312,17 @@ NS.ScopeView = function (opts) {
     var el3 = (performance.now() - A.t0) / 1000, cyc = el3 % 9;
     if (cyc < 0.34) {
       var r2 = NS.rng('flash' + Math.floor(el3 / 9));
-      var fa = r2() * 2 * Math.PI, fd = Math.sqrt(r2()) * R * 0.36;   /* 夜側の円の内側に収める */
-      var fx2 = nx + Math.cos(fa) * fd, fy2 = CY + Math.sin(fa) * fd;
+      /* 閃光は「視野の内側」かつ「月の夜側」でしか検出できない。両方を満たす点を選ぶ。 */
+      var fx2 = nx, fy2 = CY;
+      for (var k = 0; k < 40; k++) {
+        var px2 = nx + (r2() - 0.5) * fw * 0.86, py2 = CY + (r2() - 0.5) * fh * 0.86;
+        var dx2 = px2 - CX, dy2 = py2 - CY;
+        if (dx2 * dx2 + dy2 * dy2 > R * R * 0.88) continue;          /* 月の外 */
+        var wHalf = Math.sqrt(Math.max(0, R * R - dy2 * dy2));
+        var term = (1 - 2 * fI) * wHalf;                              /* 明暗境界 */
+        if (waxing ? (dx2 >= term) : (dx2 <= -term)) continue;        /* 昼側は不可 */
+        fx2 = px2; fy2 = py2; break;
+      }
       var amp = Math.max(0, 1 - cyc / 0.34);
       var rad = 5 * amp + 1.6;
       var gg = ctx.createRadialGradient(fx2, fy2, 0, fx2, fy2, rad);
@@ -316,9 +338,11 @@ NS.ScopeView = function (opts) {
       ctx.strokeStyle = 'rgba(214,64,95,0.6)'; ctx.lineWidth = 0.9;
       ctx.beginPath(); ctx.arc(fx2, fy2, 7, 0, 7); ctx.stroke();
       ctx.restore();
-      ctx.font = '9px ui-monospace, monospace'; ctx.fillStyle = 'rgba(232,121,143,0.8)';
-      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-      ctx.fillText(NS.t('閃光候補'), fx2 + 10, fy2);
+      /* ラベルが明るい側にはみ出すと閃光が昼側にあるように見えるので、内側へ寄せる */
+      ctx.font = '9px ui-monospace, monospace'; ctx.fillStyle = 'rgba(232,121,143,0.85)';
+      ctx.textBaseline = 'middle';
+      if (waxing) { ctx.textAlign = 'right'; ctx.fillText(NS.t('閃光候補'), fx2 - 10, fy2); }
+      else        { ctx.textAlign = 'left';  ctx.fillText(NS.t('閃光候補'), fx2 + 10, fy2); }
     }
   }
 
