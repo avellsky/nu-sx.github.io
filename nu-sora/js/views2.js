@@ -238,7 +238,8 @@ NS.V.fireball = function (root, go, arg) {
           ['昇交点黄経 Ω', NS.f(e.orbit.node, 2) + '°'],
           ['Tisserand T_J', NS.f(e.orbit.Tj, 2) + '　<span class="hint">（' + e.orbit.cls + '・小惑星起源）</span>']
         ], 'wide'),
-        el('div', { class:'note', text:'T_J > 3 は小惑星的な軌道であることを示す。q = ' + NS.f(e.orbit.q, 2) + ' au、Q = ' + NS.f(e.orbit.Q, 2) + ' au は地球近傍小惑星（アポロ型）と整合する。' })
+        el('div', { class:'note', text:'T_J > 3 は小惑星的な軌道であることを示す。q = ' + NS.f(e.orbit.q, 2) + ' au、Q = ' + NS.f(e.orbit.Q, 2) + ' au は地球近傍小惑星（' + e.orbit.cls + '）と整合する。'
+          + '輻射点・地心速度・軌道要素は、多点三角測量で決めた軌跡と突入速度から、自転補正と天頂引力の補正を経て求めている。' })
       ])
     ]));
 

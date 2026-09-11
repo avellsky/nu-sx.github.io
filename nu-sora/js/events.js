@@ -90,7 +90,7 @@ NS.blackbodyCont = function (T, peak, lo, hi, n) {
 };
 /* 自然天体：約 5,000 K の弱い黒体。ウィーンの変位則により極大は 580 nm 付近になる。 */
 NS.CONT_T_NATURAL = 5000;
-NS.CONT_NATURAL = NS.blackbodyCont(NS.CONT_T_NATURAL, 0.26, 350, 900, 110);
+NS.CONT_NATURAL = NS.blackbodyCont(NS.CONT_T_NATURAL, 0.052, 350, 900, 110);
 
 /* 人工天体（スペースデブリ再突入）。アルミ合金・銅配線・リチウム電池に由来する線が卓越し、
    自然天体で最強の Mg I 518 / Na I 589 が相対的に弱いことが識別の決め手になる。 */
@@ -321,6 +321,7 @@ function fireballBoso() {
     massPhoto:NS.photoMass(ErJ, v, 0.05), massTerminal:0.62, tau:0.05,
     radiant:{ ra:42.3, dec:18.6, raApp:41.1, decApp:17.9 }, vg:13.9, vh:38.4,
     shower:'散在（アンチヘリオン源）',
+    /* 軌道要素・輻射点は NS.buildCatalog で軌跡から導き直す（下の値は導出前の初期値） */
     orbit:{ a:1.862, e:0.521, i:4.83, q:0.892, Q:2.832, w:212.4, node:347.61, Tj:3.55, cls:'アポロ型' },
     strewn:{ lat:35.638, lon:140.305, a:4.6, b:1.5, az:288, pMax:0.34,
       bins:[{ m:'≥ 500 g', n:1, lat:35.629, lon:140.336 }, { m:'100–500 g', n:3, lat:35.634, lon:140.318 },
@@ -744,6 +745,16 @@ function reentryForecast() {
 /* ---------- 組み立て ---------- */
 NS.buildCatalog = function () {
   var fb = fireballBoso(), re = reentryDemo(), bal = ballisticScenario();
+  /* 輻射点・地心速度・日心軌道は、軌跡（発光点・終端点）と突入速度から導く（js/orbit3d.js）。
+     こうしておくと、軌道は必ず発生時刻の地球の位置を通り、3D 描画とも矛盾しない。 */
+  if (NS.orbitFromTrack) {
+    var od = NS.orbitFromTrack(fb);
+    if (od) {
+      fb.orbit = od.orbit; fb.radiant = od.radiant;
+      fb.vg = od.vg; fb.vh = od.vh;
+      fb.entryAngle = od.entryAngle; fb.azimuth = od.azimuth;
+    }
+  }
   NS.FLAGSHIP = { fireball:fb, reentry:re, ballistic:bal };
   NS.REENTRIES = [re, bal];
   NS.INFRA = infraEvents();
