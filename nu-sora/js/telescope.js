@@ -9,12 +9,12 @@ NS.V = NS.V || {};        /* views より先に読み込まれても壊れない
 
 /* ---------------- 望遠鏡 ---------------- */
 NS.SCOPES = [
-  /* 視野は ZWO ASI174MM のセンサー実寸 11.25 × 7.903 mm と焦点距離から求めた値 */
+  /* 視野は ZWO ASI174MM の公称 5.86 µm 角・1936 × 1216（実寸 11.34 × 7.13 mm）と焦点距離から求めた値 */
   { id:'GDM-P', name:'ガンダム望遠鏡 主鏡', short:'主鏡 600', st:'FNB', ap:600, fl:2280, fr:3.8,
-    fovX:0.2827, fovY:0.1986, res:0.526, cam:'ZWO ASI174MM-Cool', px:'1936 × 1216（11.25 × 7.903 mm）',
+    fovX:0.2851, fovY:0.1791, res:0.530, cam:'ZWO ASI174MM-Cool', px:'1936 × 1216（5.86 µm 角）',
     lim:{ 1:15.1, 10:17.7, 60:19.3, 300:20.7 }, modes:['lif', 'debris', 'astro'] },
   { id:'GDM-S', name:'ガンダム望遠鏡 副鏡', short:'副鏡 200', st:'FNB', ap:200, fl:600, fr:3.0,
-    fovX:1.0743, fovY:0.7547, res:1.998, cam:'ZWO ASI174MM-Cool', px:'1936 × 1216（11.25 × 7.903 mm）',
+    fovX:1.0833, fovY:0.6805, res:2.015, cam:'ZWO ASI174MM-Cool', px:'1936 × 1216（5.86 µm 角）',
     lim:{ 1:12.6, 10:15.2, 60:16.8, 300:18.2 }, modes:['lif', 'debris', 'astro'] },
   { id:'DRC-F', name:'Draco 船橋局', short:'Draco 船橋', st:'FNB', ap:90, fl:340, fr:3.8,
     fovX:1.70, fovY:1.30, res:1.5, cam:'1/1.3" 50 MP CMOS', px:'8192 × 6144（ビニングで 4096 × 3072）',
@@ -285,28 +285,40 @@ NS.ScopeView = function (opts) {
     var nx = CX + (waxing ? -R * 0.55 : R * 0.55);
     ctx.setLineDash([4, 4]); ctx.strokeStyle = 'rgba(214,64,95,0.55)'; ctx.lineWidth = 1.2;
     ctx.beginPath(); ctx.arc(nx, CY, R * 0.42, 0, 7); ctx.stroke(); ctx.setLineDash([]);
+    /* ラベルは円の外側（月の外）へ出す。閃光と重ならないようにするため。 */
     ctx.font = '10px ui-monospace, monospace'; ctx.fillStyle = 'rgba(232,121,143,0.9)';
-    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
-    ctx.fillText(NS.t('夜側（地球照）＝検出対象'), nx, CY + R * 0.42 + 6);
+    ctx.textBaseline = 'middle';
+    if (waxing) { ctx.textAlign = 'right'; ctx.fillText(NS.t('夜側（地球照）＝検出対象'), nx - R * 0.42 - 8, CY); }
+    else        { ctx.textAlign = 'left';  ctx.fillText(NS.t('夜側（地球照）＝検出対象'), nx + R * 0.42 + 8, CY); }
     ctx.textBaseline = 'bottom'; ctx.fillStyle = 'rgba(170,182,200,0.75)';
     ctx.fillText(NS.t('月齢 ') + f(ph * 29.53, 1) + NS.t('　輝面比 ') + Math.round(fI * 100) + ' %', CX, CY - R - 8);
 
     /* 衝突閃光（数秒ごとに夜側で点滅する） */
+    /* 衝突閃光は望遠鏡では分解されない点光源で、継続も 1〜数フレームしかない。
+       目立たせすぎると実際の見え方から離れるので、小さな点像と控えめな検出枠で描く。 */
     var el3 = (performance.now() - A.t0) / 1000, cyc = el3 % 9;
-    if (cyc < 0.5) {
+    if (cyc < 0.34) {
       var r2 = NS.rng('flash' + Math.floor(el3 / 9));
-      var fa = r2() * 2 * Math.PI, fd = Math.sqrt(r2()) * R * 0.72;
-      var fx2 = nx + Math.cos(fa) * fd * 0.55, fy2 = CY + Math.sin(fa) * fd * 0.72;
-      var amp = Math.max(0, 1 - cyc / 0.5);
-      var gg = ctx.createRadialGradient(fx2, fy2, 0, fx2, fy2, 20 * amp + 4);
-      gg.addColorStop(0, 'rgba(255,240,200,' + (0.95 * amp).toFixed(2) + ')');
-      gg.addColorStop(1, 'rgba(255,240,200,0)');
-      ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(fx2, fy2, 20 * amp + 4, 0, 7); ctx.fill();
-      ctx.strokeStyle = 'rgba(214,64,95,0.95)'; ctx.lineWidth = 1.4;
-      ctx.beginPath(); ctx.arc(fx2, fy2, 13, 0, 7); ctx.stroke();
-      ctx.font = '600 10px ui-monospace, monospace'; ctx.fillStyle = '#E8798F';
+      var fa = r2() * 2 * Math.PI, fd = Math.sqrt(r2()) * R * 0.36;   /* 夜側の円の内側に収める */
+      var fx2 = nx + Math.cos(fa) * fd, fy2 = CY + Math.sin(fa) * fd;
+      var amp = Math.max(0, 1 - cyc / 0.34);
+      var rad = 5 * amp + 1.6;
+      var gg = ctx.createRadialGradient(fx2, fy2, 0, fx2, fy2, rad);
+      gg.addColorStop(0, 'rgba(255,244,214,' + (0.80 * amp).toFixed(2) + ')');
+      gg.addColorStop(1, 'rgba(255,244,214,0)');
+      ctx.fillStyle = gg; ctx.beginPath(); ctx.arc(fx2, fy2, rad, 0, 7); ctx.fill();
+      /* 芯は 1 px 強の点 */
+      ctx.beginPath(); ctx.arc(fx2, fy2, 1.1, 0, 7);
+      ctx.fillStyle = 'rgba(255,250,232,' + (0.95 * amp).toFixed(2) + ')'; ctx.fill();
+      /* 検出枠は細い破線で小さく */
+      ctx.save();
+      ctx.setLineDash([2, 3]);
+      ctx.strokeStyle = 'rgba(214,64,95,0.6)'; ctx.lineWidth = 0.9;
+      ctx.beginPath(); ctx.arc(fx2, fy2, 7, 0, 7); ctx.stroke();
+      ctx.restore();
+      ctx.font = '9px ui-monospace, monospace'; ctx.fillStyle = 'rgba(232,121,143,0.8)';
       ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-      ctx.fillText(NS.t('閃光候補 検出'), fx2 + 16, fy2);
+      ctx.fillText(NS.t('閃光候補'), fx2 + 10, fy2);
     }
   }
 
@@ -583,13 +595,13 @@ NS.V.telescope = function (root, go, arg) {
 
   /* --- 三段構えの説明 --- */
   NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('視野の受け渡し', {
-    note:'同じ事象を、広さの違う視野で順に受け渡す。数字は ZWO ASI174MM のセンサー実寸から求めた値' },
+    note:'同じ事象を、広さの違う視野で順に受け渡す。数字は ZWO ASI174MM の公称 5.86 µm 角から求めた値' },
     [NS.table(['装置', '視野', '分解能', '役割', '設置'], [
       ['全天カメラ（IMX664 ×2）', '約 95°', '約 6′/px', '空全体を 24 時間見張り、事象を見つける', '全 14 局'],
       ['Draco 広角カメラ', '85.7°', '約 1.6′/px', '流星群の輻射点や天の川を広く押さえる', '船橋・郡山（工学部）の 2 局'],
       ['Draco 望遠', '1.70° × 1.30°', '1.5″', '見つけた事象へ数十秒で向け、測光する', '船橋・郡山（工学部）の 2 局'],
-      ['ガンダム望遠鏡 副鏡 200 mm', '1.07° × 0.75°（64.5′ × 45.3′）', '2.00″/px', '月面全体を収める。目標の捕捉にも使う', '船橋'],
-      ['ガンダム望遠鏡 主鏡 600 mm', '0.283° × 0.199°（17.0′ × 11.9′）', '0.53″/px', '月面衝突閃光・掩蔽など、深く細かく見る', '船橋']
+      ['ガンダム望遠鏡 副鏡 200 mm', '1.083° × 0.680°（65.0′ × 40.8′）', '2.01″/px', '月面全体を収める。目標の捕捉にも使う', '船橋'],
+      ['ガンダム望遠鏡 主鏡 600 mm', '0.285° × 0.179°（17.1′ × 10.7′）', '0.53″/px', '月面衝突閃光・掩蔽など、深く細かく見る', '船橋']
     ], 'wide'),
     el('div', { class:'note', text:'全天カメラが「どこで何が起きたか」を出し、Draco が「そこを拡大して測る」、'
       + 'ガンダム望遠鏡が「さらに深く押さえる」。この受け渡しを自動化できれば、突発天体への追随が人の判断を待たずに進む。' }),

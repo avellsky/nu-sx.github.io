@@ -14,15 +14,17 @@ NS.GUNDAM = {
          label:'日本大学理工学部 船橋キャンパス' },
   mount:'昭和機械製作所 フォーク式赤道儀 35EF（2 筒同架）',
   built:'日本大学理工学研究所「先導研究推進助成金」により構築',
-  /* 視野と分解能はセンサーの実寸から求める（下の NS.gdFov / NS.gdPix）。 */
-  sensor:{ w:11.25, h:7.903, nx:1936, ny:1216 },
+  /* 視野と分解能はセンサーの実寸から求める（下の NS.gdFov / NS.gdPix）。
+     ASI174MM は 5.86 µm 角・1936 × 1216 なので、実寸は 11.345 × 7.126 mm（対角 13.4 mm）。
+     この値で計算すると、遊星人 (2024) 表 1 の 1.08° × 0.68°・2.0 ″/px（副鏡 600 mm）と一致する。 */
+  sensor:{ pitch:0.00586, nx:1936, ny:1216 },
   tubes:[
     { key:'primary',   name:'主鏡 RiFast 600', maker:'Officina Stellare', type:'カセグレン式',
       dia:600, fl:2280, fr:3.8 },
     { key:'secondary', name:'副鏡 Veloce 200', maker:'Officina Stellare', type:'カセグレン式',
       dia:200, fl:600,  fr:3.0 }
   ],
-  camera:{ model:'ZWO ASI174MM-Cool', pix:'1936 × 1216', sens:'11.25 × 7.903 mm', exp:16.7, fps:60,
+  camera:{ model:'ZWO ASI174MM-Cool', pix:'1936 × 1216', pitch:5.86, exp:16.7, fps:60,
            adc:12, iface:'USB3.0', band:'350 – 800 nm（量子効率 20 % 以上）',
            note:'GPS に同期した冷却式高感度 CMOS。フィルター無しでカセグレン焦点に直結し、SER 形式の動画で記録する' },
   /* 2018 年ふたご座流星群キャンペーンの実測（電通大と同時検出が成立した 11 個） */
@@ -52,13 +54,17 @@ NS.GUNDAM = {
 
 /* センサーの実寸と焦点距離から視野（度）を出す。fov = 2·atan(寸法 / 2f) */
 NS.gdFov = function (fl) {
-  var S = NS.GUNDAM.sensor;
-  return { x:2 * Math.atan(S.w / 2 / fl) * NS.r2d, y:2 * Math.atan(S.h / 2 / fl) * NS.r2d };
+  var S = NS.GUNDAM.sensor, w = S.pitch * S.nx, h = S.pitch * S.ny;
+  return { x:2 * Math.atan(w / 2 / fl) * NS.r2d, y:2 * Math.atan(h / 2 / fl) * NS.r2d };
 };
 /* 1 画素あたりの分解能（秒角） */
 NS.gdPix = function (fl) {
+  return Math.atan(NS.GUNDAM.sensor.pitch / fl) * NS.r2d * 3600;
+};
+/* センサー実寸の表記 */
+NS.gdSensor = function () {
   var S = NS.GUNDAM.sensor;
-  return Math.atan(S.w / S.nx / fl) * NS.r2d * 3600;
+  return NS.f(S.pitch * S.nx, 2) + ' × ' + NS.f(S.pitch * S.ny, 2) + ' mm';
 };
 NS.GUNDAM.tubes.forEach(function (t) {
   var v = NS.gdFov(t.fl);
@@ -80,7 +86,7 @@ NS.GD_MODES = [
     note:'月齢 3 – 10 と 20 – 27 の、夜側が地球を向く時期に観測する' },
   { key:'debris', label:'スペースデブリ', icon:'🛰', tube:'副鏡 200 mm',
     target:'LEO / GEO の追跡目標', cad:'0.5 – 30 s 露出', product:'測光光度曲線・軌道改良',
-    note:'広い視野（1.07° × 0.75°）で捕捉し、光度変化から自転周期と姿勢を推定する' },
+    note:'広い視野（1.08° × 0.68°）で捕捉し、光度変化から自転周期と姿勢を推定する' },
   { key:'astro',  label:'天体観測', icon:'✦', tube:'主鏡 600 mm',
     target:'小惑星・彗星・恒星掩蔽・変光星', cad:'1 – 120 s 露出', product:'測光・位置測定',
     note:'分解能 0.8″ を活かした位置測定と、掩蔽による小天体の形状推定' }
@@ -183,7 +189,7 @@ NS.gundamSection = function (go) {
       text:'船橋局には、観測網の標準機材に加えて、口径 600 mm と 200 mm のカセグレン式望遠鏡を 1 台のフォーク式赤道儀に同架した「ガンダム望遠鏡」がある。月面衝突閃光の観測のために構築されたシステムで、屋上観測網が捉える地球大気への突入現象に対して、同じ流星物質が「大気のない月面に衝突したとき」を同時に押さえられる。スペースデブリの追跡と一般の天体観測にも使い、遠隔操作と観測計画の自動化を通じてデジタルツインの試験台とする。' }),
     el('div', { class:'grid g4' }, [
       kpi('口径', '600 / 200', 'mm', '焦点距離 2,280 / 600 mm。2 筒を 1 台の赤道儀に同架', { acc:true, icon:'⊙' }),
-      kpi('画素分解能', NS.f(G.tubes[0].res, 2) + ' / ' + NS.f(G.tubes[1].res, 2), '″/px', 'ASI174MM（画素 5.81 µm）を付けた場合'),
+      kpi('画素分解能', NS.f(G.tubes[0].res, 2) + ' / ' + NS.f(G.tubes[1].res, 2), '″/px', 'ASI174MM（画素 5.86 µm 角）を付けた場合'),
       kpi('撮像速度', '60', 'fps', '露出 16.7 ms · SER 形式で記録'),
       kpi('検出実績', '11', '個', '2018 年ふたご座流星群・約 3 時間')
     ])
@@ -199,7 +205,7 @@ NS.gundamSection = function (go) {
             { class:'r mono', html:'F' + x.fr.toFixed(1) }, { class:'r mono', html:NS.f(x.res, 2) },
             { class:'r mono', html:x.fov }, { class:'r mono', html:x.fovMin }];
         })),
-      el('div', { class:'note', html:'視野は ZWO ASI174MM のセンサー実寸 <b>11.25 × 7.903 mm</b> と焦点距離から '
+      el('div', { class:'note', html:'視野は ZWO ASI174MM のセンサー実寸 <b>' + NS.gdSensor() + '</b>（5.86 µm 角 × 1936 × 1216）と焦点距離から '
         + '<b>2·atan(寸法 / 2f)</b> で求めた。主鏡の視野 ' + G.tubes[0].fovMin + ' は<b>月の視直径（約 31′）より狭い</b>ため、'
         + '月面全体は覆えない。副鏡の ' + G.tubes[1].fovMin + ' が月面全体を収め、主鏡が ' + NS.f(G.tubes[0].res, 2)
         + ' ″/px の細かさで位置を詰める、という役割分担になる。' }),
@@ -213,7 +219,7 @@ NS.gundamSection = function (go) {
     ]),
     panel('検出器', { note:G.camera.model }, [
       kv([
-        ['画素数', G.camera.pix + '　<span class="hint">センサー ' + G.camera.sens + '</span>'],
+        ['画素数', G.camera.pix + '（' + G.camera.pitch + ' µm 角）　<span class="hint">センサー ' + NS.gdSensor() + '</span>'],
         ['露出時間', G.camera.exp + ' ms'],
         ['フレームレート', G.camera.fps + ' fps'],
         ['ADC', G.camera.adc + ' bit'],
@@ -247,7 +253,8 @@ NS.gundamSection = function (go) {
   out.push(NS.gdTwinPanel(t));
 
   out.push(el('div', { class:'src', html:'光学系の諸元は現行の構成であり、視野と画素分解能は '
-    + 'ZWO ASI174MM のセンサー実寸（11.25 × 7.903 mm）と焦点距離（2,280 / 600 mm）から 2·atan(寸法 / 2f) で求めた。<br>'
+    + 'ZWO ASI174MM の画素 5.86 µm 角・1936 × 1216（実寸 11.34 × 7.13 mm）と焦点距離（2,280 / 600 mm）から 2·atan(寸法 / 2f) で求めた。'
+    + 'この計算は、同論文 表 1 の副鏡 1.08° × 0.68°・2.0 ″/px を再現する。<br>'
     + '2018 年ふたご座流星群の観測結果（11 個の閃光・質量・直径・クレータ径・フラックス・各指数）は、'
     + '阿部新助・柳澤正久・小野寺圭祐「ふたご座流星群の月面衝突閃光から探る活動小惑星 Phaethon の cm サイズ粒子」'
     + '<i>日本惑星科学会誌 遊星人</i> <b>33</b> (3), 262–269 (2024)　'
@@ -366,13 +373,13 @@ NS.gdDebrisPanel = function (go) {
     yFmt:function (v) { return v.toFixed(1); } });
 
   return panel('② スペースデブリ観測', {
-    note:'副鏡 200 mm（視野 1.07° × 0.75°）で捕捉し、主鏡 600 mm で追跡する',
+    note:'副鏡 200 mm（視野 1.08° × 0.68°）で捕捉し、主鏡 600 mm で追跡する',
     tools:NS.badge('デモ用の模擬データ', 'warn') }, [
     el('p', { style:{ margin:'0 0 12px', color:'var(--ink2)' },
       text:'公開軌道要素（TLE）から予報した通過に合わせて自動で追尾し、測光する。光度の周期変化から物体の自転周期と姿勢の乱れが分かり、再突入の時期と破砕のしかたの予測に効く。デブリ再突入の画面で扱う「落ちてくる瞬間の分光」に対して、こちらは「落ちる前の状態」を押さえる役割を持つ。' }),
     el('div', { class:'grid g4' }, [
       kpi('追尾方式', 'TLE 追尾', '', '軌道要素から予報した通過を自動で追う', { icon:'🛰' }),
-      kpi('捕捉視野', '1.07 × 0.75', 'deg', '副鏡 200 mm ＋ ASI174MM（64.5′ × 45.3′）'),
+      kpi('捕捉視野', '1.08 × 0.68', 'deg', '副鏡 200 mm ＋ ASI174MM（65.0′ × 40.8′）'),
       kpi('測光の時間分解能', '16.7', 'ms', '高速自転体の光度変化も追える'),
       kpi('今夜の予定', targets.length, '目標', '静止衛星帯サーベイと再突入予報天体を含む')
     ]),
