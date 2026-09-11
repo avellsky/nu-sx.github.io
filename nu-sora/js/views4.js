@@ -188,7 +188,7 @@ NS.V.quake = function (root, go, arg) {
     el('span', { html:'<i style="background:var(--c-infra)"></i>インフラサウンド' })]));
 
   var detTable = panel('検知の時系列', { note:ts.det.length + ' 件・' + NS.fmtJST(ts.t, { sec:false }) + ' JST の地震' },
-    NS.table(['経過', '局', 'センサー', '内容'], ts.det.map(function (d) {
+    NS.table(['経過', '観測局', 'センサー', '内容'], ts.det.map(function (d) {
       return { attrs:{ class:'clk', onclick:function () { go('station', d.id); } }, cells:[
         { class:'r mono', html:'+' + NS.f(d.dt, 1) + ' 分' }, NS.ST[d.id].name,
         badge(d.kind, d.kind === 'GNSS' ? 'info' : d.kind === 'インフラサウンド' ? 'ok' : 'warn'),
@@ -328,7 +328,7 @@ NS.V.quake = function (root, go, arg) {
   }).sort(function (a, b) { return b.pga - a.pga; });
   NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('校舎の使用可否判定（全 14 局・DT-6）',
     { note:'常時微動から同定した 1 次固有振動数を地震前後で比較する。低下が 5 % を超えたら「点検要」を自動発報する' },
-    [NS.table(['局', '設置校', '地震前 f₀', '地震後 f₀', '変化', '最大加速度', '判定'], rows.map(function (r) {
+    [NS.table(['観測局', '設置校', '地震前 f₀', '地震後 f₀', '変化', '最大加速度', '判定'], rows.map(function (r) {
       return { attrs:{ class:'clk', onclick:function () { go('station', r.st.id); } }, cells:[
         el('b', { text:r.st.name }), { class:'sm', html:r.st.host.split('・')[0] },
         { class:'r', html:NS.f(r.pre, 2) + ' Hz' }, { class:'r', html:NS.f(r.f0, 2) + ' Hz' },

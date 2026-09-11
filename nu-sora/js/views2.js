@@ -189,7 +189,7 @@ NS.V.fireball = function (root, go, arg) {
     M.fit([e.begin, e.end].concat(e.strewn ? [e.strewn] : []), 1.15);
 
     var detTable = panel('検出局と観測条件', { note:'視野内 ' + e.stationsFov + ' 局 / 検出 ' + e.stationsDet + ' 局' },
-      NS.table(['局', '最大等級', '仰角', 'S/N', 'インフラサウンド', '備考'],
+      NS.table(['観測局', '最大等級', '仰角', 'S/N', 'インフラサウンド', '備考'],
         e.det.map(function (d) {
           var st = NS.ST[d.id];
           return { attrs:{ class:'clk', onclick:function () { go('station', d.id); } }, cells:[
@@ -257,7 +257,7 @@ NS.V.fireball = function (root, go, arg) {
             rules:infraDet.map(function (d, i) { return { x:d.infra.dt, color:'var(--muted)', dash:'2 3', label:NS.ST[d.id].id }; }) }),
           el('div', { class:'note', text:'到達時刻差から音源高度と位置を拘束する。見かけの音速は ' + NS.f(0.30, 2) + ' km/s 前後で、伝搬経路の高層風で変動する。' })
         ]),
-        panel('到達時刻と方位', null, NS.table(['局', '到達', '周期 P', '振幅', '到来方位'],
+        panel('到達時刻と方位', null, NS.table(['観測局', '到達', '周期 P', '振幅', '到来方位'],
           infraDet.map(function (d) {
             return [NS.ST[d.id].name, { class:'r', html:'＋' + NS.f(d.infra.dt, 1) + ' s' },
               { class:'r', html:NS.f(d.infra.P, 2) + ' s' }, { class:'r', html:NS.f(d.infra.amp, 2) + ' Pa' },
@@ -726,7 +726,7 @@ NS.V.reentry = function (root, go, arg) {
       el('div', { class:'note', text:e.swirObs.note })
     ]),
     panel('検出局', { note:'視野内 ' + e.stationsFov + ' 局 / 検出 ' + e.stationsDet + ' 局' },
-      NS.table(['局', '最大等級', '仰角', 'SWIR', '音響'], e.det.map(function (d) {
+      NS.table(['観測局', '最大等級', '仰角', 'SWIR', '音響'], e.det.map(function (d) {
         return { attrs:{ class:'clk', onclick:function () { go('station', d.id); } }, cells:[
           NS.ST[d.id].name, { class:'r', html:NS.mag(d.mag) }, { class:'r', html:NS.f(d.elev, 1) + '°' },
           d.swir ? badge('取得', 'info') : '<span class="hint">—</span>',
@@ -862,7 +862,7 @@ NS.V.infra = function (root, go, arg) {
     var mb = mp.querySelector('.panel-b'); mb.classList.add('flush'); mb.appendChild(M.node);
 
     var tbl = panel('到達時刻・方位', { note:e.src.name },
-      NS.table(['局', '距離', '到達', '到来方位', '振幅', '周期', '位相'], e.det.map(function (d) {
+      NS.table(['観測局', '距離', '到達', '到来方位', '振幅', '周期', '位相'], e.det.map(function (d) {
         return { attrs:{ class:'clk', onclick:function () { go('station', d.id); } }, cells:[
           NS.ST[d.id].name, { class:'r', html:NS.f(d.dist, 1) + ' km' }, { class:'r mono', html:'＋' + NS.f(d.dt, 1) + ' s' },
           { class:'r', html:NS.f(d.az, 1) + '° ±' + NS.f(d.azErr, 1) + '°' }, { class:'r', html:NS.f(d.amp, 2) + ' Pa' },
@@ -902,7 +902,7 @@ NS.V.infra = function (root, go, arg) {
         NS.chart.bars({ bars:bars, width:450, height:200, yLabel:'Hz', yMax:5 }),
         el('div', { class:'note', text:'固有振動数は剛性の平方根に比例するため、低下率は構造損傷の指標になる。5 % を超えた場合に「点検要」を自動発報する。' })
       ]),
-      panel('局別判定', null, NS.table(['局', '震央距離', '地震前 f₀', '地震後 f₀', '変化', 'PGA', '判定'],
+      panel('局別判定', null, NS.table(['観測局', '震央距離', '地震前 f₀', '地震後 f₀', '変化', 'PGA', '判定'],
         e.det.map(function (d) {
           return [NS.ST[d.id].name, { class:'r', html:NS.f(d.dist, 1) + ' km' }, { class:'r', html:NS.f(d.f0pre, 2) + ' Hz' },
             { class:'r', html:NS.f(d.f0, 2) + ' Hz' }, { class:'r', html:NS.f(d.drift, 1) + ' %' },

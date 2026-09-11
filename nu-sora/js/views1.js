@@ -428,7 +428,7 @@ NS.V.map = function (root, go, arg) {
           e >= 15 ? '検出は可能・測位精度は低下' : '大火球のみ・低仰角の減光が大きい'];
       }))]),
     panel('観測局の一覧', { note:'座標は概略位置', tools:el('button', { class:'iconbtn', text:'詳細一覧 →', onclick:function () { go('stations'); } }) },
-      NS.table(['局', '所在地', '種別', '標高', '設置'], NS.STATIONS.map(function (st) {
+      NS.table(['観測局', '所在地', '種別', '標高', '設置'], NS.STATIONS.map(function (st) {
         return { attrs:{ class:'clk', onclick:function () { go('station', st.id); } },
           cells:[el('b', { text:st.name }), st.pref + ' ' + st.city, st.kind === 'u' ? '大学キャンパス' : '付属校',
                  { class:'r', html:st.alt + ' m' }, { html:'<span class="sm">' + st.inst + '</span>' }] };
@@ -460,7 +460,7 @@ NS.V.stations = function (root, go) {
 
   NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('観測局 一覧（14 局）',
     { note:'局をクリックすると、その局の全データ一覧（全センサーの実況と諸元）を開く' },
-    NS.table(['局', 'ID', '所在地', '種別', '設置機関', '座標 / 標高', '状態', '稼働率'],
+    NS.table(['観測局', 'ID', '所在地', '種別', '設置機関', '座標 / 標高', '状態', '稼働率'],
       NS.STATIONS.map(function (st) {
         var s2 = NS.stationState(st, t);
         return { attrs:{ class:'clk', onclick:function () { go('station', st.id); } }, cells:[

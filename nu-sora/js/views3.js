@@ -45,7 +45,7 @@ NS.V.weather = function (root, go, arg) {
   ]));
 
   var rank = panel('局別の現況（WBGT 降順）', { note:NS.fmtJST(t) + ' JST' },
-    NS.table(['局', 'WBGT', '区分', '気温', '湿度', '風', '日射', '雲量'], rows.map(function (r) {
+    NS.table(['観測局', 'WBGT', '区分', '気温', '湿度', '風', '日射', '雲量'], rows.map(function (r) {
       var l = NS.wbgtLevel(r.w.wbgt);
       return { attrs:{ class:'clk', onclick:function () { go('station', r.st.id); } }, cells:[
         el('b', { text:r.st.name }),
@@ -216,7 +216,7 @@ NS.V.skyglow = function (root, go, arg) {
   ]));
 
   var rank = panel('局別の平常値（暗い順）', { note:'Bortle スケールは Bortle (2001) による区分' },
-    NS.table(['局', '平常値', 'Bortle', '空の状態', '現在値', '光害量'], sorted.map(function (st) {
+    NS.table(['観測局', '平常値', 'Bortle', '空の状態', '現在値', '光害量'], sorted.map(function (st) {
       var b = NS.bortle(st.sqm), sb = NS.skyBrightness(st, t);
       return { attrs:{ class:'clk', onclick:function () { go('station', st.id); } }, cells:[
         el('b', { text:st.name }),
@@ -555,7 +555,7 @@ NS.STAGE = {
         ['判定', '<b>火球候補</b>　信頼度 0.98'],
         ['この時点で分かること', '各局が「いつ・空のどこに」光を見たか。まだ高度も距離も分からない'],
         ['所要', '検出から 1.2 秒以内（局内で完結し、クラウドを経由しない）']], 'wide'),
-      NS.table(['局', '検出時刻 (JST)', '仰角', 'S/N', '最大等級', '判定'], e.det.map(function (d) {
+      NS.table(['観測局', '検出時刻 (JST)', '仰角', 'S/N', '最大等級', '判定'], e.det.map(function (d) {
         return [NS.ST[d.id].name, { class:'mono sm', html:d.cloud ? '—' : c.at(0) },
           { class:'r', html:NS.f(d.elev, 1) + '°' }, { class:'r', html:d.snr == null ? '—' : NS.f(d.snr, 0) },
           { class:'r', html:d.mag == null ? '—' : NS.mag(d.mag) },
@@ -571,7 +571,7 @@ NS.STAGE = {
         ['結果', '<b>' + e.stationsDet + ' 局</b>が同一事象と判定（視野内 ' + e.stationsFov + ' 局）'],
         ['時刻残差', '± 12 ms（GNSS 同期 ＋ IP カメラの転送遅延補正後）'],
         ['この時点で分かること', '同じ一つの火球を何局が見たか。多点解析が成立するかどうか']], 'wide'),
-      NS.table(['局', 'GNSS 時刻', '基準との差', '転送遅延補正', '対応づけ'], e.det.map(function (d) {
+      NS.table(['観測局', 'GNSS 時刻', '基準との差', '転送遅延補正', '対応づけ'], e.det.map(function (d) {
         var dm = d.cloud ? null : r0.norm(0, 9);
         return [NS.ST[d.id].name, { class:'mono sm', html:d.cloud ? '—' : c.at(0) },
           { class:'r', html:dm == null ? '—' : (dm > 0 ? '+' : '') + NS.f(dm, 0) + ' ms' },
@@ -650,7 +650,7 @@ NS.STAGE = {
         ['音響 全エネルギー', '<b>' + NS.f(e.EinfKt * 4.184e3, 2) + ' GJ</b>（周期 ' + NS.f(e.infraP, 2) + ' s）'],
         ['両者の比', NS.f(e.EinfKt / e.EKt, 2) + ' 倍　<span class="hint">因子 2 以内で整合し、光学推定を裏づけた</span>'],
         ['この時点で分かること', '独立な二つの物理から同じ答えが出るか。単独センサーの観測網にはできない検証']], 'wide'),
-      NS.table(['局', '到達', '周期 P', '振幅', '到来方位'], inf.map(function (d) {
+      NS.table(['観測局', '到達', '周期 P', '振幅', '到来方位'], inf.map(function (d) {
         return [NS.ST[d.id].name, { class:'r mono', html:'＋' + NS.f(d.infra.dt, 1) + ' s' },
           { class:'r', html:NS.f(d.infra.P, 2) + ' s' }, { class:'r', html:NS.f(d.infra.amp, 2) + ' Pa' },
           { class:'r', html:NS.f(d.infra.az, 1) + '°' }];
@@ -688,7 +688,7 @@ NS.STAGE['rb-detect'] = function (b, c) {
     ['検知局', s3.map(function (d) { return NS.ST[d.id].name; }).join('・') + ' の 3 局'],
     ['距離', '音源まで 26–62 km。<b>帯の直下にいない局が最初に捉えた</b>'],
     ['この時点で分かること', '東〜東南東の方向で、雷を伴う対流が連続して起きている']], 'wide'),
-    NS.table(['局', '帯の軸まで', '到来方位', '方位のばらつき', '雷検知数（全期間）'], rb.det.map(function (d) {
+    NS.table(['観測局', '帯の軸まで', '到来方位', '方位のばらつき', '雷検知数（全期間）'], rb.det.map(function (d) {
       return [NS.ST[d.id].name, { class:'r', html:d.axisKm + ' km' },
         { class:'r mono', html:'<b>' + NS.f(d.az, 0) + '°</b>' }, { class:'r', html:'±' + NS.f(d.azSd, 1) + '°' },
         { class:'r', html:d.strikes.toLocaleString() }];
@@ -761,7 +761,7 @@ NS.STAGE['rb-verify'] = function (b, c) {
     ['帯の直下（推定）', '最大 1 時間降水量 ' + rb.rainPeak1h + ' mm/h（' + rb.rainPeakPlace + '）'],
     ['先行時間の実績', '雷放電の急増（+12 分）は、船橋局が 30 mm/h に達する（+150 分）より <b>2 時間以上</b>早い'],
     ['この時点で分かること', '音と水蒸気による予測が、実際の雨量で裏づけられたか']], 'wide'),
-    NS.table(['局', '帯の軸まで', '6 h 雨量', '最大 1 h', '最大瞬間風速', 'PWV'], rb.det.map(function (d) {
+    NS.table(['観測局', '帯の軸まで', '6 h 雨量', '最大 1 h', '最大瞬間風速', 'PWV'], rb.det.map(function (d) {
       return [NS.ST[d.id].name, { class:'r', html:d.axisKm + ' km' }, { class:'r', html:NS.f(d.rain6h, 1) + ' mm' },
         { class:'r', html:NS.f(d.rainMax, 1) + ' mm/h' }, { class:'r', html:NS.f(d.gust, 1) + ' m/s' },
         { class:'r', html:d.pwv0 + '→' + d.pwvMax + ' mm' }];
@@ -787,7 +787,7 @@ NS.STAGE['ts-quake'] = function (b, c) {
     ['外部情報', q.src + '　／　' + NS.f(ts.jmaWarn.dt, 0) + ' 分後に' + ts.jmaWarn.text],
     ['この時点で分かること', '地震が起きたこと。<b>津波が来るかどうか、どれだけ来るかはまだ分からない</b>'],
     ['校舎の判定', '各局で地震前後の固有振動数を比較し、使用可否を自動判定（DT-6）']], 'wide'),
-    NS.table(['局', 'P 波到達', '最大加速度', '校舎の判定'], seis.map(function (d) {
+    NS.table(['観測局', 'P 波到達', '最大加速度', '校舎の判定'], seis.map(function (d) {
       return [NS.ST[d.id].name, { class:'mono sm', html:d.val.split(' / ')[0] },
         { class:'r', html:d.val.split(' / ')[1] }, NS.badge('継続使用可', 'ok')];
     })),
@@ -802,7 +802,7 @@ NS.STAGE['ts-tec'] = function (b, c) {
     ['物理', '海面と地殻の上下変動が音波として上方へ伝わり、高度 300 km 付近の電離圏を揺らす。大気の音波共振モードに対応する'],
     ['この時点で分かること', '海面が実際に大きく動いたこと。断層モデルを待たずに確認できる'],
     ['根拠', 'Kakinami et al. (2013) レイリー波に伴う電離圏さざ波ほか']], 'wide'),
-    NS.table(['局', '検知', '内容', '備考'], g.map(function (d) {
+    NS.table(['観測局', '検知', '内容', '備考'], g.map(function (d) {
       return [NS.ST[d.id].name, { class:'r mono', html:'+' + NS.f(d.dt, 1) + ' 分' }, d.val, { class:'sm', html:d.note || '' }];
     })),
     el('div', { class:'note', text:'GEONET は全国 1,300 点を超える密度を持つが、本観測網の 14 局は学校に置かれており、得られた擾乱をその場で学校の判断に結びつけられる点が違う（G-5）。' })]);
@@ -816,7 +816,7 @@ NS.STAGE['ts-acou'] = function (b, c) {
     ['意味', '電離圏（GNSS）とは独立な経路で、同じ海面変動を確認できる'],
     ['この時点で分かること', '二つの独立したセンサーが同じ事象を指している。誤検知の可能性が下がる'],
     ['根拠', 'Nishikawa et al. (2022) トンガ噴火の大気重力波が後続津波を励起した観測']], 'wide'),
-    NS.table(['局', '到達', '周波数帯・振幅', '備考'], a.map(function (d) {
+    NS.table(['観測局', '到達', '周波数帯・振幅', '備考'], a.map(function (d) {
       return [NS.ST[d.id].name, { class:'r mono', html:'+' + NS.f(d.dt, 1) + ' 分' }, d.val, { class:'sm', html:d.note || '' }];
     })),
     el('div', { class:'note', text:'同じインフラサウンドセンサーが、火球の衝撃波（G-1）・火山噴火（G-4）・雷（G-6）・津波を一つの装置で捉える。一つのセンサー網が宇宙起源と地球起源の双方に効くことが、本観測網の設計思想である。' })]);
@@ -906,7 +906,7 @@ NS.STAGE['vo-locate'] = function (b, c) {
     ['見かけの音速', NS.f(vo.cel, 3) + ' km/s'],
     ['較正', '種子島の打上げ（発生時刻・位置が既知）で定位精度 3.1 km を確認済み'],
     ['この時点で分かること', 'どの火山のどの火口か。規模の見積もりに進める']], 'wide'),
-    NS.table(['局', '距離', '到達', '到来方位', '振幅', '位相'], vo.det.map(function (d) {
+    NS.table(['観測局', '距離', '到達', '到来方位', '振幅', '位相'], vo.det.map(function (d) {
       return [NS.ST[d.id].name, { class:'r', html:NS.f(d.dist, 1) + ' km' }, { class:'r mono', html:'＋' + NS.f(d.dt, 1) + ' s' },
         { class:'r', html:NS.f(d.az, 1) + '° ±' + NS.f(d.azErr, 1) + '°' }, { class:'r', html:NS.f(d.amp, 2) + ' Pa' },
         { class:'sm', html:'<span style="white-space:nowrap">' + d.phase + '</span>' }];
@@ -1331,7 +1331,7 @@ NS.rainbandSection = function (go) {
   /* ---- 局別・判定条件・経過 ---- */
   NS.add(wrap, el('div', { class:'grid g3' }, [
     panel('局別の検知状況', { note:'帯の軸からの距離順' },
-      NS.table(['局', '帯まで', '雷検知', '到来方位', '6 h 雨量', '最大 1 h', 'PWV'],
+      NS.table(['観測局', '帯まで', '雷検知', '到来方位', '6 h 雨量', '最大 1 h', 'PWV'],
         rb.det.map(function (d) {
           return { attrs:{ class:'clk', onclick:function () { go('station', d.id); } }, cells:[
             el('b', { text:NS.ST[d.id].name }),
