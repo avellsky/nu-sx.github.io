@@ -86,7 +86,7 @@ NS.V.dashboard = function (root, go) {
 
   NS.add(root, el('div', { class:'page-h' }, [
     el('h2', { text:'総合ダッシュボード' }),
-    el('p', { text:'全国 13 局の観測局から集約した「日本の空」の現況。火球・スペースデブリ再突入・インフラサウンド・気象・夜空輝度を 24 時間連続で監視する。' })
+    el('p', { text:'全国 14 局の観測局から集約した「日本の空」の現況。火球・スペースデブリ再突入・インフラサウンド・気象・夜空輝度を 24 時間連続で監視する。' })
   ]));
 
   /* 状態バー */
@@ -102,8 +102,8 @@ NS.V.dashboard = function (root, go) {
     el('div', { class:'grid g4' }, [
       kpi('観測網 稼働率', NS.f(n.uptime, 2), '%', '直近 30 日平均', { acc:true,
         spark:Array.from({ length:24 }, function (_, i) { return 99.2 + NS.rng('up' + i)() * 0.8; }) }),
-      kpi('夜間観測中', n.night, '/ 13 局', n.clear + ' 局が晴天（雲量 35% 未満）'),
-      kpi('今夜の検出見込み', tn.total, '個', '深夜 1 時前後の空の条件による 13 局の延べ検出数の推定', { icon:'☄' }),
+      kpi('夜間観測中', n.night, '/ 14 局', n.clear + ' 局が晴天（雲量 35% 未満）'),
+      kpi('今夜の検出見込み', tn.total, '個', '深夜 1 時前後の空の条件による 14 局の延べ検出数の推定', { icon:'☄' }),
       kpi('月齢', NS.f(n.moonAge, 1), '', '輝面比 ' + Math.round(n.moon * 100) + '% ' + (n.moon > 0.6 ? '（観測条件やや不良）' : '（良好）'))
     ])
   ]);
@@ -116,7 +116,7 @@ NS.V.dashboard = function (root, go) {
     kpi('インフラサウンド事象（24 h）', infra24.length + 1842, '件', '内訳：雷 1,842 · 火山 1 · その他 ' + infra24.length,
       { icon:'〰', sparkColor:'var(--c-infra)' }),
     kpi('全国平均 夜空輝度', NS.f(n.sqmMean == null ? n.sqmNominal : n.sqmMean, 2), 'mag/arcsec²',
-      n.sqmN ? n.sqmN + ' 局で夜間測定中' : '全局が薄明・昼間のため 13 局の平常値の平均を表示', { icon:'✦', sparkColor:'var(--c-sky)' }),
+      n.sqmN ? n.sqmN + ' 局で夜間測定中' : '全局が薄明・昼間のため 14 局の平常値の平均を表示', { icon:'✦', sparkColor:'var(--c-sky)' }),
     kpi('最高 WBGT', NS.f(n.wbgtMax.v, 1), '℃', n.wbgtMax.st.name + ' · ' + NS.wbgtLevel(n.wbgtMax.v).label,
       { icon:'🌡', sparkColor:'var(--c-warn)' })
   ]));
@@ -180,7 +180,7 @@ NS.V.dashboard = function (root, go) {
   mapPanel.querySelector('.panel-b').appendChild(satBar);
   mapPanel.querySelector('.panel-b').appendChild(M.node);
   mapPanel.querySelector('.panel-b').appendChild(el('div', { class:'maplegend' }, [
-    el('span', { html:'<i style="background:var(--c-u)"></i>大学キャンパス拠点 6 局' }),
+    el('span', { html:'<i style="background:var(--c-u)"></i>大学キャンパス拠点 7 局' }),
     el('span', { html:'<i style="background:var(--c-s);border-radius:50%"></i>付属校拠点 7 局' }),
     el('span', { html:'<i style="border:1px solid var(--accent);background:none"></i>視野円（高度 100 km を仰角 30° 以上、地表半径 ' + Math.round(NS.groundRadius(100, 30)) + ' km）' }),
     el('span', { html:'<i style="background:var(--accent)"></i>直近の火球の地上軌跡' })
@@ -269,7 +269,7 @@ NS.V.dashboard = function (root, go) {
       NS.bar(s2.uptime / 100, s2.status === 'ok' ? 'ok' : s2.status === 'warn' ? 'warn' : 'crit')
     ]);
   }));
-  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('観測局の稼働状況（13 局）',
+  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('観測局の稼働状況（14 局）',
     { note:'全局が同一のフル構成。カードをクリックするとその局の全データ一覧へ',
       tools:el('button', { class:'iconbtn', text:'観測局一覧 →', onclick:function () { go('stations'); } }) }, cards)));
 };
@@ -280,7 +280,7 @@ NS.V.dashboard = function (root, go) {
 NS.V.map = function (root, go, arg) {
   NS.add(root, el('div', { class:'page-h' }, [
     el('h2', { text:'観測局マップ' }),
-    el('p', { text:'13 局の配置・視野・観測値を地図上で重ねて見る。視野円は高度 100 km の発光点を各仰角以上で見込める地表範囲を示し、円が重なる領域で多点同時観測（三角測量）が成立する。局のマーカーをクリックすると、その局の全データ一覧（全天カメラ・インフラサウンド・気象・夜空輝度・電波流星 FFT・GNSS・微動計）へ移動する。' })
+    el('p', { text:'14 局の配置・視野・観測値を地図上で重ねて見る。視野円は高度 100 km の発光点を各仰角以上で見込める地表範囲を示し、円が重なる領域で多点同時観測（三角測量）が成立する。船橋局と津田沼局は 5.1 km しか離れていないが、これは短基線のインフラサウンドアレイとして方位推定の精度を上げ、全天カメラの相互較正にも使える。局のマーカーをクリックすると、その局の全データ一覧（全天カメラ・インフラサウンド・気象・夜空輝度・電波流星 FFT・GNSS・微動計）へ移動する。' })
   ]));
   var state = { layer:'status', elevs:{ 5:false, 10:false, 15:false, 20:false, 30:true, 45:false }, ev:null };
   var M = NS.Map({ onStation:function (st) { go('station', st.id); } });
@@ -405,7 +405,7 @@ NS.V.map = function (root, go, arg) {
   ]);
   var legend = el('div', { class:'maplegend' });
   var refresh = NS.refreshTool(function () { paint(); });
-  var p = panel('全国 13 局', { note:'高度 100 km 基準の視野円。局をクリックで全データ一覧へ。更新しても表示範囲とレイヤは保たれる',
+  var p = panel('全国 14 局', { note:'高度 100 km 基準の視野円。局をクリックで全データ一覧へ。更新しても表示範囲とレイヤは保たれる',
     tools:refresh }, []);
   var body = p.querySelector('.panel-b'); body.classList.add('flush');
   NS.add(body, [bar, M.node, legend]);
@@ -413,12 +413,19 @@ NS.V.map = function (root, go, arg) {
   paint();
 
   NS.add(root, el('div', { class:'grid g2', style:{ marginTop:'14px' } }, [
-    panel('視野の重なりと多点観測', { note:'高度 100 km の発光点' },
+    panel('視野の重なりと多点観測', { note:'高度 100 km の発光点。基線の長さで役割が変わる' },
+      [NS.table(['基線', '距離', '役割'], [
+        ['局内のインフラサウンド対', '約 60 m', '1 局だけで音の到来方位を出す'],
+        ['船橋局 − 津田沼局', '5.1 km', '短基線アレイとして方位推定を精密化。全天カメラの相互較正と検出効率の比較にも使う'],
+        ['船橋局 − 桜上水局', '38 km', '首都圏での火球の三角測量'],
+        ['桜上水局 − 郡山局', '215 km', '関東〜東北にまたがる大火球の測位'],
+        ['札幌局 − 宮崎局', NS.f(NS.dist(NS.ST.SPR.lat, NS.ST.SPR.lon, NS.ST.MYZ.lat, NS.ST.MYZ.lon), 0) + ' km', '成層圏を経由した音波の伝搬と、全国規模の音源定位']
+      ]),
       NS.table(['仰角', '地表半径', '想定される用途'], NS.ELEVS.map(function (e) {
         var r = NS.groundRadius(100, e);
         return [e + '°', NS.f(r, 0) + ' km', e >= 45 ? '高精度の測光・分光' : e >= 30 ? '軌跡決定の標準条件（設計基準）' :
           e >= 15 ? '検出は可能・測位精度は低下' : '大火球のみ・低仰角の減光が大きい'];
-      }))),
+      }))]),
     panel('観測局の一覧', { note:'座標は概略位置', tools:el('button', { class:'iconbtn', text:'詳細一覧 →', onclick:function () { go('stations'); } }) },
       NS.table(['局', '所在地', '種別', '標高', '設置'], NS.STATIONS.map(function (st) {
         return { attrs:{ class:'clk', onclick:function () { go('station', st.id); } },
@@ -435,7 +442,7 @@ NS.V.stations = function (root, go) {
   var t = NS.now();
   NS.add(root, el('div', { class:'page-h' }, [
     el('h2', { text:'観測局と機材構成' }),
-    el('p', { text:'全 13 局を同一のフル構成とする。同じ装置・同じ処理で観測することが、発生頻度の統計的推定と学部間の共同作業を成立させる前提になる。' })
+    el('p', { text:'全 14 局を同一のフル構成とする。同じ装置・同じ処理で観測することが、発生頻度の統計的推定と学部間の共同作業を成立させる前提になる。' })
   ]));
   NS.add(root, panel('全局共通のフル構成', { note:'機材調査資料 3.1–3.3 に基づく構成（1 局あたり約 300 万円）' },
     el('div', { class:'eqlist' }, NS.EQUIPMENT.map(function (e) {
@@ -450,7 +457,7 @@ NS.V.stations = function (root, go) {
       ]);
     }))));
 
-  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('観測局 一覧（13 局）',
+  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('観測局 一覧（14 局）',
     { note:'局をクリックすると、その局の全データ一覧（全センサーの実況と諸元）を開く' },
     NS.table(['局', 'ID', '所在地', '種別', '設置機関', '座標 / 標高', '状態', '稼働率'],
       NS.STATIONS.map(function (st) {
@@ -502,7 +509,7 @@ NS.V.stations = function (root, go) {
       else applySkyTime(NS.tonightAt(x[1]), false, x[0]);
     } });
   }));
-  var p2 = panel('全天カメラ（全 13 局）',
+  var p2 = panel('全天カメラ（全 14 局）',
     { note:'恒星はエール輝星星表（BSC5）9,096 個、天の川は Tycho-2 の星数密度。雲・流星・人工衛星の軌跡・空の明るさは模擬',
       tools:seg }, [el('div', { style:{ marginBottom:'8px' } }, skyNote), grid]);
   NS.add(root, el('div', { style:{ marginTop:'14px' } }, p2));
@@ -510,7 +517,7 @@ NS.V.stations = function (root, go) {
   skies.forEach(function (A) { A.start(); });
   NS.onLeave(function () { skies.forEach(function (A) { A.stop(); }); });
 
-  /* ---- インフラサウンド 実況グラフ（全 13 局） ---- */
+  /* ---- インフラサウンド 実況グラフ（全 14 局） ---- */
   var infState = { chans:['HF', 'MF', 'LF'], win:300 };
   var strips = [];
   var infGrid = el('div', { class:'infgrid' }, NS.STATIONS.map(function (st) {
@@ -555,7 +562,7 @@ NS.V.stations = function (root, go) {
         applyInf();
       } });
     }));
-  var pInf = panel('インフラサウンド 実況グラフ（全 13 局）', {
+  var pInf = panel('インフラサウンド 実況グラフ（全 14 局）', {
     note:'複合型センサー（サヤ INF03 ／ 高知工科大学と共同開発の ADXII-INF01 系）の 6 チャンネル。0.5 秒ごとに更新',
     tools:el('div', { class:'split' }, [winSeg, NS.refreshTool(function () { applyInf(); })]) },
     [el('div', { class:'infbar' }, [el('span', { class:'lbl', text:'チャンネル' }), chChips]),
@@ -566,15 +573,15 @@ NS.V.stations = function (root, go) {
   strips.forEach(function (S) { S.start(); });
   NS.onLeave(function () { strips.forEach(function (S) { S.stop(); }); });
 
-  /* ---- 複合気象センサー（全 13 局） ---- */
-  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('複合気象センサー（全 13 局）',
+  /* ---- 複合気象センサー（全 14 局） ---- */
+  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('複合気象センサー（全 14 局）',
     { note:'Vaisala WXT530 系。気温・湿度・気圧・風向風速・雨量・日射を 1 分値で取得し、WBGT を算出する',
       tools:NS.refreshTool(function () { NS.rerender(); }) },
     [el('div', { class:'sngrid' }, NS.sensorCards('met', go)),
      el('div', { class:'note', text:'地上 1.5 km 以下の風は暗黒飛行（ダークフライト）の風補正にそのまま使われる（G-1）。WBGT は屋上 1 点の値で、校庭内の分布は校舎 3D モデルでダウンスケーリングする（G-6 / DT-3）。' })])));
 
-  /* ---- 夜空輝度計（全 13 局） ---- */
-  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('夜空輝度計（全 13 局）',
+  /* ---- 夜空輝度計（全 14 局） ---- */
+  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('夜空輝度計（全 14 局）',
     { note:'Unihedron SQM-LU-DL ＋ 窓付き野外ハウジング。視野 FWHM 約 20°、天頂向き、IR カット',
       tools:NS.refreshTool(function () { NS.rerender(); }) },
     [el('div', { class:'sngrid' }, NS.sensorCards('sqm', go)),
@@ -601,7 +608,7 @@ NS.V.stations = function (root, go) {
       hros.forEach(function (F) { F.setWin(x[1]); });
     } });
   }));
-  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('電波流星受信機（全 13 局・FFT 画面）',
+  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('電波流星受信機（全 14 局・FFT 画面）',
     { note:'HRO 方式：53.755 MHz の連続波ビーコンの前方散乱を受信。表示は HROFFT 形式のスペクトログラム（横軸 時刻／縦軸 ビーコンからの周波数差／色 強度）',
       tools:el('div', { class:'split' }, [hroSeg, NS.refreshTool(function () { hros.forEach(function (F) { F.render(); }); })]) },
     [hroGrid,
@@ -615,8 +622,8 @@ NS.V.stations = function (root, go) {
   NS.onLeave(function () { hros.forEach(function (F) { F.stop(); }); });
   hros.forEach(function (F) { F.start(); });
 
-  /* ---- 2 周波 GNSS 受信機（全 13 局） ---- */
-  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('2 周波 GNSS 受信機（全 13 局）',
+  /* ---- 2 周波 GNSS 受信機（全 14 局） ---- */
+  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('2 周波 GNSS 受信機（全 14 局）',
     { note:'測地級 2 周波受信機（L1/L2、PPS 出力）。全局の時刻同期と電離圏 TEC を担う',
       tools:NS.refreshTool(function () { NS.rerender(); }) },
     [el('div', { class:'sngrid' }, NS.sensorCards('gnss', go)),

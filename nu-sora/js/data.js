@@ -4,7 +4,7 @@
 (function (NS) {
 
 /* =========================================================================
-   1. 観測局（13局）— 座標・設置機関は提案書「観測局配置図」に基づく実データ
+   1. 観測局（14局）— 座標・設置機関は提案書「観測局配置図」に基づく実データ
    ========================================================================= */
 NS.STATIONS = [
   { id:'FNB', name:'船橋局',   en:'Funabashi',  kind:'u', pref:'千葉県',  city:'船橋市',
@@ -15,6 +15,8 @@ NS.STATIONS = [
     lat:35.3750, lon:139.4700, alt:65,  swir:true,  host:'生物資源科学部・日本大学藤沢高等学校・中学校・小学校', role:'南関東' },
   { id:'MSM', name:'三島局',   en:'Mishima',    kind:'u', pref:'静岡県',  city:'三島市',
     lat:35.1210, lon:138.9170, alt:80,  swir:true,  host:'国際関係学部・短期大学部（三島）・日本大学三島高等学校・中学校', role:'東海・富士' },
+  { id:'TDN', name:'津田沼局', en:'Tsudanuma',  kind:'u', pref:'千葉県',  city:'習志野市',
+    lat:35.6940, lon:140.0135, alt:60,  swir:false, host:'生産工学部（津田沼・実籾）', role:'近接基線・筐体設計' },
   { id:'SKS', name:'桜上水局', en:'Sakurajosui',kind:'u', pref:'東京都',  city:'世田谷区',
     lat:35.6668, lon:139.6318, alt:80,  swir:false, host:'文理学部・日本大学櫻丘高等学校', role:'都心' },
   { id:'SRG', name:'駿河台局', en:'Surugadai', kind:'u', pref:'東京都',  city:'千代田区',
@@ -40,6 +42,7 @@ NS.ST = {}; NS.STATIONS.forEach(function (s, i) { s.idx = i; NS.ST[s.id] = s; })
 var SITE = {
   FNB:{ sqm:19.35, noise:1.15, inst:'2027-08-05' }, KYM:{ sqm:20.25, noise:0.85, inst:'2027-08-19' },
   SNN:{ sqm:19.60, noise:1.00, inst:'2027-09-02' }, MSM:{ sqm:20.45, noise:0.80, inst:'2027-09-16' },
+  TDN:{ sqm:19.30, noise:1.20, inst:'2027-08-12' },
   SKS:{ sqm:18.40, noise:1.45, inst:'2027-07-22' }, SRG:{ sqm:17.90, noise:1.70, inst:'2027-07-08' },
   SPR:{ sqm:20.35, noise:0.75, inst:'2028-05-18' }, YMG:{ sqm:20.60, noise:0.70, inst:'2028-04-20' },
   NGN:{ sqm:21.15, noise:0.60, inst:'2028-05-11' }, TCR:{ sqm:20.30, noise:0.80, inst:'2028-04-13' },
@@ -239,7 +242,7 @@ NS.stationState = function (st, t) {
   });
   var down = sub.filter(function (s) { return !s.ok; });
   var status = down.length === 0 ? 'ok' : (down.length <= 1 ? 'warn' : 'down');
-  /* デモの見栄えを安定させるため、既定は 13 局中 1 局を「一部障害」にする */
+  /* デモの見栄えを安定させるため、既定は 14 局中 1 局を「一部障害」にする */
   var uptime = 99.9 - r() * 0.9 - (status === 'down' ? 2.5 : status === 'warn' ? 0.6 : 0);
   return { status:status, sub:sub, down:down, uptime:uptime, weather:w,
            latency:38 + r() * 90, disk:52 + r() * 34, night:w.sunAlt < -12,

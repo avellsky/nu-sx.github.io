@@ -2,7 +2,7 @@
 
 **NU-SORA** — Nihon University Sky Observation and Resilience Array
 
-令和9年度 日本大学特別研究の申請に向けた、観測ポータルのデモ版。全国 13 局の屋上観測局から集まるデータを
+令和9年度 日本大学特別研究の申請に向けた、観測ポータルのデモ版。全国 14 局の屋上観測局から集まるデータを
 一つの画面で見せる Web ツールとして、火球・スペースデブリ再突入・インフラサウンド・気象／熱中症・
 夜空の明るさ（光害）・通報ワークフロー・公開 API を通しで確認できる。
 
@@ -26,8 +26,8 @@ python3 -m http.server 8777     # → http://127.0.0.1:8777/
 
 | タブ | サブテーマ | 内容 |
 |---|---|---|
-| ダッシュボード | — | 警戒レベル、13 局の稼働状況、今夜の検出見込み、直近イベント、通報ログ、全国地図 |
-| 観測局マップ | — | 13 局の配置。レイヤ（稼働状態／夜空輝度／WBGT／雲量／イベント）と視野円（仰角 5–45°）の切替、拡大・移動 |
+| ダッシュボード | — | 警戒レベル、14 局の稼働状況、今夜の検出見込み、直近イベント、通報ログ、全国地図 |
+| 観測局マップ | — | 14 局の配置。レイヤ（稼働状態／夜空輝度／WBGT／雲量／イベント）と視野円（仰角 5–45°）の切替、拡大・移動 |
 | 火球・隕石 | G-1 / DT-1 | 検出カタログ、局別光度曲線、高度・速度、地上軌跡と落下域確率地図、光学とインフラサウンドのエネルギー二重推定、突入前軌道、発光スペクトル、通報の経過 |
 | デブリ再突入 | G-2 / DT-1 | 再突入予報、観測事例、破片化シーケンス、SWIR による熱放射、大気への金属注入量、**発光スペクトル（局面の切替と分子バンドの ON/OFF）**、自然天体との識別表 |
 | インフラサウンド | G-4 / DT-4 | 火山・ロケット（較正事象）・雷・地震後の校舎応答。波形、到達時刻、方位交会による音源定位 |
@@ -35,7 +35,7 @@ python3 -m http.server 8777     # → http://127.0.0.1:8777/
 | **地震・津波** | G-5 / DT-5 | **全センサーの統合とデジタルツイン**。鉛直方向の結合（海底→地殻→大気→電離圏）とセンサーの対応、震央と検知局、TEC 時系列、津波規模の推定と検証、**サロゲートモデルによる即時推定と通報（Web／スマホ／SNS／自治体 API）**、校舎の使用可否判定、NIED との突き合わせ |
 | 夜空の明るさ | G-3 / DT-2 | 全国輝度マップ、Bortle スケール、一晩の推移、人工光・月・雲・衛星の寄与分離、経年トレンド |
 | 通報・社会実装 | G-7 / PF-3 | **通報ワークフロー 4 系統（火球・線状降水帯・津波・火山噴火。各段階をクリックすると解析経過が開く）**、警戒レベルの定義、通報ログ、法的論点、連携先 |
-| 観測局・機材 | PF-1 | 全局共通のフル構成、13 局一覧、**全 13 局ぶんの実況表示（全天カメラ／インフラサウンド／複合気象センサー／夜空輝度計／電波流星 FFT／2 周波 GNSS）** |
+| 観測局・機材 | PF-1 | 全局共通のフル構成、14 局一覧、**全 14 局ぶんの実況表示（全天カメラ／インフラサウンド／複合気象センサー／夜空輝度計／電波流星 FFT／2 周波 GNSS）** |
 | データ・API | PF-2 | 3 階層アクセス、公開 API の設計案とレスポンス例、DT-1〜DT-7 |
 | このデモについて | — | 実データと模擬データの区別、参考資料、操作方法 |
 
@@ -94,7 +94,7 @@ Sony α7S ＋ Edmund Optics **600 grooves/mm** 透過型回折格子）に基づ
 | 1.5 〜 30 km | 気象庁 数値予報 GPV（メソモデル MSM、水平 5 km・3 時間ごと） |
 | 30 km 以上 | 気象庁 高層気象観測（ラジオゾンデ：館野・八丈島など） |
 
-### 全 13 局の実況表示（「観測局・機材」画面）
+### 全 14 局の実況表示（「観測局・機材」画面）
 
 観測局の一覧の下に、搭載する各センサーの実況を全局ぶん並べている。
 
@@ -123,7 +123,7 @@ HRO 方式（53.755 MHz の連続波ビーコンの前方散乱）の受信を�
 ### インフラサウンド 実況グラフ（「観測局・機材」画面）
 
 複合型センサー（サヤ INF03 ／ 高知工科大学と共同開発の ADXII-INF01 系）の 6 チャンネルを、
-全 13 局ぶん並べて 0.5 秒ごとに更新する。チャンネルと時間窓（1 分〜1 時間）を切り替えられる。
+全 14 局ぶん並べて 0.5 秒ごとに更新する。チャンネルと時間窓（1 分〜1 時間）を切り替えられる。
 
 | ch | 帯域 | 捉えるもの |
 |---|---|---|
@@ -155,7 +155,7 @@ index.html          画面の骨格とスクリプトの読み込み
 css/app.css         配色・レイアウト（申請書の図版と同じ配色・書体系統。暗／明の切替あり）
 js/geo-japan.js     日本の都道府県境界（提案書「観測局配置図」から再利用）
 js/core.js          乱数・時刻・整形・DOM/SVG・チャート部品（折れ線／棒／積み上げ／ゲージ）
-js/data.js          13 局の諸元、全局共通のフル構成、気象・夜空輝度・WBGT・稼働状態の生成
+js/data.js          14 局の諸元、全局共通のフル構成、気象・夜空輝度・WBGT・稼働状態の生成
 js/events.js        イベントカタログ（火球・再突入・インフラサウンド・線状降水帯）と物理関係式、スペクトル線リスト
 js/map.js           日本地図コンポーネント（投影・視野円は「観測局配置図」と同一方式。拡大・移動）
 js/sky.js           全天カメラの疑似ライブ（等距離魚眼。恒星位置は実際の天球から計算）
@@ -170,7 +170,10 @@ assets/             参照図の置き場（README 参照。画像を置くと�
 
 **申請内容・実測値に基づくもの**
 
-- 観測局 13 局の名称・所在地・座標・設置機関（大学キャンパス拠点 6・付属校拠点 7）、SWIR 設置 4 局
+- 観測局 14 局の名称・所在地・座標・設置機関（大学キャンパス拠点 7・付属校拠点 7）、SWIR 設置 4 局
+  - 大学キャンパス拠点：船橋（理工・薬・短大＋習志野高）、**津田沼（生産工学部・津田沼／実籾）**、郡山（工＋東北高）、湘南（生物資源＋藤沢高）、三島（国際関係・短大＋三島高）、桜上水（文理＋櫻丘高）、駿河台（理工・歯）
+  - 付属校拠点：札幌・山形・長野・土浦・大垣・長崎・宮崎
+  - 船橋局と津田沼局は 5.1 km の**近接基線**で、短基線インフラサウンドアレイによる方位推定の精密化と、全天カメラの相互較正に使う
 - 全局共通のフル構成（機材の型式・仕様・用途）
 - 視野円の算出（高度 100 km を仰角 30° 以上で見込める地表半径 = 約 167 km）
 - 日本の都道府県境界（国土数値情報を簡略化したデータ）
@@ -239,13 +242,13 @@ assets/             参照図の置き場（README 参照。画像を置くと�
 - **Nishikawa, Y., Yamamoto, M.-Y., Nakajima, K., Hamama, I., Saito, H., Kakinami, Y., Yamada, M. & Ho, T.-C.** (2022), *Observation and simulation of atmospheric gravity waves exciting subsequent tsunami along the coastline of Japan after Tonga explosion event*, Scientific Reports, **12**, 22354 — [doi:10.1038/s41598-022-25854-3](https://doi.org/10.1038/s41598-022-25854-3)
   — フンガ・トンガ噴火のラム波・大気重力波と後続津波。DT-4（音の大気ツイン）の中核
 - **Nishikawa, Y., Yamamoto, M.-Y., Yokota, A., Hasumi, Y. & Hamajima, G.** (2024), *Specification of INF01LE, INF03, and INF04LE infrasound sensors for the observation and detection of destructive geophysical events*, Discover Geoscience, **2**, 82 — [doi:10.1007/s44288-024-00083-5](https://doi.org/10.1007/s44288-024-00083-5)
-  — 本観測網が全 13 局に 2 台ずつ搭載する **INF03** を含むセンサー群の性能評価。機材構成（PF-1）が依拠する一次情報
+  — 本観測網が全 14 局に 2 台ずつ搭載する **INF03** を含むセンサー群の性能評価。機材構成（PF-1）が依拠する一次情報
 - **Fujita, K., Yamamoto, M.-Y., Abe, S., Ishihara, Y., Iiyama, O., Kakinami, Y., et al.** (2011), *An Overview of JAXA's Ground-Observation Activities for HAYABUSA Reentry*, Publications of the Astronomical Society of Japan, **63**, 961–969 — [doi:10.1093/pasj/63.5.961](https://doi.org/10.1093/pasj/63.5.961)
-  — 光学・分光・インフラサウンド・地震・電離圏を一事象へ同時投入した地上観測キャンペーンの全体像。これを 13 局の常設網として恒常化するのが本観測網の構想
+  — 光学・分光・インフラサウンド・地震・電離圏を一事象へ同時投入した地上観測キャンペーンの全体像。これを 14 局の常設網として恒常化するのが本観測網の構想
 
 ### 電離圏・GNSS
 
-全 13 局の 2 周波 GNSS が担う電離圏観測（G-5 / DT-5）の設計根拠。
+全 14 局の 2 周波 GNSS が担う電離圏観測（G-5 / DT-5）の設計根拠。
 
 - **Kakinami, Y., Kamogawa, M., Tanioka, Y., Watanabe, S., Gusman, A. R., Liu, J.-Y., Watanabe, Y. & Mogi, T.** (2012), *Tsunamigenic ionospheric hole*, Geophysical Research Letters, **39**, L00G27 — [doi:10.1029/2011GL050159](https://doi.org/10.1029/2011GL050159)
   — 津波が電離圏に「穴」を開けることを発見。DT-5 で津波起源の擾乱を検出する根拠
@@ -254,7 +257,7 @@ assets/             参照図の置き場（README 参照。画像を置くと�
 - **Kamogawa, M., Orihara, Y., Tsurudome, C., Tomida, Y., Kanaya, T., Ikeda, D., Gusman, A. R., Kakinami, Y., Liu, J.-Y. & Toyoda, A.** (2016), *A possible space-based tsunami early warning system using observations of the tsunami ionospheric hole*, Scientific Reports, **6**, 37989 — [doi:10.1038/srep37989](https://doi.org/10.1038/srep37989)
   — 電離圏ホールを津波の早期警戒に使う構想。通報ワークフロー（G-7）への GNSS 側からの入力
 - **Kakinami, Y., Saito, H., Yamamoto, T., Chen, C.-H., Yamamoto, M.-Y., Nakajima, K., Liu, J.-Y. & Watanabe, S.** (2021), *Onset Altitudes of Co-Seismic Ionospheric Disturbances Determined by Multiple Distributions of GNSS TEC After the Foreshock of the 2011 Tohoku Earthquake on March 9, 2011*, Earth and Space Science, **8**, e2020EA001217 — [doi:10.1029/2020EA001217](https://doi.org/10.1029/2020EA001217)
-  — GNSS TEC の多点分布から擾乱の発生高度を決める。13 局の GNSS が GEONET を補完する（G-5）技術的裏づけ
+  — GNSS TEC の多点分布から擾乱の発生高度を決める。14 局の GNSS が GEONET を補完する（G-5）技術的裏づけ
 
 ### 関連する実装
 

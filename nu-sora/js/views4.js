@@ -123,7 +123,7 @@ function draftFor(ch, ts) {
       + '■ 根拠\n'
       + '・電離圏 TEC の減少：' + NS.f(ts.holeMax, 2) + ' TECU（減少率 ' + NS.f(ts.holeRate, 2) + ' TECU/分）を 5 局の 2 周波 GNSS で観測\n'
       + '・大気重力波：0.8–4 mHz 帯の気圧変動を 2 局のインフラサウンドで観測\n'
-      + '・微動計：全 13 局で P 波を検知、校舎の固有振動数に有意な変化なし\n'
+      + '・微動計：全 14 局で P 波を検知、校舎の固有振動数に有意な変化なし\n'
       + '・これらを入力としたサロゲートモデルの推論結果（推論時間 12 ms）\n\n'
       + '■ 注意\n'
       + '・本推定は気象庁の津波警報・注意報を置き換えるものではありません。避難は警報に従ってください。\n'
@@ -145,7 +145,7 @@ NS.V.quake = function (root, go, arg) {
     kpi('直近の地震', 'M' + q.mw, '', q.name + '　深さ ' + q.depth + ' km', { acc:true, icon:'▤' }),
     kpi('電離圏の応答', '+8', '分', 'TEC に音波共振（' + ts.resFreq.join(' / ') + ' mHz）'),
     kpi('推定沿岸波高', NS.f(ts.estWave, 1) + ' ± ' + NS.f(ts.estErr, 1), 'm', '実測 ' + NS.f(ts.obsWave, 1) + ' m（' + ts.obsPlace + '）'),
-    kpi('校舎の判定', '13 / 13', '局 継続使用可', '固有振動数の低下は 5 % 未満')
+    kpi('校舎の判定', '14 / 14', '局 継続使用可', '固有振動数の低下は 5 % 未満')
   ]));
 
   /* ---- 統合デジタルツイン図 ---- */
@@ -326,7 +326,7 @@ NS.V.quake = function (root, go, arg) {
     var drift = ((f0 - pre) / pre) * 100;
     return { st:st, f0:f0, pre:pre, drift:drift, pga:pga };
   }).sort(function (a, b) { return b.pga - a.pga; });
-  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('校舎の使用可否判定（全 13 局・DT-6）',
+  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('校舎の使用可否判定（全 14 局・DT-6）',
     { note:'常時微動から同定した 1 次固有振動数を地震前後で比較する。低下が 5 % を超えたら「点検要」を自動発報する' },
     [NS.table(['局', '設置校', '地震前 f₀', '地震後 f₀', '変化', '最大加速度', '判定'], rows.map(function (r) {
       return { attrs:{ class:'clk', onclick:function () { go('station', r.st.id); } }, cells:[

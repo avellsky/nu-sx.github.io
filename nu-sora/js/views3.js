@@ -21,8 +21,8 @@ NS.V.weather = function (root, go, arg) {
 
   NS.add(root, el('div', { class:'grid g4' }, [
     kpi('最高 WBGT', NS.f(maxW.w.wbgt, 1), '℃', maxW.st.name + ' · ' + NS.wbgtLevel(maxW.w.wbgt).label, { acc:true, icon:'🌡' }),
-    kpi('厳重警戒以上', nStrict, '/ 13 局', 'うち危険（31℃ 以上）' + nDanger + ' 局'),
-    kpi('降水中', rain.length, '/ 13 局', rain.length ? rain.map(function (r) { return r.st.name; }).join('・') : 'なし'),
+    kpi('厳重警戒以上', nStrict, '/ 14 局', 'うち危険（31℃ 以上）' + nDanger + ' 局'),
+    kpi('降水中', rain.length, '/ 14 局', rain.length ? rain.map(function (r) { return r.st.name; }).join('・') : 'なし'),
     kpi('観測項目', 6, '種', '気温・湿度・気圧・風向風速・雨量・日射（Vaisala WXT530 系）')
   ]));
 
@@ -73,7 +73,7 @@ NS.V.weather = function (root, go, arg) {
         ['21 – 25 ℃', badge('注意', 'ok'), '死亡事故の発生あり。水分補給を'],
         ['21 ℃ 未満', badge('ほぼ安全', 'ok'), '通常の水分補給を']
       ]),
-      el('div', { class:'note', text:'各付属校の顧問端末へ 10 分ごとに自校の値と校庭内分布を配信し、判断の記録を残す。全国 13 校の同一仕様データにより、地域差・時間帯差の統計解析が可能になる。' })
+      el('div', { class:'note', text:'各付属校の顧問端末へ 10 分ごとに自校の値と校庭内分布を配信し、判断の記録を残す。全国 14 校の同一仕様データにより、地域差・時間帯差の統計解析が可能になる。' })
     ])
   ]));
 
@@ -85,7 +85,7 @@ NS.V.weather = function (root, go, arg) {
       pts:pts, width:i < 6 ? 1.5 : 0.8, opacity:i < 6 ? 1 : 0.4 };
   });
   NS.add(root, el('div', { class:'grid g2', style:{ marginTop:'14px' } }, [
-    panel('WBGT の 24 時間推移（全 13 局）', { note:'太線は大学キャンパス拠点 6 局' }, [
+    panel('WBGT の 24 時間推移（全 14 局）', { note:'太線は大学キャンパス拠点 7 局' }, [
       NS.chart.line({ series:series, width:660, height:230, xLabel:'現在からの時間', yLabel:'WBGT ℃',
         xFmt:function (v) { return NS.f(v, 0) + 'h'; }, yFmt:function (v) { return NS.f(v, 0); },
         rules:[{ y:28, color:'var(--c-warn)', label:'28 厳重警戒' }, { y:31, color:'var(--c-crit)', label:'31 危険' }, { y:25, color:'var(--c-cau)', label:'25 警戒' }] }),
@@ -182,14 +182,14 @@ NS.V.skyglow = function (root, go, arg) {
 
   NS.add(root, el('div', { class:'page-h' }, [
     el('h2', { text:'夜空の明るさ　全国輝度マップと寄与分離' }),
-    el('p', { text:'全 13 局に夜空輝度計（Unihedron SQM-LU-DL、視野 FWHM 約 20°）を天頂向きに設置し、全天カメラの恒星測光と相互較正する。人工光（光害）・月・雲・衛星コンステレーションの寄与を分離し、経年変化を測る（サブテーマ G-3 / DT-2）。' })
+    el('p', { text:'全 14 局に夜空輝度計（Unihedron SQM-LU-DL、視野 FWHM 約 20°）を天頂向きに設置し、全天カメラの恒星測光と相互較正する。人工光（光害）・月・雲・衛星コンステレーションの寄与を分離し、経年変化を測る（サブテーマ G-3 / DT-2）。' })
   ]));
 
   NS.add(root, el('div', { class:'grid g4' }, [
     kpi('最も暗い局', NS.f(sorted[0].sqm, 2), 'mag/arcsec²', sorted[0].name + ' · Bortle ' + NS.bortle(sorted[0].sqm).n, { acc:true, icon:'✦' }),
     kpi('最も明るい局', NS.f(sorted[sorted.length - 1].sqm, 2), 'mag/arcsec²', sorted[sorted.length - 1].name + ' · Bortle ' + NS.bortle(sorted[sorted.length - 1].sqm).n),
     kpi('局間の差', NS.f(sorted[0].sqm - sorted[sorted.length - 1].sqm, 2), '等', '明るさで約 ' + NS.f(Math.pow(10, 0.4 * (sorted[0].sqm - sorted[sorted.length - 1].sqm)), 0) + ' 倍'),
-    kpi('夜間測定中', meas.length, '/ 13 局', meas.length ? '平均 ' + NS.f(meas.reduce(function (a, b) { return a + b.sb.mag; }, 0) / meas.length, 2) + ' mag/arcsec²' : '全局が薄明・昼間')
+    kpi('夜間測定中', meas.length, '/ 14 局', meas.length ? '平均 ' + NS.f(meas.reduce(function (a, b) { return a + b.sb.mag; }, 0) / meas.length, 2) + ' mag/arcsec²' : '全局が薄明・昼間')
   ]));
 
   /* 地図 */
@@ -268,7 +268,7 @@ NS.V.skyglow = function (root, go, arg) {
           { name:'衛星コンステレーション（×40）', color:'#7C6FD0', v:comp.sat }
         ], width:660, height:230, yLabel:'超過等級', xFmt:function (v) { return NS.f(v, 0) + 'h'; }, yFmt:function (v) { return NS.f(v, 1); } }),
         NS.chart.legend([['人工光（光害）', '#E08A3C'], ['月', '#C8CBD2'], ['雲の反射', '#8C97A3'], ['衛星（×40）', '#7C6FD0']]),
-        el('div', { class:'note', text:'軌道上の衛星・デブリによる散乱光は天頂の夜空輝度を自然値より約 1 % 高めうると推定されている（Kocifaj et al. 2021, MNRAS Letters）。1 % は 0.011 等に相当し、光害の数等という寄与に比べて小さいため、全国 13 点・長期の均質観測で月・雲・人工光を差し引いて初めて分離できる。' })
+        el('div', { class:'note', text:'軌道上の衛星・デブリによる散乱光は天頂の夜空輝度を自然値より約 1 % 高めうると推定されている（Kocifaj et al. 2021, MNRAS Letters）。1 % は 0.011 等に相当し、光害の数等という寄与に比べて小さいため、全国 14 点・長期の均質観測で月・雲・人工光を差し引いて初めて分離できる。' })
       ] : el('div', { class:'hint', text:'夜間データの蓄積待ち。' }))
   ]));
 
@@ -307,7 +307,7 @@ NS.V.skyglow = function (root, go, arg) {
 
   NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('夜空輝度データの用途', null,
     NS.table(['用途', '内容', '担当'], [
-      ['光害の全国マップ', '13 点の均質・連続測定による経年変化。自治体の照明政策への基礎資料', '理工学部・文理学部（地理）'],
+      ['光害の全国マップ', '14 点の均質・連続測定による経年変化。自治体の照明政策への基礎資料', '理工学部・文理学部（地理）'],
       ['衛星コンステレーションの影響', '月・雲・人工光を差し引いた残差から軌道上散乱光の寄与を抽出', '理工学部（航空宇宙）'],
       ['流星検出効率の品質管理', '夜空輝度と限界等級から各局の検出効率を較正し、発生頻度の推定に反映', '理工学部（G-1 と共用）'],
       ['星空観光・星空予報', '雲量・輝度・月齢から「星が見える度」を予報し、地域へ発信', '国際関係学部・芸術学部'],
@@ -683,7 +683,7 @@ NS.STAGE['rb-form'] = function (b, c) {
 NS.STAGE['rb-detect'] = function (b, c) {
   var rb = c.rb, s3 = rb.det.slice(0, 3);
   NS.add(b, [NS.kv([
-    ['入力', 'インフラサウンドセンサー 2 台（基線約 60 m）の気圧波形、全 13 局'],
+    ['入力', 'インフラサウンドセンサー 2 台（基線約 60 m）の気圧波形、全 14 局'],
     ['検知したもの', '0.6–14 Hz の雷放電音。10 分あたり <b>24 回</b>（この時点）'],
     ['検知局', s3.map(function (d) { return NS.ST[d.id].name; }).join('・') + ' の 3 局'],
     ['距離', '音源まで 26–62 km。<b>帯の直下にいない局が最初に捉えた</b>'],
@@ -711,7 +711,7 @@ NS.STAGE['rb-locate'] = function (b, c) {
 NS.STAGE['rb-pwv'] = function (b, c) {
   var rb = c.rb, xs = rb.series.map(function (p) { return p.hh; });
   NS.add(b, [NS.kv([
-    ['入力', '2 周波 GNSS の搬送波遅延から求めた可降水量（PWV）。全 13 局・5 分ごと'],
+    ['入力', '2 周波 GNSS の搬送波遅延から求めた可降水量（PWV）。全 14 局・5 分ごと'],
     ['変化', '船橋局で <b>43 → 58 mm（＋35 %）</b>。1 時間で 10 % 以上の上昇'],
     ['意味', '下層へ強い水蒸気の流入が続いている。線状降水帯が維持される条件'],
     ['同時に見る量', '地上気圧の低下（−6.2 hPa）、風向の south-westerly への揃い'],
@@ -783,7 +783,7 @@ NS.STAGE['ts-quake'] = function (b, c) {
   var ts = c.ts, q = ts.quake, seis = ts.det.filter(function (d) { return d.kind === '微動計'; });
   NS.add(b, [NS.kv([
     ['地震', '<b>' + q.name + ' M' + q.mw + '</b>　深さ ' + q.depth + ' km　' + NS.latlon(q.lat, q.lon)],
-    ['本観測網の入力', '全 13 局の微動計（3 成分加速度計・100 Hz）'],
+    ['本観測網の入力', '全 14 局の微動計（3 成分加速度計・100 Hz）'],
     ['外部情報', q.src + '　／　' + NS.f(ts.jmaWarn.dt, 0) + ' 分後に' + ts.jmaWarn.text],
     ['この時点で分かること', '地震が起きたこと。<b>津波が来るかどうか、どれだけ来るかはまだ分からない</b>'],
     ['校舎の判定', '各局で地震前後の固有振動数を比較し、使用可否を自動判定（DT-6）']], 'wide'),
@@ -796,7 +796,7 @@ NS.STAGE['ts-quake'] = function (b, c) {
 NS.STAGE['ts-tec'] = function (b, c) {
   var ts = c.ts, g = ts.det.filter(function (d) { return d.kind === 'GNSS' && d.dt < 19; });
   NS.add(b, [NS.kv([
-    ['入力', '全 13 局の 2 周波 GNSS（L1/L2 の搬送波位相差から全電子数 TEC を算出、30 秒値）'],
+    ['入力', '全 14 局の 2 周波 GNSS（L1/L2 の搬送波位相差から全電子数 TEC を算出、30 秒値）'],
     ['検知したもの', '<b>TEC の音波共振</b>。' + ts.resFreq[0] + ' mHz（周期 3.8 分）と ' + ts.resFreq[1] + ' mHz'],
     ['最初の検知', NS.ST[g[0].id].name + '　地震発生から <b>' + NS.f(g[0].dt, 1) + ' 分</b>'],
     ['物理', '海面と地殻の上下変動が音波として上方へ伝わり、高度 300 km 付近の電離圏を揺らす。大気の音波共振モードに対応する'],
@@ -805,7 +805,7 @@ NS.STAGE['ts-tec'] = function (b, c) {
     NS.table(['局', '検知', '内容', '備考'], g.map(function (d) {
       return [NS.ST[d.id].name, { class:'r mono', html:'+' + NS.f(d.dt, 1) + ' 分' }, d.val, { class:'sm', html:d.note || '' }];
     })),
-    el('div', { class:'note', text:'GEONET は全国 1,300 点を超える密度を持つが、本観測網の 13 局は学校に置かれており、得られた擾乱をその場で学校の判断に結びつけられる点が違う（G-5）。' })]);
+    el('div', { class:'note', text:'GEONET は全国 1,300 点を超える密度を持つが、本観測網の 14 局は学校に置かれており、得られた擾乱をその場で学校の判断に結びつけられる点が違う（G-5）。' })]);
 };
 NS.STAGE['ts-acou'] = function (b, c) {
   var ts = c.ts, a = ts.det.filter(function (d) { return d.kind === 'インフラサウンド'; });
@@ -956,9 +956,9 @@ NS.V.data = function (root, go, arg) {
       NS.table(['データ', '内容', '公開時期'], [
         ['火球カタログ', '1 年分の全事象（軌跡・軌道・エネルギー）', '令和10年度'],
         ['再突入観測事例集', '分光・SWIR・音響を含む事例集', '令和10年度'],
-        ['夜空輝度マップ', '13 点の連続データと全国マップ', '令和10年度'],
+        ['夜空輝度マップ', '14 点の連続データと全国マップ', '令和10年度'],
         ['インフラサウンド', '波形と検出イベント（公開 API）', '令和9年度末'],
-        ['気象', '13 点の 1 分値（公開 API）', '令和9年度末'],
+        ['気象', '14 点の 1 分値（公開 API）', '令和9年度末'],
         ['白書・ガイドライン', '宇宙起源災害への学校・自治体対応', '令和10年度']
       ])),
     panel('カタログ統計（デモ）', null, [
@@ -968,7 +968,7 @@ NS.V.data = function (root, go, arg) {
         ['多点（4 局以上）', NS.EVENTS.filter(function (e) { return e.stationsDet >= 4; }).length + ' 件'],
         ['分光取得', NS.EVENTS.filter(function (e) { return e.spectrum || e.hasSpec; }).length + ' 件'],
         ['インフラサウンド同時', NS.EVENTS.filter(function (e) { return e.hasInfra || (e.det && e.det.some(function (d) { return d.infra; })); }).length + ' 件'],
-        ['1 日あたりの生成データ量', '約 1.4 TB（13 局合計・一次映像を含む）'],
+        ['1 日あたりの生成データ量', '約 1.4 TB（14 局合計・一次映像を含む）'],
         ['長期保存', '検出クリップと較正データを恒久保存、連続映像は 30 日'],
         ['時刻精度', 'GNSS 同期 < 1 ms（IP カメラは転送遅延を局ごとに補正）']
       ], 'wide')
@@ -994,7 +994,7 @@ NS.V.data = function (root, go, arg) {
   };
   NS.add(root, el('div', { class:'grid g-1-2', style:{ marginTop:'14px' } }, [
     panel('公開 API（設計案）', { note:'読み取り専用・JSON' }, el('div', { class:'api', html:
-      '<span class="m">GET</span> /api/v1/<span class="k">stations</span>                <span class="c"># 13局の諸元・稼働状態</span>\n' +
+      '<span class="m">GET</span> /api/v1/<span class="k">stations</span>                <span class="c"># 14局の諸元・稼働状態</span>\n' +
       '<span class="m">GET</span> /api/v1/<span class="k">stations</span>/{id}/status     <span class="c"># 機材別の稼働・観測モード</span>\n' +
       '<span class="m">GET</span> /api/v1/<span class="k">events</span>?from=&to=&min_mag= <span class="c"># 火球・流星カタログ</span>\n' +
       '<span class="m">GET</span> /api/v1/<span class="k">events</span>/{id}              <span class="c"># 軌跡・軌道・エネルギー・落下域</span>\n' +
@@ -1019,7 +1019,7 @@ NS.V.data = function (root, go, arg) {
       ['DT-1 上空大気圏', '日本上空 0–120 km の火球・再突入体と周囲大気', '多点全天動画、インフラサウンド、風プロファイル、公開軌道要素', '発生数分後に落下域の確率地図を自治体・学校へ配信'],
       ['DT-2 空の明るさ・雲', '各局上空の夜空輝度、雲量・雲形、透明度', '夜空輝度計、全天画像、日射計、気象衛星', '全国輝度マップ、衛星・光害の寄与分離、星空予報'],
       ['DT-3 学校微気候', '校庭・体育館・屋上の WBGT・日射・風', '気象センサー、雲量、校舎 3D モデル', '時間帯・場所別の熱中症リスク予測'],
-      ['DT-4 音の大気', '地表〜成層圏の音波伝搬場と音源', '13 局インフラサウンド、高層風、既知音源', '火山・津波・爆発の即時検知と定位、成層圏風の逆推定'],
+      ['DT-4 音の大気', '地表〜成層圏の音波伝搬場と音源', '14 局インフラサウンド、高層風、既知音源', '火山・津波・爆発の即時検知と定位、成層圏風の逆推定'],
       ['DT-5 電離圏', '日本上空の TEC 分布と擾乱', '2 周波 GNSS、GEONET、NICT', 'GNSS 測位誤差予報、津波・噴火起源の電離圏波動'],
       ['DT-6 校舎構造', '観測局を載せる校舎の固有振動数・剛性', '微動計、温度', '地震直後の校舎使用可否の即時判定'],
       ['DT-7 学びのツイン', '各付属校の「自校のツイン」と探究記録', '自校局の全データ、生徒追加センサー', '生徒が自校の空を再現して探究し、結果を観測網へ還元']
@@ -1037,7 +1037,7 @@ NS.V.about = function (root, go) {
   NS.add(root, el('div', { class:'grid g2' }, [
     panel('実データ（申請書に基づく）', { note:'このデモで正確に反映している内容' },
       el('ul', { style:{ margin:0, paddingLeft:'1.2em', fontSize:'12.5px', color:'var(--ink2)' } }, [
-        '観測局 13 局の名称・所在地・座標・設置機関（大学キャンパス拠点 6 局／付属校拠点 7 局）',
+        '観測局 14 局の名称・所在地・座標・設置機関（大学キャンパス拠点 7 局／付属校拠点 7 局）。生産工学部は津田沼・実籾の両キャンパスを津田沼局が代表する',
         'SWIR 冷却カメラの設置局（船橋・湘南・郡山・三島）',
         '全局共通のフル構成（機材の型式・仕様・価格帯・用途）',
         '視野円の算出（高度 100 km を仰角 30° 以上で見込める地表半径 ' + Math.round(NS.groundRadius(100, 30)) + ' km）',
@@ -1070,7 +1070,8 @@ NS.V.about = function (root, go) {
       ['正式名称（英）', 'Nihon University Sky Observation and Resilience Array（NU-SORA）'],
       ['和名', '日本大学 全学屋上観測網「ソラ」'],
       ['主幹', '理工学部（理工学研究所）・宇宙科学研究ユニット NU-SX'],
-      ['局数', '13 局（大学キャンパス拠点 6・付属校拠点 7）'],
+      ['局数', '14 局（大学キャンパス拠点 7・付属校拠点 7）'],
+      ['近接基線', '船橋局 − 津田沼局 5.1 km。方位推定とカメラの相互較正に使う'],
       ['南北の広がり', '北端：<b>札幌局</b>（札幌日本大学高等学校・中学校）42.98°N<br>南端：<b>宮崎局</b>（宮崎日本大学高等学校・中学校）31.93°N'],
       ['局間の最大距離', NS.f(NS.dist(NS.ST.SPR.lat, NS.ST.SPR.lon, NS.ST.MYZ.lat, NS.ST.MYZ.lon), 0) + ' km']
     ], 'wide')),
@@ -1148,16 +1149,16 @@ NS.V.about = function (root, go) {
       'Specification of INF01LE, INF03, and INF04LE infrasound sensors for the observation and detection of destructive geophysical events',
       'Discover Geoscience, 2, 82',
       [['doi:10.1007/s44288-024-00083-5', 'https://doi.org/10.1007/s44288-024-00083-5']]),
-     '本観測網が全 13 局に 2 台ずつ搭載する <b>INF03</b> を含むセンサー群の性能評価。周波数帯・感度・耐環境性の仕様は本デモの機材構成（PF-1）が依拠する一次情報'],
+     '本観測網が全 14 局に 2 台ずつ搭載する <b>INF03</b> を含むセンサー群の性能評価。周波数帯・感度・耐環境性の仕様は本デモの機材構成（PF-1）が依拠する一次情報'],
     [cite('Fujita, K., Yamamoto, M.-Y., Abe, S., Ishihara, Y., Iiyama, O., Kakinami, Y., et al.', 2011,
       "An Overview of JAXA's Ground-Observation Activities for HAYABUSA Reentry",
       'Publications of the Astronomical Society of Japan, 63, 961–969',
       [['doi:10.1093/pasj/63.5.961', 'https://doi.org/10.1093/pasj/63.5.961']]),
-     '光学・分光・インフラサウンド・地震・電離圏を一つの事象に同時投入した地上観測キャンペーンの全体像。単発の遠征として行われたこの体制を、13 局の常設網として恒常化するのが本観測網の構想である']
+     '光学・分光・インフラサウンド・地震・電離圏を一つの事象に同時投入した地上観測キャンペーンの全体像。単発の遠征として行われたこの体制を、14 局の常設網として恒常化するのが本観測網の構想である']
   ]))));
 
   NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('参考文献 ― 電離圏・GNSS',
-    { note:'全 13 局の 2 周波 GNSS が担う電離圏観測（G-5 / DT-5）の設計根拠' }, refTable([
+    { note:'全 14 局の 2 周波 GNSS が担う電離圏観測（G-5 / DT-5）の設計根拠' }, refTable([
     [cite('Kakinami, Y., Kamogawa, M., Tanioka, Y., Watanabe, S., Gusman, A. R., Liu, J.-Y., Watanabe, Y. & Mogi, T.', 2012,
       'Tsunamigenic ionospheric hole', 'Geophysical Research Letters, 39, L00G27',
       [['doi:10.1029/2011GL050159', 'https://doi.org/10.1029/2011GL050159']]),
@@ -1176,7 +1177,7 @@ NS.V.about = function (root, go) {
       'Onset Altitudes of Co-Seismic Ionospheric Disturbances Determined by Multiple Distributions of GNSS TEC After the Foreshock of the 2011 Tohoku Earthquake on March 9, 2011',
       'Earth and Space Science, 8, e2020EA001217',
       [['doi:10.1029/2020EA001217', 'https://doi.org/10.1029/2020EA001217']]),
-     'GNSS TEC の多点分布から擾乱の発生高度を決める手法。全 13 局の 2 周波 GNSS を GEONET と組み合わせて使う（G-5）ことの技術的な裏づけになる']
+     'GNSS TEC の多点分布から擾乱の発生高度を決める手法。全 14 局の 2 周波 GNSS を GEONET と組み合わせて使う（G-5）ことの技術的な裏づけになる']
   ]))));
 
   NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('関連する実装',

@@ -84,7 +84,7 @@ svg.spark{display:block}
   <a class="card" href="nu-sora/">
     <h2>日本大学 全学屋上観測網「ソラ」（NU-SORA）観測ポータル</h2>
     <div class="sub">Nihon University Sky Observation and Resilience Array — デモ版</div>
-    <p>北海道から九州までの全国 13 拠点の屋上に同一構成の観測局を置き、火球（隕石落下）・スペースデブリ再突入・
+    <p>北海道から九州までの全国 14 拠点の屋上に同一構成の観測局を置き、火球（隕石落下）・スペースデブリ再突入・
     火山噴火・津波・地震・雷・線状降水帯・熱中症環境といった「空から来る災害」と、夜空の明るさ（光害）を
     24 時間連続で観測する構想の観測ポータル。全天光学カメラ・4K 分光カメラ・インフラサウンドセンサー・
     複合気象センサー・夜空輝度計・2 周波 GNSS・微動計を全局同一仕様で運用し、落下域確率地図・線状降水帯の
@@ -106,7 +106,7 @@ svg.spark{display:block}
   <section class="dg" id="digest">
     <div class="dg-h">
       <h2>観測局と機材構成</h2>
-      <span class="sub">全国 13 拠点の屋上に同一構成の観測局を置く。下は各センサーの実況のダイジェスト</span>
+      <span class="sub">全国 14 拠点の屋上に同一構成の観測局を置く。下は各センサーの実況のダイジェスト</span>
       <a href="nu-sora/#stations">全画面で見る →</a>
     </div>
     <div class="dg-stations" id="dgStations"></div>
@@ -157,7 +157,7 @@ svg.spark{display:block}
   function build() {
     var NS = window.NS;
     if (!NS || !NS.STATIONS) { fail(); return; }
-    /* 13 局のチップ */
+    /* 14 局のチップ */
     var chips = document.getElementById('dgStations');
     NS.STATIONS.forEach(function (st) {
       chips.appendChild(NS.el('span', { class:'dg-st ' + st.kind,
@@ -214,7 +214,7 @@ svg.spark{display:block}
         NS.el('span', { html:bt.label }),
         NS.el('span', { html:'光害量 <b>' + NS.f(21.9 - qSt.sqm, 2) + '</b> 等' }),
         NS.el('span', { html:'月 <b>' + Math.round(NS.moonIllum(t) * 100) + '</b> %' })])]),
-      'Unihedron SQM-LU-DL。全国 13 点の夜空の明るさを連続測定し、光害と衛星の寄与を分ける'));
+      'Unihedron SQM-LU-DL。全国 14 点の夜空の明るさを連続測定し、光害と衛星の寄与を分ける'));
 
     /* 2 周波 GNSS */
     var gSt = NS.ST.FNB, gs = NS.gnssState(gSt, t), tp = [];
@@ -231,7 +231,7 @@ svg.spark{display:block}
       '全局の時刻同期（< 1 ms）と電離圏 TEC。多点三角測量と音の到達時刻差はこの精度に支えられる'));
 
     document.getElementById('dgNote').innerHTML =
-      '観測局は大学キャンパス拠点 6 局（船橋・郡山・湘南・三島・桜上水・駿河台）と付属校拠点 7 局'
+      '観測局は大学キャンパス拠点 7 局（船橋・郡山・湘南・三島・桜上水・駿河台）と付属校拠点 7 局'
       + '（札幌・山形・長野・土浦・大垣・長崎・宮崎）。全局が同一のフル構成で、上の 6 系統に加えて'
       + 'カラー補助カメラ・4K 分光カメラ・微動計・制御 PC を備える。船橋・湘南・郡山・三島の 4 局には'
       + 'SWIR 冷却カメラを追加する。<b>表示している値は一部模擬データである。</b>';

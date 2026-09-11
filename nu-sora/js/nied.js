@@ -9,7 +9,7 @@ NS.NIED = [
   { key:'kyoshin', name:'K-NET・KiK-net', ja:'基盤的強震観測網',
     url:'https://www.kyoshin.bosai.go.jp/',
     what:'全国約 1,700 点の強震計。地表と地中の加速度波形',
-    use:'本観測網の微動計（13 局・校舎屋上）の記録を、近傍の K-NET 観測点と突き合わせて、地盤の揺れと校舎の応答を分離する',
+    use:'本観測網の微動計（14 局・校舎屋上）の記録を、近傍の K-NET 観測点と突き合わせて、地盤の揺れと校舎の応答を分離する',
     tags:['地震', '災害'] },
   { key:'hinet', name:'Hi-net', ja:'高感度地震観測網',
     url:'https://www.hinet.bosai.go.jp/',

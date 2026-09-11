@@ -692,7 +692,7 @@ NS.V.infra = function (root, go, arg) {
 
   NS.add(root, el('div', { class:'page-h' }, [
     el('h2', { text:'インフラサウンド全国アレイ' }),
-    el('p', { text:'全 13 局に 2 台ずつ（基線約 60 m のペア配置）設置したインフラサウンドセンサーを GNSS で時刻同期し、全国を一つのアレイとして扱う。火山噴火・雷・ロケット・津波・火球衝撃波を検知・定位し、線状降水帯の早期検知や成層圏風の逆推定にも用いる（サブテーマ G-4 / DT-4）。' })
+    el('p', { text:'全 14 局に 2 台ずつ（基線約 60 m のペア配置）設置したインフラサウンドセンサーを GNSS で時刻同期し、全国を一つのアレイとして扱う。火山噴火・雷・ロケット・津波・火球衝撃波を検知・定位し、線状降水帯の早期検知や成層圏風の逆推定にも用いる（サブテーマ G-4 / DT-4）。' })
   ]));
 
   NS.add(root, el('div', { class:'grid g4' }, [
@@ -737,7 +737,7 @@ NS.V.infra = function (root, go, arg) {
       tools:e.srcKnown ? badge('音源既知（較正可能）', 'ok') : badge('音源推定', 'info') }, [
       el('p', { style:{ margin:'0 0 12px', color:'var(--ink2)' }, text:e.summary }),
       el('div', { class:'grid g4' }, [
-        kpi('検出局数', e.det.length, '局', '全 13 局中'),
+        kpi('検出局数', e.det.length, '局', '全 14 局中'),
         kpi('最大振幅', NS.f(e.peakPa, 2), 'Pa', '周波数帯 ' + e.freq),
         kpi('定位誤差', '±' + NS.f(e.locErr, 1), 'km', e.srcKnown ? '既知の音源位置との差' : '交会法の 1σ'),
         kpi('見かけの音速', NS.f(e.cel, 3), 'km/s', '到達時刻差から推定')
@@ -807,7 +807,7 @@ NS.V.infra = function (root, go, arg) {
     NS.add(detail, panel(e.name, { note:e.id + ' · ' + NS.fmtJST(e.t) + ' JST · ' + e.cls }, [
       el('p', { style:{ margin:'0 0 12px', color:'var(--ink2)' }, text:e.summary }),
       el('div', { class:'grid g3' }, [
-        kpi('判定局数', e.det.length, '局', '全 13 局で常時微動を記録'),
+        kpi('判定局数', e.det.length, '局', '全 14 局で常時微動を記録'),
         kpi('最大 PGA', NS.f(e.det[0].pga, 1), 'gal', e.det[0].id + ' 局'),
         kpi('判定', '全局 継続使用可', '', '固有振動数の低下 5% 未満')
       ])
