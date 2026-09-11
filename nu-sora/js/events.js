@@ -352,6 +352,153 @@ function reentryDemo() {
   };
 }
 
+/* ---------- 弾道飛翔体（再突入体）の発光 ----------
+   炭素系アブレータ（カーボンフェノリック）の熱防護材をもつ再突入体は、
+   人工衛星の再突入とも自然天体とも違うスペクトルを出す。
+   ・C₂ スワンバンド（473 / 516 / 563 nm）と CN violet が強い ← 炭素アブレータ
+   ・Fe I・Cr I・Ni I ← 鋼製の構体
+   ・Al I・Cu I・Li I は弱いか出ない ← 太陽電池パドル・配線・電池がない
+   この「炭素は強いがアルミは弱い」という組み合わせが、衛星デブリとの決定的な違いになる。 */
+NS.LINES_BALLISTIC = [
+  { wl:372.0, el:'Fe I',  s:0.44 }, { wl:385.9, el:'Fe I',  s:0.52 }, { wl:393.4, el:'Ca II', s:0.30 },
+  { wl:394.4, el:'Al I',  s:0.18 }, { wl:396.2, el:'Al I',  s:0.16 },
+  { wl:404.6, el:'Fe I',  s:0.48 }, { wl:413.2, el:'Fe I',  s:0.46 },
+  { wl:425.4, el:'Cr I',  s:0.62 }, { wl:427.5, el:'Cr I',  s:0.58 }, { wl:428.9, el:'Cr I',  s:0.54 },
+  { wl:438.3, el:'Fe I',  s:0.60 }, { wl:440.5, el:'Fe I',  s:0.50 },
+  { wl:471.3, el:'C₂ 帯',  s:0.66, w:3.2 }, { wl:495.8, el:'Fe I', s:0.42 },
+  { wl:508.1, el:'Ni I',  s:0.44 }, { wl:515.0, el:'C₂ 帯', s:0.92, w:3.6 },
+  { wl:518.4, el:'Mg I',  s:0.26 }, { wl:527.0, el:'Fe I',  s:0.50 }, { wl:532.8, el:'Fe I', s:0.46 },
+  { wl:544.0, el:'Si I',  s:0.34 }, { wl:561.0, el:'C₂ 帯', s:0.58, w:3.0 },
+  { wl:589.0, el:'Na I',  s:0.30 }, { wl:615.8, el:'O I',   s:0.48 },
+  { wl:634.7, el:'Si II', s:0.36 }, { wl:656.3, el:'H I',   s:0.30 },
+  { wl:744.2, el:'N I',   s:0.52 }, { wl:777.4, el:'O I',   s:0.88 },
+  { wl:794.8, el:'Nb I',  s:0.14 }, { wl:822.3, el:'N I',   s:0.48 },
+  { wl:844.6, el:'O I',   s:0.34 }, { wl:868.0, el:'N I',   s:0.40 }
+];
+NS.CONT_BALLISTIC = [[350,0.00],[365,0.08],[380,0.18],[400,0.26],[430,0.33],[460,0.38],[490,0.42],
+  [520,0.45],[560,0.47],[600,0.47],[640,0.45],[680,0.42],[720,0.38],[760,0.33],[800,0.28],[840,0.23],
+  [870,0.20],[900,0.17]];
+
+NS.BANDS_BALLISTIC = [
+  { key:'C2', name:'C₂', label:'C₂（スワンバンド Δv=0 · 473 / 516 / 563 nm）', color:'#5FBF8B',
+    Texc:'約 4,500 – 6,500 K', deg:'violet', tau:14,
+    heads:[[516.5, 1.00], [473.7, 0.72], [563.5, 0.55]],
+    origin:'炭素系アブレータ（カーボンフェノリック）の熱防護材が焼け、気化した炭素が二原子分子として発光する。衛星デブリでは通常この強さでは現れない',
+    ref:'スワンバンドは彗星・炭素星でも見られる C₂ の代表的な電子遷移（d³Π–a³Π）' },
+  { key:'CN', name:'CN', label:'CN（violet 系 · 386–422 nm）', color:'#7C8FE0',
+    Texc:'約 9,000 – 13,000 K', deg:'red', tau:10,
+    heads:[[388.3, 1.00], [387.1, 0.82], [421.6, 0.44]],
+    origin:'アブレータ由来の炭素が衝撃層の高温窒素と反応して生成される。C₂ と同時に強く出ることが炭素アブレータの証拠になる',
+    ref:'ロケットデブリでは残留推進剤由来、弾道再突入体では熱防護材由来と解釈が分かれる' },
+  { key:'FeO', name:'FeO', label:'FeO（orange arc · 570–650 nm）', color:'#E0A06B',
+    Texc:'—', deg:'broad', tau:20,
+    heads:[[600.0, 1.00]],
+    origin:'鋼製の構体・接合部の鉄が酸化して生成される。アブレータが焼け抜けて構体が露出した局面で強まる',
+    ref:'Fe I 多重項の増加と同時に現れる' }
+];
+/* 弾道再突入体の組成グループ */
+NS.COMP_BALLISTIC = [
+  { key:'abl',   name:'炭素系アブレータ（熱防護材）', els:['C₂ 帯'],
+    color:'#5FBF8B', note:'C₂ スワンバンド 473 / 516 / 563 nm。カーボンフェノリックが焼けて気化した炭素。弾道再突入体を衛星デブリから分ける最大の手がかり' },
+  { key:'steel', name:'鋼製構体（鉄・クロム・ニッケル）', els:['Fe I', 'Cr I', 'Ni I'],
+    color:'#9AA3AE', note:'Fe I 多重項と Cr I 425–429 nm。アブレータが焼け抜けて構体が露出すると急増する' },
+  { key:'ins',   name:'断熱・充填材（ケイ素）', els:['Si I', 'Si II'],
+    color:'#B0A24A', note:'シリカフェノリックや断熱材のケイ素。炭素系と併用されることが多い' },
+  { key:'metal', name:'軽金属の痕跡（Al・Mg・Na）', els:['Al I', 'Mg I', 'Na I', 'Ca II'],
+    color:'#6FA8DC', note:'Al I 394/396 nm はごく弱い。人工衛星の再突入では最強になる線がここでは目立たないことが、機体構成の違いを示す' },
+  { key:'rare',  name:'耐熱合金の微量元素（Nb）', els:['Nb I'],
+    color:'#C77DBB', note:'ノズル・スロート部などに使われる高融点金属。検出されれば推進系の一部が残っていたことを示す' },
+  { key:'atmos', name:'大気起源（衝撃加熱された空気）', els:['O I', 'N I', 'H I'],
+    color:'#5FA98B', note:'O I 777.4 nm と N I。経路角が急なほど、また速度が速いほど強くなる' }
+];
+
+/* 弾道再突入体のスペクトル（組成・バンドの ON / OFF に対応） */
+NS.ballisticSpectrum = function (opt) {
+  opt = opt || {};
+  var on = opt.bands || { C2:true, CN:true, FeO:true };
+  var src = opt.comp ? NS.filterByComp(NS.LINES_BALLISTIC, NS.COMP_BALLISTIC, opt.comp) : NS.LINES_BALLISTIC;
+  var lines = src.map(function (l) { return { wl:l.wl, el:l.el, s:l.s, w:l.w }; });
+  var bands = NS.BANDS_BALLISTIC.filter(function (b) { return on[b.key]; })
+    .map(function (b) { return { def:b, amp:({ C2:0.95, CN:0.80, FeO:0.35 })[b.key] }; });
+  return { lines:lines, bands:bands,
+           pts:NS.synthSpectrum(lines, { seed:'RE-BALLISTIC', cont:NS.CONT_BALLISTIC, fwhm:2.8,
+                                         lo:350, hi:900, n:1200, bands:bands }) };
+};
+
+/* ---------- 弾道飛翔体の再突入（想定シナリオ） ----------
+   実際の発射・落下の記録ではない。J-ALERT が発出されたあとに、本観測網が
+   「どこへ、いつ落ちたか」を独立に押さえられるかを確かめるための訓練用シナリオ。
+   飛翔経路や機体諸元の推定を目的とするものではなく、公表されている落下海域の
+   おおよその位置と、再突入体の一般的な熱防護材の構成だけを前提にしている。 */
+NS.missileT = function () { return Date.UTC(2027, 9, 14, 20, 6, 31); };  /* 2027-10-15 05:06 JST */
+
+function ballisticScenario() {
+  var t = NS.missileT();
+  var lc = NS.makeLightcurve({ seed:'RE-BAL', dur:22.4, beginMag:2.2, peakMag:-6.8, peakAt:0.62,
+    flares:[{ at:0.55, amp:1.1, w:0.018 }, { at:0.74, amp:1.6, w:0.014 }, { at:0.86, amp:0.9, w:0.020 }] });
+  var ErJ = 3.62e7;                       /* 発光効率 τ ≒ 0.4 %（低速のため小さい） */
+  var det = [
+    { id:'TCR', mag:-6.8, elev:38.9, snr:142, swir:false, infra:{ dt:552,  P:1.9, amp:2.81, az: 82.3 } },
+    { id:'FNB', mag:-6.6, elev:32.8, snr:128, swir:true,  infra:{ dt:640,  P:2.0, amp:2.42, az: 71.1 } },
+    { id:'TDN', mag:-6.5, elev:32.5, snr:121, swir:false, infra:{ dt:644,  P:2.0, amp:2.38, az: 69.9 } },
+    { id:'KYM', mag:-6.5, elev:33.6, snr:118, swir:true,  infra:{ dt:637,  P:2.1, amp:2.35, az:129.9 } },
+    { id:'SRG', mag:-6.2, elev:29.5, snr: 96, swir:false, infra:{ dt:715,  P:2.2, amp:2.06, az: 72.2 } },
+    { id:'SKS', mag:-6.0, elev:27.8, snr: 88, swir:false, infra:{ dt:758,  P:2.2, amp:1.94, az: 72.4 } },
+    { id:'SNN', mag:-5.7, elev:24.7, snr: 71, swir:true,  infra:{ dt:840,  P:2.4, amp:1.72, az: 66.3 } },
+    { id:'YMG', mag:-5.4, elev:23.2, snr: 62, swir:false, infra:{ dt:888,  P:2.5, amp:1.63, az:145.9 } }
+  ];
+  return {
+    id:'NUS-SC-BAL-2027', kind:'reentry', t:t, scenario:true,
+    name:'北朝鮮 弾道ミサイル 再突入（2027 年 想定シナリオ）',
+    objName:'弾道飛翔体の再突入体（型式・諸元は特定しない）',
+    scenarioNote:'本事象は実際の発射・落下の記録ではない。J-ALERT（全国瞬時警報システム）が発出されたのち、'
+      + '本観測網が落下時刻と落下海域を独立に押さえられるかを確かめるための訓練用シナリオである。'
+      + '飛翔経路や機体諸元を推定することを目的とせず、発射の予知・切迫性を示すものでもない。'
+      + '警報・避難の判断は内閣官房・防衛省・消防庁の発表が優先する。',
+    summary:'茨城県 大洗の東 約 210 km の太平洋上に落下した想定で、再突入体の発光を 8 局が捉える。'
+      + '突入速度 5.9 km/s・経路角 38.0°・継続 22.4 秒という組み合わせは、軌道デブリ（経路角 1〜3°）とも'
+      + '自然火球（11 km/s 以上）とも重ならない。分光では炭素系アブレータ由来の C₂ スワンバンドと CN が強く、'
+      + '人工衛星で最強となる Al I がごく弱いことから、熱防護材をもつ弾道再突入体と判別できる。',
+    absMag:-6.8, dur:22.4, stationsDet:8, stationsFov:10, lightcurve:lc,
+    begin:{ lat:36.398, lon:141.525, alt:100.0 }, end:{ lat:36.180, lon:142.529, alt:27.0 },
+    impact:{ lat:36.100, lon:142.900, name:'茨城県 大洗の東 約 210 km の太平洋上' },
+    vInf:5.90, entryAngle:38.0, azimuth:105.0, ErJ:ErJ, ErKt:ErJ / NS.KT_J,
+    objMass:520, objArea:'再突入体（円錐形・底面直径 約 1 m 想定）',
+    ballistic:{
+      jalert:{ issuedDt:-486, label:'J-ALERT 発出（発射の探知から 4 分・落下予測 26 分前）' },
+      apogeeKm:1000, rangeKm:1510, flightSec:1080,
+      splashErrKm:3.8, splashErrSec:2.4, eez:'排他的経済水域（EEZ）の内側・領海の外',
+      note:'落下点は 8 局のインフラサウンド到達時刻差の交会で決めた。光学の軌跡延長（±6.1 km）より'
+        + '音のほうが精度が高いのは、発光終了の高度 27 km から海面までの暗黒飛行を音が飛び越えるため。'
+    },
+    predict:{ issued:-0.135, windowMin:6, srcTLE:'J-ALERT の落下予測（防衛省発表）', errKm:14.2, errMin:0.4 },
+    frag:[ { t:12.6, alt:58.2, n:1, note:'アブレータ表面が発光を始める（主発光の立ち上がり）' },
+           { t:16.4, alt:44.1, n:1, note:'最大光度 −6.8 等。減速が最も強い区間' },
+           { t:18.9, alt:35.7, n:3, note:'小片の剥離（フレア 1.6 等分）。構体の一部が露出' },
+           { t:22.4, alt:27.0, n:3, note:'発光終了。ここから海面まで約 35 km を暗黒飛行' } ],
+    swirObs:{ stations:['FNB','SNN','KYM'], band:'1.2–1.6 µm', tempK:2860, tempErr:180,
+      note:'炭素系アブレータの表面温度は 2,500 K を超える。アルミ合金が溶ける 930 K どころか、'
+        + '酸化アルミの沸点 3,250 K に迫る。熱防護材が設計どおり働いていることを外から確認できる。' },
+    ablation:{ totalKg:58, parts:[ { el:'C', kg:44.6, color:'var(--c-ok)' }, { el:'Si', kg:6.8, color:'var(--c-cau)' },
+                                   { el:'Fe', kg:5.1, color:'var(--muted)' }, { el:'Al', kg:0.9, color:'var(--c-info)' },
+                                   { el:'Nb', kg:0.2, color:'var(--c-spec)' } ],
+      other:'Cu・Li は検出されない（配線・電池を持たない）',
+      note:'アブレータは焼けて減ることで熱を逃がす仕組みなので、質量の減り方そのものが熱防護材の働きを表す。'
+        + '衛星デブリでは Al が支配的になるのに対し、ここでは炭素が 8 割近くを占める。' },
+    infraP:2.0, EinfKt:NS.aftacE(2.0),
+    det:det,
+    spectrum:{ kind:'ballistic', seed:'RE-BAL-SP', station:'土浦局', expo:'4K30p · 積算 24 フレーム',
+      note:'C₂ スワンバンド（473 / 516 / 563 nm）と CN violet（386–422 nm）が全体を支配し、'
+        + 'Fe I 多重項と Cr I 425–429 nm が重なる。人工衛星の再突入で最強になる Al I 394.4 / 396.2 nm はごく弱く、'
+        + 'Cu I・Li I は検出されない。炭素が強くアルミが弱いというこの組み合わせが、'
+        + '太陽電池パドルや電池をもつ衛星ではなく、炭素系アブレータの熱防護材をもつ再突入体であることを示す。'
+        + '組成のボタンで各成分を切り替えると、どの線がどの部材に由来するかを確かめられる。' },
+    alert:{ level:'情報', issuedDt:734,
+      recipients:['内閣官房（事態対処・危機管理）', '防衛省（情報提供）', '茨城県 防災・危機管理課',
+                  '茨城県教育委員会', '海上保安庁 第三管区（航行警報の参考）'] }
+  };
+}
+
 /* ---------- インフラサウンド事象 ---------- */
 NS.fujiT = function () { return Date.UTC(2028, 10, 23, 0, 41, 12); };   /* 2028-11-23 09:41 JST */
 
@@ -561,13 +708,15 @@ function reentryForecast() {
 
 /* ---------- 組み立て ---------- */
 NS.buildCatalog = function () {
-  var fb = fireballBoso(), re = reentryDemo();
-  NS.FLAGSHIP = { fireball:fb, reentry:re };
+  var fb = fireballBoso(), re = reentryDemo(), bal = ballisticScenario();
+  NS.FLAGSHIP = { fireball:fb, reentry:re, ballistic:bal };
+  NS.REENTRIES = [re, bal];
   NS.INFRA = infraEvents();
   NS.FORECAST = reentryForecast();
   NS.EVENTS = [fb, re].concat(routineEvents()).sort(function (a, b) { return b.t - a.t; });
   NS.EVENTS.forEach(function (e) { NS.EVMAP = NS.EVMAP || {}; NS.EVMAP[e.id] = e; });
   NS.INFRA.forEach(function (e) { NS.EVMAP[e.id] = e; });
+  NS.EVMAP[bal.id] = bal;        /* 想定シナリオは一覧には出さず、画面から辿れるようにだけしておく */
   return NS.EVENTS;
 };
 

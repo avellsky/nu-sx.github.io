@@ -469,6 +469,72 @@ function specPanel(e, o) {
   var sp = e.spectrum, art = sp.kind === 'artificial', W = o.w || 900;
   var isMarker = function (e2) { return NS.ARTIFICIAL_MARKERS.indexOf(e2) >= 0; };
 
+  /* ---- 弾道飛翔体：組成 ＋ 分子バンドの ON / OFF（局面の切り替えは持たない） ---- */
+  if (sp.kind === 'ballistic') {
+    var bState = {}, bBand = { C2:true, CN:true, FeO:true };
+    NS.COMP_BALLISTIC.forEach(function (g) { bState[g.key] = true; });
+    var bChart = el('div'), bChips = el('div', { class:'spec-lines' }), bInfo = el('div');
+    var bDraw = function () {
+      var r = NS.ballisticSpectrum({ comp:bState, bands:bBand });
+      NS.clear(bChart);
+      NS.add(bChart, buildSpecSvg({ pts:r.pts, lines:r.lines, bands:r.bands, art:true, w:W, uid:'b', labelMin:0.24 }));
+      NS.clear(bChips);
+      NS.add(bChips, r.lines.slice().sort(function (p, q) { return q.s - p.s; }).slice(0, 14).map(function (l) {
+        return el('span', { class:'sl' + (l.el === 'C₂ 帯' ? ' hi' : ''), text:l.el + ' ' + NS.f(l.wl, 1) + ' nm' });
+      }));
+      NS.add(bChips, r.bands.map(function (x) {
+        return el('span', { class:'sl band', style:{ borderColor:x.def.color, color:x.def.color },
+          text:x.def.name + '　' + x.def.Texc });
+      }));
+      NS.clear(bInfo);
+      NS.add(bInfo, compTable(NS.COMP_BALLISTIC, bState, NS.LINES_BALLISTIC, bToggle, 'bcomp-'));
+    };
+    var bToggle = function (k) {
+      bState[k] = !bState[k];
+      var x = document.getElementById('bcomp-' + k);
+      if (x) x.setAttribute('aria-pressed', bState[k] ? 'true' : 'false');
+      bDraw();
+    };
+    var bandBtns = el('div', { class:'chips' }, NS.BANDS_BALLISTIC.map(function (x) {
+      return el('button', { class:'chip band', id:'bband-' + x.key, 'aria-pressed':bBand[x.key] ? 'true' : 'false',
+        style:{ '--bc':x.color }, title:x.label, onclick:function (ev) {
+          bBand[x.key] = !bBand[x.key];
+          ev.currentTarget.setAttribute('aria-pressed', bBand[x.key] ? 'true' : 'false');
+          bDraw();
+        } }, [el('i', { class:'bdot', style:{ background:x.color } }), x.name]);
+    }));
+    var bPan = panel('発光スペクトル（4K 分光カメラ ＋ 回折格子 600 lpm）',
+      { note:(sp.station ? sp.station + ' · ' + sp.expo + ' · ' : '') + '炭素系アブレータ由来の C₂ と CN が卓越',
+        tools:badge('弾道再突入体と判定', 'crit') }, [
+      el('div', { class:'specbar' }, [
+        el('span', { class:'lbl', text:'分子バンド' }), bandBtns,
+        el('div', { class:'spacer' })
+      ]),
+      el('div', { class:'specbar' }, [
+        el('span', { class:'lbl', text:'組成（原子線）' }),
+        compChips(NS.COMP_BALLISTIC, bState, function () { bDraw(); }, 'bcomp-')
+      ]),
+      bChart,
+      bChips,
+      el('div', { class:'note', text:sp.note }),
+      el('div', { style:{ marginTop:'10px' } }, bInfo),
+      el('div', { style:{ marginTop:'10px' } }, NS.table(['分子種', 'バンド', '励起温度', '生成機構と意味', '参考'],
+        NS.BANDS_BALLISTIC.map(function (x) {
+          return [el('b', { style:{ color:x.color }, text:x.name }),
+            { class:'sm', html:x.label.replace(/^[^（]*（/, '').replace(/）$/, '') },
+            { class:'sm', html:x.Texc }, { class:'sm', html:x.origin },
+            { class:'sm', html:'<span class="hint">' + x.ref + '</span>' }];
+        }))),
+      specRefBox(),
+      el('div', { class:'src', text:'弾道再突入体のスペクトルは、炭素系アブレータ（カーボンフェノリック）をもつ再突入体に一般に期待される'
+        + '化学種から構成した想定値である。C₂ スワンバンドと CN の同定、および Al I が弱いことの意味づけは、'
+        + '「はやぶさ」カプセル（S. Abe et al. 2011, PASJ）およびロケットデブリ（Watanabe et al., ACM 2026）の'
+        + '実測スペクトルとの対比による。表示している波形そのものはデモ用の合成スペクトルであり、実観測データではない。' })
+    ]);
+    bDraw();
+    return bPan;
+  }
+
   /* ---- 自然天体：静的表示 ---- */
   if (!art) {
     var nState = {}; NS.COMP_NATURAL.forEach(function (g) { nState[g.key] = true; });
@@ -612,14 +678,26 @@ NS.specPanel = specPanel;
    スペースデブリ再突入（G-2）
    ========================================================================= */
 NS.V.reentry = function (root, go, arg) {
-  var e = NS.FLAGSHIP.reentry;
+  var list = NS.REENTRIES || [NS.FLAGSHIP.reentry];
+  var e = (NS.EVMAP[arg] && NS.EVMAP[arg].kind === 'reentry') ? NS.EVMAP[arg] : list[0];
+  var bal = !!e.ballistic;
   NS.add(root, el('div', { class:'page-h' }, [
-    el('h2', { text:'スペースデブリ再突入　光学・分光・音響観測' }),
-    el('p', { text:'公開軌道要素から再突入を予報し、光学・SWIR・分光・インフラサウンドで実観測する。破片化の過程と大気への金属注入量を地上から直接推定する（サブテーマ G-2 / DT-1）。' })
+    el('h2', { text:'再突入天体の光学・分光・音響観測' }),
+    el('p', { text:'公開軌道要素から再突入を予報し、光学・SWIR・分光・インフラサウンドで実観測する。破片化の過程と大気への金属注入量を地上から直接推定する。速度・経路角・継続時間・スペクトルの組み合わせで、自然火球・軌道デブリ・弾道飛翔体を区別する（サブテーマ G-2 / DT-1）。' }),
+    el('div', { class:'seg', style:{ marginTop:'10px' } }, list.map(function (x) {
+      return el('button', { text:x.scenario ? '弾道飛翔体（想定シナリオ）' : '軌道デブリ（衛星の再突入）',
+        title:x.name, 'aria-pressed':x.id === e.id ? 'true' : 'false',
+        onclick:function () { go('reentry', x.id); } });
+    }))
   ]));
+  if (e.scenario) {
+    NS.add(root, el('div', { class:'scnbanner', style:{ marginBottom:'14px' } }, [
+      el('b', { text:'訓練用の想定シナリオです' }),
+      el('span', { text:e.scenarioNote })]));
+  }
 
-  /* 予報リスト */
-  NS.add(root, panel('再突入 予報（今後 5 日）', { note:'公開軌道要素（TLE）＋大気密度モデルによる推定。予報窓は残存寿命に比例して広がる' },
+  /* 予報リスト（軌道デブリのときだけ。弾道飛翔体は軌道要素が公開されない） */
+  if (!bal) NS.add(root, panel('再突入 予報（今後 5 日）', { note:'公開軌道要素（TLE）＋大気密度モデルによる推定。予報窓は残存寿命に比例して広がる' },
     NS.table(['対象', 'NORAD / COSPAR', '種別', '質量', '予報時刻 (JST)', '予報窓', '近地点/遠地点', '傾斜角', '日本上空', '可視の見込み'],
       NS.FORECAST.map(function (f) {
         return [el('b', { text:f.name }), { class:'mono sm', html:f.norad + '<br>' + f.cospar }, f.type,
@@ -632,19 +710,32 @@ NS.V.reentry = function (root, go, arg) {
 
   /* 観測事例 */
   NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel(e.name,
-    { note:e.id + ' · ' + NS.fmtJST(e.t, { ms:true }) + ' JST · ' + e.objName, tools:badge(e.stationsDet + ' 局同時検出', 'ok') }, [
+    { note:e.id + ' · ' + NS.fmtJST(e.t, { ms:true }) + ' JST · ' + e.objName,
+      tools:e.scenario ? badge('想定シナリオ（実観測ではない）', 'warn') : badge(e.stationsDet + ' 局同時検出', 'ok') }, [
     el('p', { style:{ margin:'0 0 12px', color:'var(--ink2)' }, text:e.summary }),
     el('div', { class:'grid g4' }, [
       kpi('最大絶対等級', NS.f(e.absMag, 1), '等', '継続 ' + NS.f(e.dur, 1) + ' 秒', { acc:true }),
       kpi('突入速度', NS.f(e.vInf, 2), 'km/s', '自然火球（11〜72 km/s）より明確に遅い'),
-      kpi('経路角', NS.f(e.entryAngle, 2), '°', '極めて浅い ＝ 人工天体の特徴'),
+      kpi('経路角', NS.f(e.entryAngle, 2), '°',
+          bal ? '軌道デブリ（1〜3°）よりはるかに急 ＝ 弾道軌道の特徴' : '極めて浅い ＝ 人工天体の特徴'),
       kpi('対象質量', e.objMass, 'kg', e.objArea)
     ])
   ])));
 
-  /* 予報精度 */
+  /* 予報精度（弾道飛翔体は軌道要素が無いので、落下点の独立推定に置き換える） */
+  var b = e.ballistic;
   NS.add(root, el('div', { class:'grid g3', style:{ marginTop:'14px' } }, [
-    panel('予報と実測の比較', { note:'再突入予報の検証（G-2 の中核指標）' }, [
+    bal ? panel('落下点の独立推定', { note:'8 局のインフラサウンド到達時刻差の交会による' }, [
+      NS.kv([
+        ['J-ALERT', b.jalert.label],
+        ['本観測網の落下時刻', NS.fmtJST(e.t + (e.dur + 42) * 1000, { sec:true }) + '（推定誤差 ± ' + NS.f(b.splashErrSec, 1) + ' 秒）'],
+        ['推定落下点', NS.latlon(e.impact.lat, e.impact.lon) + '<br><span class="hint">' + e.impact.name + '</span>'],
+        ['落下点の誤差', '<b>± ' + NS.f(b.splashErrKm, 1) + ' km</b>（音響交会）／ ± 6.1 km（光学の軌跡延長）'],
+        ['海域', b.eez],
+        ['防衛省の予測との差', '<b>' + NS.f(e.predict.errKm, 1) + ' km</b> / ' + NS.f(e.predict.errMin, 1) + ' 分']
+      ], 'wide'),
+      el('div', { class:'note', text:b.note })
+    ]) : panel('予報と実測の比較', { note:'再突入予報の検証（G-2 の中核指標）' }, [
       NS.kv([
         ['予報発出', NS.f(-e.predict.issued, 1) + ' 時間前'],
         ['使用軌道要素', e.predict.srcTLE],
@@ -660,12 +751,13 @@ NS.V.reentry = function (root, go, arg) {
         return [{ class:'r mono', html:'+' + NS.f(f.t, 1) + ' s' }, { class:'r', html:NS.km(f.alt) },
           { class:'r', html:String(f.n) }, { class:'sm', html:f.note }];
       }))),
-    panel('大気への金属注入量の推定', { note:'アブレーション質量の元素分配' }, [
-      NS.chart.bars({ bars:[
-        { y:e.ablation.alKg, label:'Al', color:'var(--accent)', top:NS.f(e.ablation.alKg, 1) },
-        { y:e.ablation.cuKg, label:'Cu', color:'var(--c-warn)', top:NS.f(e.ablation.cuKg, 1) },
-        { y:e.ablation.liKg, label:'Li', color:'var(--c-info)', top:NS.f(e.ablation.liKg, 2) }
-      ], height:150, yLabel:'kg' }),
+    panel(bal ? '大気へのアブレーション質量' : '大気への金属注入量の推定', { note:'アブレーション質量の元素分配' }, [
+      NS.chart.bars({ bars:(e.ablation.parts || [
+        { el:'Al', kg:e.ablation.alKg, color:'var(--accent)' },
+        { el:'Cu', kg:e.ablation.cuKg, color:'var(--c-warn)' },
+        { el:'Li', kg:e.ablation.liKg, color:'var(--c-info)' }
+      ]).map(function (x) { return { y:x.kg, label:x.el, color:x.color, top:NS.f(x.kg, x.kg < 1 ? 2 : 1) }; }),
+        height:150, yLabel:'kg' }),
       NS.kv([['総アブレーション質量', NS.f(e.ablation.totalKg, 0) + ' kg（対象質量の ' + Math.round(e.ablation.totalKg / e.objMass * 100) + '%）'],
              ['その他', e.ablation.other]], 'wide'),
       el('div', { class:'note', text:e.ablation.note })
@@ -694,17 +786,36 @@ NS.V.reentry = function (root, go, arg) {
     var g = M.addOverlay(s('circle', { cx:p[0], cy:p[1], r:M.px(3.5 + f.n * 0.35), fill:'var(--accent)', 'fill-opacity':0.5, stroke:'var(--accent)', 'stroke-width':1, 'vector-effect':'non-scaling-stroke' }));
     M.tipOn(g, '<b>+' + NS.f(f.t, 1) + ' s · ' + NS.km(f.alt) + '</b><span class="mt-d">破片 ' + f.n + ' 個</span><span class="mt-x">' + f.note + '</span>');
   });
-  M.fit([e.begin, e.end], 0.9);
-  var mp = panel('地上軌跡と破片化地点', { note:'円の大きさは破片数。市区町村の境界は国土数値情報 行政区域データ（国土交通省）による' }, []);
+  if (e.impact) {
+    /* 発光終了から海面までは光らない（暗黒飛行）。音だけがこの区間を飛び越える */
+    M.addOverlay(s('path', { d:NS.geoLinePath(e.end, e.impact), stroke:'var(--c-crit)', 'stroke-width':2,
+      'stroke-dasharray':'5 4', fill:'none', 'vector-effect':'non-scaling-stroke', opacity:0.85 }));
+    var ip = M.pt(e.impact.lon, e.impact.lat);
+    M.addOverlay(s('circle', { cx:ip[0], cy:ip[1], r:M.px(6.5), fill:'none', stroke:'var(--c-crit)',
+      'stroke-width':1.6, 'vector-effect':'non-scaling-stroke' }));
+    var ig = M.addOverlay(s('path', { d:'M' + (ip[0] - M.px(5)) + ' ' + ip[1] + 'h' + M.px(10) +
+      'M' + ip[0] + ' ' + (ip[1] - M.px(5)) + 'v' + M.px(10), stroke:'var(--c-crit)', 'stroke-width':1.6,
+      'vector-effect':'non-scaling-stroke' }));
+    M.tipOn(ig, '<b>推定落下点</b><span class="mt-d">' + NS.latlon(e.impact.lat, e.impact.lon) +
+      '</span><span class="mt-x">' + e.impact.name + '</span>');
+    M.fit([e.begin, e.end, e.impact], 0.7);
+  } else {
+    M.fit([e.begin, e.end], 0.9);
+  }
+  var mp = panel(e.impact ? '地上軌跡・暗黒飛行・推定落下点' : '地上軌跡と破片化地点',
+    { note:e.impact ? '実線は発光区間、赤の破線は発光終了（高度 27 km）から海面までの暗黒飛行。✕ が推定落下点。市区町村の境界は国土数値情報 行政区域データ（国土交通省）による'
+                    : '円の大きさは破片数。市区町村の境界は国土数値情報 行政区域データ（国土交通省）による' }, []);
   var mb = mp.querySelector('.panel-b'); mb.classList.add('flush'); mb.appendChild(M.node);
 
   NS.add(root, el('div', { class:'grid g2', style:{ marginTop:'14px' } }, [
-    panel('光度曲線（局別）', { note:'38 秒にわたる長い発光。4 回の主フレアが破片化に対応' }, [
+    panel('光度曲線（局別）', { note:bal ? '22 秒の発光。急な経路角のため短時間で深く入り、減速が強い区間で最大光度になる'
+                                          : '38 秒にわたる長い発光。4 回の主フレアが破片化に対応' }, [
       NS.chart.line({ series:series, width:660, height:250, xLabel:'発光開始からの秒数', yLabel:'絶対等級',
-        yDomain:[2.6, -9.2], xFmt:function (v) { return NS.f(v, 0) + 's'; }, yFmt:function (v) { return NS.f(v, 0); },
+        yDomain:[e.absMag > -7.5 ? 3.2 : 2.6, e.absMag - 1.0], xFmt:function (v) { return NS.f(v, 0) + 's'; }, yFmt:function (v) { return NS.f(v, 0); },
         rules:e.frag.map(function (f) { return { x:f.t, color:'var(--muted)', dash:'2 3' }; }) }),
       NS.chart.legend(series.map(function (x) { return [x.name, x.color, 'line']; })),
-      el('div', { class:'note', text:'自然火球の継続時間は通常 1〜5 秒。38 秒という長い発光と浅い経路角は、円軌道からの人工天体の再突入に特有である。' })
+      el('div', { class:'note', text:bal ? '自然火球は 0.5〜8 秒、軌道デブリは 20〜120 秒。22 秒という長さは軌道デブリに近いが、経路角 38° と速度 5.9 km/s の組み合わせはどちらとも重ならない。急な経路角では大気の密度が急に増すため、光度曲線の立ち上がりが鋭くなる。'
+                                          : '自然火球の継続時間は通常 1〜5 秒。38 秒という長い発光と浅い経路角は、円軌道からの人工天体の再突入に特有である。' })
     ]),
     mp
   ]));
@@ -736,17 +847,62 @@ NS.V.reentry = function (root, go, arg) {
 
   NS.add(root, el('div', { style:{ marginTop:'14px' } }, specPanel(e, { w:1180 })));
 
-  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('自然天体と人工天体の識別', { note:'本観測網が同一事象について同時に得る指標' },
-    NS.table(['指標', '自然火球（この観測網の典型値）', '人工天体の再突入', 'この事象'], [
-      ['突入速度', '11.2 – 72 km/s', '7.4 – 8.0 km/s', el('b', { text:NS.f(e.vInf, 2) + ' km/s → 人工' })],
-      ['経路角', '10 – 80°', '0.5 – 3°', el('b', { text:NS.f(e.entryAngle, 2) + '° → 人工' })],
-      ['継続時間', '0.5 – 8 秒', '20 – 120 秒', el('b', { text:NS.f(e.dur, 1) + ' 秒 → 人工' })],
-      ['分光の主要線', 'Mg I 518 / Na I 589 / Fe I 多重項', 'Al I 394・396 / Cu I 510・578 / Li I 671', el('b', { text:'Al・Cu・Li 検出 → 人工' })],
-      ['分子（酸化物）バンド', '検出されない', 'AlO 450–560 / CN 386–422 / TiO 515–725 nm', el('b', { text:'AlO・CN・TiO 検出 → 人工' })],
-      ['励起温度', '4,000 – 5,000 K 程度', 'CN 約 12,000 K / AlO 約 5,000–9,000 K', el('b', { text:'高温 → 人工' })],
-      ['破片の色', '黄白（Na 卓越）', '青白（Al 卓越）', el('b', { text:'青白 → 人工' })],
-      ['軌道要素との照合', '該当なし', '公開 TLE と一致', el('b', { text:'一致（' + e.predict.errMin + ' 分差）→ 人工' })]
+  /* 弾道飛翔体シナリオ：J-ALERT との関係と学校の対応 */
+  if (bal) {
+    NS.add(root, el('div', { class:'grid g2', style:{ marginTop:'14px' } }, [
+      panel('J-ALERT との関係', { note:'警報を出すのは国。本観測網は「落ちた場所と時刻」を後から独立に確かめる',
+        tools:badge('本観測網は警報を出さない', 'warn') }, [
+        el('p', { style:{ margin:'0 0 12px', color:'var(--ink2)' },
+          text:'弾道飛翔体の探知・警報は、防衛省の早期警戒衛星とレーダー、内閣官房・消防庁の J-ALERT が担う。'
+            + '本観測網にその役割はなく、代われるものでもない。できるのは、警報が出たあとに残る「結局どこへ落ちたのか」'
+            + 'という問いに、光学と音の実測から独立した答えを出すことである。自治体と学校が屋外活動の再開を判断するとき、'
+            + 'また航行警報の解除を検討するときに、この独立推定が材料になる。' }),
+        NS.table(['時刻', '担い手', '内容'], [
+          [{ class:'mono sm', html:'−8 分 06 秒' }, badge('防衛省・内閣官房', 'crit'), 'J-ALERT 発出。落下予測海域と時刻を通知'],
+          [{ class:'mono sm', html:'0 秒' }, badge('本観測網', 'info'), '8 局の全天カメラが再突入発光を検出'],
+          [{ class:'mono sm', html:'+22 秒' }, badge('本観測網', 'info'), '多点三角測量で軌跡を決定（経路角 38.0°・速度 5.9 km/s）'],
+          [{ class:'mono sm', html:'+64 秒' }, badge('本観測網', 'info'), '軌跡の延長から落下点を推定（± 6.1 km）'],
+          [{ class:'mono sm', html:'+9 分 12 秒' }, badge('本観測網', 'info'), '8 局のインフラサウンド到達時刻差の交会で落下点を確定（± 3.8 km）'],
+          [{ class:'mono sm', html:'+12 分 14 秒' }, badge('本観測網', 'ok'), '茨城県・県教委・海保第三管区へ観測結果を情報提供'],
+          [{ class:'mono sm', html:'+20 分' }, badge('自治体・学校', 'ok'), '落下海域が陸から 210 km 沖と確認され、屋外活動を再開']
+        ], 'wide'),
+        el('div', { class:'note', text:'警報・避難の判断は内閣官房・防衛省・消防庁の発表が優先する。本観測網の推定値は、'
+          + '不確かさ（± 3.8 km / ± 2.4 秒）を必ず併記して提供する。' })
+      ]),
+      panel('学校と自治体の対応（G-7）', { note:'J-ALERT が鳴ったあと、現場で足りないのは「終わったかどうか」の判断材料' }, [
+        NS.table(['局面', '現場で起きること', '本観測網が出せるもの'], [
+          ['警報中', '屋内退避。登校時間帯なら通学路で足止めが生じる', '（観測網の役割なし。国の警報に従う）'],
+          ['落下直後', '「どこに落ちたか」が分からないまま待機が続く', '再突入発光の検出と、軌跡からの落下点の速報（+64 秒）'],
+          ['確認', '報道や発表を待つ時間が長く、再開の判断ができない', '音響交会による落下点の確定（± 3.8 km）と落下時刻（± 2.4 秒）'],
+          ['再開', '屋外活動・部活動・下校をいつ戻すかの判断', '陸域からの距離と、破片が陸へ到達しないことの根拠'],
+          ['事後', '記録が残らず、次の訓練に活かせない', '波形・映像・解析の一式を保存し、訓練の検証材料にする']
+        ], 'wide'),
+        el('div', { class:'note', text:'茨城・福島・千葉の付属校 3 校を対象に、J-ALERT の受信から再開判断までを通した訓練を'
+          + '危機管理学部と合同で設計する。観測網は訓練のたびに「実際に何秒で何が分かったか」を記録し、手順の見直しに使う。' })
+      ])
+    ]));
+  }
+
+  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('自然火球・軌道デブリ・弾道飛翔体の識別',
+    { note:'本観測網が同一事象について同時に得る指標。3 者は速度と経路角の組み合わせで重ならない' },
+    NS.table(['指標', '自然火球', '軌道デブリ（衛星）', '弾道飛翔体（再突入体）', 'この事象'], [
+      ['突入速度', '11.2 – 72 km/s', '7.4 – 8.0 km/s', '4 – 7 km/s',
+        el('b', { text:NS.f(e.vInf, 2) + ' km/s' })],
+      ['経路角', '10 – 80°', '0.5 – 3°', '25 – 50°', el('b', { text:NS.f(e.entryAngle, 1) + '°' })],
+      ['継続時間', '0.5 – 8 秒', '20 – 120 秒', '15 – 40 秒', el('b', { text:NS.f(e.dur, 1) + ' 秒' })],
+      ['最強の原子線', 'Mg I 518 / Na I 589', 'Al I 394・396', 'Fe I 多重項・Cr I 425–429',
+        el('b', { text:bal ? 'Fe I・Cr I → 弾道' : 'Al・Cu・Li → 衛星' })],
+      ['分子バンド', '検出されない', 'AlO・CN・TiO', 'C₂ スワンバンド・CN（強）',
+        el('b', { text:bal ? 'C₂ 検出 → 炭素アブレータ' : 'AlO・CN・TiO → 衛星' })],
+      ['アルミの強さ', '（該当なし）', '最強', 'ごく弱い', el('b', { text:bal ? '弱い → 弾道' : '最強 → 衛星' })],
+      ['リチウム（電池）', '検出されない', 'Li I 670.8 を検出', '検出されない',
+        el('b', { text:bal ? '未検出 → 電池を持たない' : '検出 → 衛星' })],
+      ['表面温度（SWIR）', '2,000 K 前後', '約 2,100 K（アルミの気化域）', '2,500 K 以上（炭素アブレータ）',
+        el('b', { text:e.swirObs.tempK + ' K' })],
+      ['事前情報との照合', '該当なし', '公開 TLE と一致', 'J-ALERT の落下予測と照合',
+        el('b', { text:bal ? '予測との差 ' + NS.f(e.predict.errKm, 1) + ' km' : '一致（' + e.predict.errMin + ' 分差）' })]
     ]))));
+
 };
 
 /* =========================================================================
