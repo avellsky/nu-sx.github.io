@@ -63,7 +63,7 @@ NS.EQUIPMENT = [
   { key:'infra',  cat:'音響', name:'インフラサウンドセンサー ×2', model:'株式会社サヤ INF03（0.1–1000 Hz, 130/110 dB SPL 切替）',
     spec:'GNSS同期ロガー, ペア配置（基線約 60 m）', target:'火球衝撃波・火山・雷・津波・ロケット', all:true },
   { key:'met',    cat:'気象', name:'複合気象センサー',       model:'Vaisala WXT530 系',
-    spec:'気温・湿度・気圧・風向風速・雨量・日射', target:'WBGT／暗黒飛行の風補正／微気候', all:true },
+    spec:'気温・湿度・気圧・風向風速・雨量・日射', target:'WBGT／暗黒飛行（ダークフライト）の地上風補正／微気候', all:true },
   { key:'sqm',    cat:'環境', name:'夜空輝度計',             model:'Unihedron SQM-LU-DL ＋ 窓付き野外ハウジング',
     spec:'視野 FWHM 約20°, IRカット, 1–80 s サンプリング, mag/arcsec²', target:'光害・衛星コンステレーションの寄与分離', all:true },
   { key:'hro',    cat:'電波', name:'電波流星受信機',         model:'HRO 方式受信機（53.755 MHz）＋ 3 素子八木',
@@ -140,6 +140,39 @@ NS.moonAlt = function (t, lat, lon) {
       var dec = 18 * Math.sin(2 * Math.PI * (t / 86400e3) / 27.32) * NS.d2r, la = lat * NS.d2r;
       return Math.asin(Math.sin(la) * Math.sin(dec) + Math.cos(la) * Math.cos(dec) * Math.cos(H)) * NS.r2d;
     })();
+};
+/* 上空の風プロファイル（暗黒飛行（ダークフライト）の風補正に用いる）
+   実運用では気象庁の公開データを用いる：
+     ・数値予報 GPV / メソモデル（MSM）… 水平 5 km・鉛直 16 層、3 時間ごと、地上〜約 10 hPa
+     ・高層気象観測（ラジオゾンデ）… 館野・八丈島・輪島など、00/12 UTC
+     ・毎時大気解析（地上風）
+   本デモでは、これらに相当する形の模擬プロファイル（地上〜40 km）を生成する。 */
+NS.windProfile = function (lat, lon, t) {
+  var r = NS.rng('wind|' + Math.round(lat * 4) + '|' + Math.round(lon * 4) + '|' + Math.floor(t / 10800e3));
+  var doy = (t / 86400e3) % 365.25;
+  var seas = -Math.cos(2 * Math.PI * (doy - 15) / 365.25);       /* 冬 -1 → 夏 +1 */
+  var jetAlt = 11.5 - 0.8 * seas;                                 /* 亜熱帯ジェットの高度 */
+  var jetSpd = 62 - 26 * seas + r.norm(0, 8);                     /* 冬に強い */
+  var out = [];
+  [0, 0.5, 1, 2, 3, 5, 7, 9, 11, 13, 15, 18, 21, 25, 30, 35, 40].forEach(function (h) {
+    var spd, dir;
+    if (h <= 1.5) {                       /* 接地層：自局の気象センサーで実測する高度帯 */
+      spd = Math.max(0.5, 3.2 + 2.4 * h + r.norm(0, 1.2));
+      dir = 200 + 40 * r() + 26 * h;
+    } else if (h < 20) {                  /* 対流圏：ジェット気流 */
+      spd = jetSpd * Math.exp(-Math.pow((h - jetAlt) / 5.2, 2)) + 6 + r.norm(0, 2.6);
+      dir = 262 + 18 * Math.sin(h / 5) + r.norm(0, 7);
+    } else {                              /* 成層圏：季節で東西が反転する */
+      spd = Math.abs(14 * seas) + 4 + 0.5 * (h - 20) + r.norm(0, 3);
+      dir = (seas > 0 ? 92 : 268) + r.norm(0, 12);
+    }
+    out.push({ alt:h, spd:Math.max(0.3, spd), dir:((dir % 360) + 360) % 360,
+               temp:h < 11 ? 15 - 6.5 * h : (h < 20 ? -56.5 : -56.5 + 1.8 * (h - 20)),
+               src:h <= 1.5 ? '自局 気象センサー' : (h <= 30 ? '気象庁 MSM（GPV）' : '気象庁 ラジオゾンデ') });
+  });
+  return { levels:out, jetAlt:jetAlt, jetSpd:jetSpd,
+           source:'気象庁 数値予報 GPV（メソモデル MSM, 水平 5 km・3 時間ごと）＋ 高層気象観測（ラジオゾンデ：館野・八丈島）',
+           note:'地上 1.5 km 以下は各観測局の複合気象センサーの実測値で置き換える' };
 };
 /* 局の気象（時刻 t）。滑らかに変化する決定論的合成 */
 NS.weather = function (st, t) {

@@ -1,7 +1,7 @@
 /* NU-SORA デモ / 画面：気象・熱中症、夜空の明るさ、通報、データ公開、デモについて */
 'use strict';
 (function (NS) {
-var el = NS.el, s = NS.s, panel = NS.panel, badge = NS.badge, kpi = NS.kpi;
+var el = NS.el, s = NS.s, s_ = NS.s, panel = NS.panel, badge = NS.badge, kpi = NS.kpi;
 
 /* =========================================================================
    気象・熱中症（G-6 / DT-3・DT-6）
@@ -114,7 +114,7 @@ NS.V.weather = function (root, go, arg) {
 
   NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('気象データの他分野への利用', null,
     NS.table(['用途', '使うデータ', '担当学部', '対応テーマ'], [
-      ['暗黒飛行の風補正（隕石落下域）', '各局の風向風速・気温プロファイル', '理工学部（航空宇宙）', 'G-1 / DT-1'],
+      ['暗黒飛行（ダークフライト）の風補正（隕石落下域）', '各局の地上風・気温 ＋ 気象庁 数値予報 GPV（MSM）・高層気象観測', '理工学部（航空宇宙）', 'G-1 / DT-1'],
       ['熱中症環境の校内マップ', '気温・湿度・風・日射（WBGT）', 'スポーツ科学部・医学部', 'G-6 / DT-3'],
       ['農業・生態系への影響', '高密度の気温・降水・日射', '生物資源科学部', 'DT-3'],
       ['太陽光発電量と星空予報', '日射・雲量・全天画像', '理工学部・文理学部', 'DT-2'],
@@ -322,8 +322,20 @@ NS.V.alerts = function (root, go, arg) {
     el('p', { text:'観測を「情報」で終わらせず「行動」に変える。落下域確率地図と警報を自治体・教育委員会・学校へ届け、対応訓練と法的・保険上の論点整理まで一体で進める（サブテーマ G-7 / PF-3）。' })
   ]));
 
-  NS.add(root, panel('通報ワークフロー', { note:'検出から自治体配信まで、房総沖大火球の実績で 3 分 42 秒' }, [workflow(), el('div', { class:'note',
-    text:'エッジ計算機での自動検出（深層学習）→ 全局データの突き合わせ → 多点三角測量 → 暗黒飛行の風補正 → 落下域確率地図の生成 → 自治体・教育委員会への自動配信、までを人手を介さずに実行する。人による確認は配信後の追認と、回収調査の判断に用いる。' })]));
+  var stageBox = el('div', { class:'stagebox' });
+  var wf = workflow(function (i) { renderStage(i); });
+  function renderStage(i) {
+    wf.select(i);
+    NS.clear(stageBox);
+    NS.add(stageBox, NS.stageDetail(i, go));
+    stageBox.scrollIntoView({ block:'nearest', behavior:'smooth' });
+  }
+  NS.add(root, panel('通報ワークフロー',
+    { note:'検出から自治体配信まで、房総沖大火球の実績で 3 分 42 秒。各段階をクリックすると解析経過が開く' },
+    [wf.node, el('div', { class:'note',
+      text:'エッジ計算機での自動検出（深層学習）→ 全局データの突き合わせ → 多点三角測量 → 暗黒飛行（ダークフライト）の風補正 → 落下域確率地図の生成 → 自治体・教育委員会への自動配信、までを人手を介さずに実行する。人による確認は配信後の追認と、回収調査の判断に用いる。' }),
+     stageBox]));
+  renderStage(0);
 
   NS.add(root, el('div', { class:'grid g-2-1', style:{ marginTop:'14px' } }, [
     panel('通報・対応ログ（全件）', { note:log.length + ' 件' },
@@ -379,34 +391,202 @@ NS.V.alerts = function (root, go, arg) {
   ]));
 };
 
-function workflow() {
-  var steps = [
-    ['検出', '0 秒', 'エッジ AI が\n火球候補を判定'],
-    ['多点対応', '+18 秒', '全局データを\n時刻で突き合わせ'],
-    ['軌跡決定', '+41 秒', '三角測量\n残差 41 m'],
-    ['落下域', '+128 秒', '暗黒飛行の\n風補正'],
-    ['通報', '+222 秒', '自治体・教育委\nへ自動配信'],
-    ['確認', '+244 秒', 'インフラサウンド\nでエネルギー検証'],
-    ['対応', '+30 分', '被害確認\n回収捜索の判断']
-  ];
-  var W = 1000, H = 130, bw = W / steps.length;
-  var g = s('svg', { viewBox:'0 0 ' + W + ' ' + H, class:'chart' });
+NS.WF_STEPS = [
+  { key:'detect',  name:'検出',     at:'0 秒',    dt:0,     lines:['エッジ AI が', '火球候補を判定'] },
+  { key:'match',   name:'多点対応', at:'+18 秒',  dt:18,    lines:['全局データを', '時刻で突き合わせ'] },
+  { key:'traj',    name:'軌跡決定', at:'+41 秒',  dt:41,    lines:['三角測量', '残差 41 m'] },
+  { key:'strewn',  name:'落下域',   at:'+128 秒', dt:128,   lines:['暗黒飛行の', '風補正'] },
+  { key:'notify',  name:'通報',     at:'+222 秒', dt:222,   lines:['自治体・教育委', 'へ自動配信'] },
+  { key:'verify',  name:'確認',     at:'+244 秒', dt:244,   lines:['インフラサウンド', 'でエネルギー検証'] },
+  { key:'respond', name:'対応',     at:'+30 分',  dt:1800,  lines:['被害確認', '回収捜索の判断'] }
+];
+
+function workflow(onSelect) {
+  var steps = NS.WF_STEPS, W = 1000, H = 138, bw = W / steps.length;
+  var g = s_('svg', { viewBox:'0 0 ' + W + ' ' + H, class:'chart wf', role:'group', 'aria-label':'通報ワークフロー' });
+  var boxes = [];
   steps.forEach(function (st, i) {
     var x = i * bw + 6;
-    NS.add(g, s('rect', { x:x, y:26, width:bw - 22, height:78, rx:5, fill:'var(--panel2)',
-      stroke:i === 4 ? 'var(--accent)' : 'var(--rule2)', 'stroke-width':i === 4 ? 1.8 : 1 }));
-    NS.add(g, s('text', { x:x + 11, y:14, class:'axl', fill:'var(--accent)', text:st[1] }));
-    NS.add(g, s('text', { x:x + 11, y:45, style:'font-size:13px;font-weight:700', fill:'var(--ink)', text:st[0] }));
-    st[2].split('\n').forEach(function (line, k) {
-      NS.add(g, s('text', { x:x + 11, y:64 + k * 14, class:'axl', fill:'var(--ink2)', text:line }));
+    var grp = s_('g', { class:'wfstep', role:'button', tabindex:'0',
+      'aria-label':st.name + ' ' + st.at + ' の解析経過を開く' });
+    var rect = s_('rect', { x:x, y:30, width:bw - 22, height:82, rx:5 });
+    boxes.push(rect);
+    NS.add(grp, rect);
+    NS.add(grp, s_('text', { x:x + 11, y:18, class:'axl wfat', text:st.at }));
+    NS.add(grp, s_('text', { x:x + 11, y:50, class:'wfname', text:st.name }));
+    st.lines.forEach(function (line, k) {
+      NS.add(grp, s_('text', { x:x + 11, y:69 + k * 14, class:'axl wfdesc', text:line }));
     });
+    NS.add(grp, s_('text', { x:x + bw - 30, y:105, class:'wfmore', 'text-anchor':'end', text:'詳細 →' }));
+    grp.addEventListener('click', function () { onSelect(i); });
+    grp.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(i); } });
+    NS.add(g, grp);
     if (i < steps.length - 1) {
       var ax = x + bw - 15;
-      NS.add(g, s('path', { d:'M' + ax + ' 65 l9 0 m-4 -4 l4 4 l-4 4', stroke:'var(--muted)', 'stroke-width':1.4, fill:'none' }));
+      NS.add(g, s_('path', { d:'M' + ax + ' 71 l9 0 m-4 -4 l4 4 l-4 4', stroke:'var(--muted)', 'stroke-width':1.4, fill:'none' }));
     }
   });
-  return g;
+  return { node:g, select:function (i) {
+    boxes.forEach(function (r, k) { r.setAttribute('class', k === i ? 'on' : ''); });
+  } };
 }
+
+/* ---- 各段階の解析経過 ---- */
+NS.stageDetail = function (i, go) {
+  var st = NS.WF_STEPS[i], e = NS.FLAGSHIP.fireball;
+  var at = function (dt) { return NS.fmtJST(e.t + dt * 1000, { ms:dt < 300 }) + ' JST'; };
+  var head = el('div', { class:'stagehead' }, [
+    el('span', { class:'stageno', text:(i + 1) + ' / ' + NS.WF_STEPS.length }),
+    el('b', { text:st.name }),
+    el('span', { class:'hint', text:'発生 ' + st.at + '　' + at(st.dt) }),
+    el('div', { class:'spacer' }),
+    el('button', { class:'iconbtn', text:'この事象の全解析を見る →',
+      onclick:function () { go('fireball', e.id); } })
+  ]);
+  var body = el('div', { class:'grid', style:{ gap:'12px', marginTop:'10px' } });
+  var det = e.det.filter(function (d) { return !d.cloud; });
+
+  if (st.key === 'detect') {
+    NS.add(body, [
+      NS.kv([
+        ['入力', '全天カメラ 2 台の連続フレーム（IMX664, 2688×1520 / 25 fps）'],
+        ['処理', 'エッジ計算機でフレーム差分 → 深層学習で分類（流星・火球・飛行機・人工衛星・雲・虫）'],
+        ['判定', '<b>火球候補</b>　信頼度 0.98'],
+        ['この時点で分かること', '各局が「いつ・空のどこに」光を見たか。まだ高度も距離も分からない'],
+        ['所要', '検出から 1.2 秒以内（局内で完結し、クラウドを経由しない）']
+      ], 'wide'),
+      NS.table(['局', '検出時刻 (JST)', '仰角', 'S/N', '最大等級', '判定'], e.det.map(function (d) {
+        return [NS.ST[d.id].name, { class:'mono sm', html:d.cloud ? '—' : at(0) },
+          { class:'r', html:NS.f(d.elev, 1) + '°' }, { class:'r', html:d.snr == null ? '—' : NS.f(d.snr, 0) },
+          { class:'r', html:d.mag == null ? '—' : NS.mag(d.mag) },
+          d.cloud ? badge('曇天で不検出', 'warn') : badge('火球候補', 'ok')];
+      })),
+      el('div', { class:'note', text:'誤検出（飛行機・人工衛星・虫・雲の切れ間）は、この段階で深層学習が落とす。落としきれなかったものは付属校の生徒が目視で検証し、その結果を学習データへ戻す（G-8）。' })
+    ]);
+  } else if (st.key === 'match') {
+    var r0 = NS.rng('wfmatch');
+    NS.add(body, [
+      NS.kv([
+        ['入力', '各局の火球候補（発光開始時刻・方位・仰角の時系列）'],
+        ['突き合わせ条件', 'GNSS 時刻が ±50 ms 以内、かつ各局の視線が空間で交わること'],
+        ['結果', '<b>' + e.stationsDet + ' 局</b>が同一事象と判定（視野内 ' + e.stationsFov + ' 局）'],
+        ['時刻残差', '± 12 ms（GNSS 同期 ＋ IP カメラの転送遅延補正後）'],
+        ['この時点で分かること', '同じ一つの火球を何局が見たか。多点解析が成立するかどうか']
+      ], 'wide'),
+      NS.table(['局', 'GNSS 時刻', '基準との差', '転送遅延補正', '対応づけ'], e.det.map(function (d) {
+        var dm = d.cloud ? null : r0.norm(0, 9);
+        return [NS.ST[d.id].name, { class:'mono sm', html:d.cloud ? '—' : at(0) },
+          { class:'r', html:dm == null ? '—' : (dm > 0 ? '+' : '') + NS.f(dm, 0) + ' ms' },
+          { class:'r sm', html:d.cloud ? '—' : NS.f(-780 - r0() * 90, 0) + ' ms' },
+          d.cloud ? badge('対象外', 'dim') : badge('一致', 'ok')];
+      })),
+      el('div', { class:'note', text:'IP カメラは「画像が制御 PC に届いた時刻」で記録されるため、カメラごとに転送遅延をあらかじめ測って差し引く。この補正の質が多点観測の時刻精度を決める。' })
+    ]);
+  } else if (st.key === 'traj') {
+    var altPts = [], vPts = [];
+    for (var k = 0; k <= 50; k++) {
+      var f = k / 50, tt = f * e.dur;
+      altPts.push([tt, Math.max(e.end.alt, e.begin.alt - (e.begin.alt - e.end.alt) * (f - 0.06 * Math.pow(f, 2.6)))]);
+      vPts.push([tt, e.vInf - e.decelMax * Math.pow(f, 4.2)]);
+    }
+    NS.add(body, [
+      NS.kv([
+        ['入力', e.stationsDet + ' 局の方位・仰角の時系列（各局 ' + Math.round(e.dur * 25) + ' フレーム前後）'],
+        ['処理', '多点三角測量。各局の視線がつくる平面の交線として大気圏内の直線軌跡を最小二乗で決める'],
+        ['残差', '<b>41 m</b>（視線と軌跡の距離の標準偏差）'],
+        ['発光開始', NS.km(e.begin.alt) + '　' + NS.latlon(e.begin.lat, e.begin.lon)],
+        ['発光終了', NS.km(e.end.alt) + '　' + NS.latlon(e.end.lat, e.end.lon)],
+        ['突入速度', NS.f(e.vInf, 1) + ' km/s　経路角 ' + NS.f(e.entryAngle, 1) + '°　方位 ' + NS.f(e.azimuth, 0) + '°'],
+        ['この時点で分かること', '軌跡・速度・減速。ここから突入前の日心軌道（どこから来たか）と、終端の状態（どこへ落ちるか）が両方出る']
+      ], 'wide'),
+      el('div', { class:'grid g2' }, [
+        NS.chart.line({ series:[{ name:'高度', color:'var(--c-info)', pts:altPts, area:true }],
+          width:450, height:150, xLabel:'発光からの秒数', yLabel:'高度 km',
+          xFmt:function (v) { return NS.f(v, 1) + 's'; }, yFmt:function (v) { return NS.f(v, 0); } }),
+        NS.chart.line({ series:[{ name:'速度', color:'var(--c-warn)', pts:vPts }],
+          width:450, height:150, xLabel:'発光からの秒数', yLabel:'速度 km/s',
+          xFmt:function (v) { return NS.f(v, 1) + 's'; }, yFmt:function (v) { return NS.f(v, 1); } })
+      ]),
+      el('div', { class:'note', text:'終端の減速（最大 ' + NS.f(e.decelMax, 1) + ' km/s）が大きいほど、燃え尽きずに残った質量が大きい。これが次の段階の入力になる。' })
+    ]);
+  } else if (st.key === 'strewn') {
+    var wind = NS.windProfile(e.end.lat, e.end.lon, e.t);
+    var lv = wind.levels.filter(function (x) { return x.alt <= 30; });
+    NS.add(body, [
+      NS.kv([
+        ['入力（軌跡側）', '終端 ' + NS.km(e.end.alt) + '、残存質量 ' + NS.f(e.massTerminal, 2) + ' kg、終端速度 約 3 km/s'],
+        ['入力（大気側）', '<b>' + wind.source + '</b>'],
+        ['地上付近', wind.note],
+        ['処理', '減速・アブレーションモデルで終端条件を決め、そこから<b>暗黒飛行（ダークフライト）</b>を数値積分。風・抗力係数・質量の不確かさをモンテカルロ（2,000 試行）で振る'],
+        ['出力', '落下域の確率地図（長半径 ' + e.strewn.a + ' km・短半径 ' + e.strewn.b + ' km、長軸方位 ' + e.strewn.az + '°）'],
+        ['この時点で分かること', 'どこを捜せば隕石が見つかるか。重い破片ほど風に流されず手前に落ちる']
+      ], 'wide'),
+      el('div', { class:'grid g2' }, [
+        NS.chart.line({ series:[
+            { name:'風速', color:'var(--c-info)', pts:lv.map(function (x) { return [x.alt, x.spd]; }), area:true },
+            { name:'風向', color:'var(--c-warn)', pts:lv.map(function (x) { return [x.alt, x.dir / 6]; }), dash:'4 3' }
+          ], width:450, height:170, xLabel:'高度 km', yLabel:'風速 m/s ／ 風向 ÷6 (°)',
+          xFmt:function (v) { return NS.f(v, 0); }, yFmt:function (v) { return NS.f(v, 0); },
+          rules:[{ x:wind.jetAlt, color:'var(--muted)', dash:'2 3', label:'ジェット気流' }] }),
+        NS.table(['高度', '風向', '風速', '気温', '出典'], lv.filter(function (x, j) { return j % 2 === 0 || x.alt <= 3; }).map(function (x) {
+          return [{ class:'r', html:NS.f(x.alt, 1) + ' km' },
+            { class:'r', html:NS.f(x.dir, 0) + '°（' + NS.compass(x.dir) + '）' },
+            { class:'r', html:NS.f(x.spd, 1) + ' m/s' }, { class:'r', html:NS.f(x.temp, 0) + ' ℃' },
+            { class:'sm', html:x.src }];
+        }))
+      ]),
+      NS.table(['質量区分', '推定個数', '推定落下位置', '風の影響'], e.strewn.bins.map(function (b2, j) {
+        return [el('b', { text:b2.m }), { class:'r', html:String(b2.n) }, { class:'mono sm', html:NS.latlon(b2.lat, b2.lon) },
+          { class:'sm', html:['最も流されにくく手前に落ちる', '中程度', '風下側へ流される', '最も遠くまで流される'][j] }];
+      })),
+      el('div', { class:'src', text:'風データの出典：' + wind.source + '。気象庁の数値予報 GPV は気象業務支援センターを通じて提供されるものを利用し、高層気象観測の速報値とあわせて用いる。地上 1.5 km 以下は各観測局の複合気象センサーの実測値で置き換えるため、学校屋上の観測網そのものが暗黒飛行（ダークフライト）計算の精度に効く。' })
+    ]);
+  } else if (st.key === 'notify') {
+    NS.add(body, [
+      NS.kv([
+        ['配信内容', '落下域の確率地図（GeoJSON ＋ 画像）、推定時刻、想定される破片の質量区分、根拠となる観測局の一覧'],
+        ['配信先', e.alert.recipients.join('／')],
+        ['所要時間', '検出から <b>' + NS.f(e.alert.issuedDt, 0) + ' 秒</b>（3 分 42 秒）。人手を介さない'],
+        ['警戒レベル', e.alert.level + '（−8 等より明るい火球、または残存質量 0.1 kg 以上の推定で発報）'],
+        ['受け手の行動', '該当区域の被害確認、学校への連絡、問い合わせ窓口の準備'],
+        ['この時点で分かること', '観測が「情報」から「行動」へ変わる。ここが社会実装の要（G-7）']
+      ], 'wide'),
+      el('div', { class:'chips', style:{ marginTop:'6px' } }, e.alert.recipients.map(function (r2) { return badge(r2, 'info'); })),
+      el('div', { class:'note', text:'誤報を避けるため、単独局の検出では発報しない。多点で軌跡が決まり、かつ残存質量の推定が閾値を超えた場合に限る。配信後に人が追認し、必要なら訂正を出す。' })
+    ]);
+  } else if (st.key === 'verify') {
+    var inf = e.det.filter(function (d) { return d.infra; });
+    NS.add(body, [
+      NS.kv([
+        ['入力', 'インフラサウンドセンサー 2 台（基線約 60 m）の気圧波形、' + inf.length + ' 局'],
+        ['処理', '到達時刻・周期・振幅から AFTAC の周期–収量関係で音響エネルギーを独立推定'],
+        ['光学 全エネルギー', '<b>' + NS.f(e.EKt * 4.184e3, 2) + ' GJ</b>（Brown et al. 2002）'],
+        ['音響 全エネルギー', '<b>' + NS.f(e.EinfKt * 4.184e3, 2) + ' GJ</b>（周期 ' + NS.f(e.infraP, 2) + ' s）'],
+        ['両者の比', NS.f(e.EinfKt / e.EKt, 2) + ' 倍　<span class="hint">因子 2 以内で整合し、光学推定を裏づけた</span>'],
+        ['この時点で分かること', '独立な二つの物理から同じ答えが出るか。単独センサーの観測網にはできない検証']
+      ], 'wide'),
+      NS.table(['局', '到達', '周期 P', '振幅', '到来方位'], inf.map(function (d) {
+        return [NS.ST[d.id].name, { class:'r mono', html:'＋' + NS.f(d.infra.dt, 1) + ' s' },
+          { class:'r', html:NS.f(d.infra.P, 2) + ' s' }, { class:'r', html:NS.f(d.infra.amp, 2) + ' Pa' },
+          { class:'r', html:NS.f(d.infra.az, 1) + '°' }];
+      })),
+      el('div', { class:'note', text:'音は光より約 15 分の 1 の速さで届くため、検証は通報の後になる。もし二つの推定が大きく食い違えば、落下域の推定をやり直して訂正を出す。' })
+    ]);
+  } else {
+    NS.add(body, [
+      NS.kv([
+        ['自治体からの回答', '山武市より「被害報告なし」。東金市も同様'],
+        ['回収捜索', e.recovery.status + '　' + e.recovery.area],
+        ['担当', e.recovery.teams],
+        ['方法', '確率密度の高い区画から順に、UAV による空撮と地上班の踏査を組み合わせる'],
+        ['地域との連携', '付属校の生徒が地元での聞き取りと目撃情報の収集を担当する'],
+        ['この時点で分かること', '通報が実際に機能したか。次の事象に向けた閾値と手順の見直し材料になる']
+      ], 'wide'),
+      el('div', { class:'note', text:'回収できた隕石は、文理学部の地球科学で組成を分析し、突入前の日心軌道（どの小惑星帯から来たか）と突き合わせる。落下域の推定がどれだけ当たったかは、次の事象の精度評価にそのまま使える。' })
+    ]);
+  }
+  return el('div', { class:'stagepanel' }, [head, body]);
+};
 
 /* =========================================================================
    データ公開・API

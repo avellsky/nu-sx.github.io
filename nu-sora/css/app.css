@@ -308,6 +308,25 @@ svg.jmap.grabbing{cursor:grabbing}
 .api{background:var(--bg2);border:1px solid var(--rule);border-radius:4px;padding:11px 13px;font-size:11.5px;
   font-family:ui-monospace,monospace;overflow-x:auto;white-space:pre;line-height:1.6;color:var(--ink2)}
 .api .k{color:var(--c-info)} .api .m{color:var(--c-ok);font-weight:700} .api .c{color:var(--muted)}
+/* 通報ワークフロー */
+svg.wf .wfstep{cursor:pointer}
+svg.wf .wfstep rect{fill:var(--panel2);stroke:var(--rule2);stroke-width:1;transition:stroke .12s,fill .12s}
+svg.wf .wfstep:hover rect{stroke:var(--accent)}
+svg.wf .wfstep:focus{outline:none}
+svg.wf .wfstep:focus rect{stroke:var(--accent);stroke-width:2}
+svg.wf .wfstep rect.on{fill:color-mix(in srgb,var(--accent) 14%,var(--panel2));stroke:var(--accent);stroke-width:1.8}
+svg.wf .wfat{fill:var(--accent)}
+svg.wf .wfname{font-size:13px;font-weight:700;fill:var(--ink)}
+svg.wf .wfdesc{fill:var(--ink2)}
+svg.wf .wfmore{font-size:9.5px;fill:var(--muted)}
+svg.wf .wfstep:hover .wfmore{fill:var(--accent)}
+.stagebox{margin-top:12px}
+.stagepanel{background:var(--panel2);border:1px solid var(--rule2);border-left:3px solid var(--accent);
+  border-radius:5px;padding:13px 15px}
+.stagehead{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding-bottom:9px;border-bottom:1px solid var(--rule)}
+.stagehead b{font-size:15px;font-family:"Shippori Mincho",serif}
+.stageno{font-size:10.5px;font-family:ui-monospace,monospace;color:#fff;background:var(--accent);
+  border-radius:3px;padding:1px 7px;font-weight:700}
 .tier{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:12px}
 footer{max-width:1440px;margin:0 auto;padding:22px 18px 44px;border-top:1px solid var(--rule);
   color:var(--muted);font-size:11px;line-height:1.7}

@@ -26,7 +26,7 @@ NS.V.fireball = function (root, go, arg) {
 
   NS.add(root, el('div', { class:'page-h' }, [
     el('h2', { text:'火球・隕石　多点観測と落下域確率地図' }),
-    el('p', { text:'多点三角測量で軌跡と突入前軌道を決め、光学とインフラサウンドで独立にエネルギーを推定する。暗黒飛行を自局の気象データで風補正し、落下域の確率地図を自治体へ配信する（サブテーマ G-1 / DT-1）。' })
+    el('p', { text:'多点三角測量で軌跡と突入前軌道を決め、光学とインフラサウンドで独立にエネルギーを推定する。暗黒飛行（ダークフライト）を風補正して落下域の確率地図を自治体へ配信する（上空の風は気象庁の数値予報 GPV と高層気象観測、地上付近は各局の気象センサー）（サブテーマ G-1 / DT-1）。' })
   ]));
 
   var listWrap = el('div', { class:'evlist' });
@@ -152,7 +152,7 @@ NS.V.fireball = function (root, go, arg) {
         M.tipOn(g, '<b>' + b.m + '</b><span class="mt-d">推定 ' + b.n + ' 個 · ' + NS.latlon(b.lat, b.lon) + '</span>');
       });
     }
-    var mp = panel('地上軌跡と落下域確率地図', { note:'破線は各局の視線。楕円は暗黒飛行の風補正後の落下推定域（10 / 20 / 30 % 確率）',
+    var mp = panel('地上軌跡と落下域確率地図', { note:'破線は各局の視線。楕円は暗黒飛行（ダークフライト）の風補正後の落下推定域（10 / 20 / 30 % 確率）',
       tools:el('div', { class:'seg' }, [
         el('button', { text:'イベント', 'aria-pressed':'true', onclick:function () { M.fit([e.begin, e.end].concat(e.strewn ? [e.strewn] : []), 1.15); } }),
         el('button', { text:'関東', onclick:function () { M.goto('kanto', true); } }),
@@ -245,7 +245,7 @@ NS.V.fireball = function (root, go, arg) {
     /* --- 落下域・回収 --- */
     if (e.strewn) {
       NS.add(detail, el('div', { class:'grid g-2-1' }, [
-        panel('落下域（ストルーンフィールド）の推定', { note:'暗黒飛行を自局の気象データで風補正' }, [
+        panel('落下域（ストルーンフィールド）の推定', { note:'暗黒飛行（ダークフライト）の風補正：上空は気象庁 数値予報 GPV（MSM）＋ 高層気象観測、地上付近は自局の気象センサー' }, [
           NS.table(['質量区分', '推定個数', '推定落下位置', '備考'], e.strewn.bins.map(function (b) {
             return [el('b', { text:b.m }), { class:'r', html:String(b.n) }, { class:'mono sm', html:NS.latlon(b.lat, b.lon) },
               { class:'sm', html:'重い破片ほど風下側（' + NS.compass(e.strewn.az) + '）に届かず手前に落下' }];

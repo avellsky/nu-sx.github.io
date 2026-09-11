@@ -285,7 +285,7 @@ NS.V.map = function (root, go, arg) {
       var ell = M.addOverlay(s('ellipse', { cx:c[0], cy:c[1], rx:sw.a * kx, ry:sw.b * ky,
         transform:'rotate(' + (90 - sw.az) + ' ' + c[0] + ' ' + c[1] + ')',
         fill:'var(--c-crit)', 'fill-opacity':0.22, stroke:'var(--c-crit)', 'stroke-width':1.3, 'vector-effect':'non-scaling-stroke' }));
-      M.tipOn(ell, '<b>隕石落下推定域（暗黒飛行の風補正後）</b><span class="mt-d">長半径 ' + sw.a + ' km / 短半径 ' + sw.b +
+      M.tipOn(ell, '<b>隕石落下推定域（暗黒飛行（ダークフライト）の風補正後）</b><span class="mt-d">長半径 ' + sw.a + ' km / 短半径 ' + sw.b +
         ' km · 最大確率密度 ' + Math.round(sw.pMax * 100) + '%</span><span class="mt-x">千葉県山武市・東金市</span>');
       /* インフラサウンド音源 */
       NS.INFRA.forEach(function (e) {
