@@ -162,7 +162,7 @@ NS.gnssState = function (st, t) {
 /* ===================== まとめ：各センサーのカード群 ===================== */
 NS.sensorCards = function (kind, go) {
   var t = NS.now();
-  return NS.STATIONS.map(function (st) {
+  return NS.liveOrder().map(function (st) {
     var s2 = NS.stationState(st, t), w = s2.weather;
     var head = NS.el('div', { class:'sn-h' }, [
       NS.el('b', { text:st.name }), NS.el('span', { class:'sid', text:st.id }), NS.el('div', { class:'spacer' })]);

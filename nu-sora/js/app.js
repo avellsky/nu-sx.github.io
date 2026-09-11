@@ -69,6 +69,7 @@ function render(opt) {
 
 function buildHeader() {
   var head = document.getElementById('head');
+  NS.clear(head);
   var clock = el('div', { class:'clock' }, [
     el('div', { class:'jst', id:'clk-jst', text:'--:--:--' }),
     el('div', { class:'utc', id:'clk-utc', text:'---- UTC' })
@@ -78,13 +79,17 @@ function buildHeader() {
       var cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
       document.documentElement.setAttribute('data-theme', cur);
       try { localStorage.setItem('nusora-theme', cur); } catch (e) {}
-      themeBtn.textContent = cur === 'light' ? '配色：明' : '配色：暗';
+      themeBtn.textContent = NS.t(cur === 'light' ? '配色：明' : '配色：暗');
       render();
     } });
+  var langBtn = el('div', { class:'seg langseg' }, NS.LANGS.map(function (L) {
+    return el('button', { text:L.short, title:L.label, 'aria-pressed':NS.lang === L.id ? 'true' : 'false',
+      onclick:function () { NS.setLang(L.id); } });
+  }));
   var saved = 'dark';
   try { saved = localStorage.getItem('nusora-theme') || 'dark'; } catch (e) {}
   document.documentElement.setAttribute('data-theme', saved);
-  themeBtn.textContent = saved === 'light' ? '配色：明' : '配色：暗';
+  themeBtn.textContent = NS.t(saved === 'light' ? '配色：明' : '配色：暗');
 
   NS.add(head, el('div', { class:'top-in' }, [
     el('div', { class:'brand' }, [
@@ -94,7 +99,7 @@ function buildHeader() {
     ]),
     el('div', { class:'hstat' }, [
       el('span', { class:'badge ok', id:'netbadge' }, [el('span', { class:'dot' }), '観測網 稼働中']),
-      clock, themeBtn
+      clock, langBtn, themeBtn
     ])
   ]));
   NS.add(head, el('nav', { class:'tabs', role:'tablist' }, [0, 1].map(function (row) {
@@ -111,22 +116,25 @@ function buildHeader() {
   })));
 }
 
+NS.rebuildChrome = function () { buildHeader(); };
+
 function tick() {
   var t = NS.now();
   var j = document.getElementById('clk-jst'), u = document.getElementById('clk-utc');
   if (j) j.textContent = NS.fmtJST(t, { timeOnly:true });
-  if (u) u.textContent = NS.fmtJST(t, { dateOnly:true }) + ' JST ／ ' + NS.fmtUTC(t) + ' UTC';
+  if (u) u.textContent = NS.fmtJST(t, { dateOnly:true }) + NS.t(' JST ／ ') + NS.fmtUTC(t) + ' UTC';
   var b = document.getElementById('netbadge');
   if (b) {
     var n = NS.netSummary();
     b.className = 'badge ' + (n.down ? 'warn' : 'ok');
     NS.clear(b);
-    NS.add(b, [el('span', { class:'dot' }), '観測網 ' + n.ok + '/' + NS.STATIONS.length + ' 局 稼働中']);
+    NS.add(b, [el('span', { class:'dot' }), NS.t('観測網 ') + n.ok + '/' + NS.STATIONS.length + NS.t(' 局 稼働中')]);
   }
 }
 
 function boot() {
   NS.buildCatalog();
+  if (NS.applyPageLang) NS.applyPageLang();
   buildHeader();
   window.addEventListener('hashchange', function () { render(); });
   render();

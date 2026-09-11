@@ -90,6 +90,50 @@ NS.LINES_ARTIFICIAL = [
 NS.CONT_ARTIFICIAL = [[350,0.00],[365,0.06],[380,0.14],[400,0.17],[430,0.20],[460,0.22],[490,0.24],
   [520,0.26],[560,0.27],[600,0.28],[640,0.28],[680,0.26],[720,0.23],[760,0.20],[800,0.17],[840,0.14],
   [870,0.12],[900,0.10]];
+/* ---------- 組成グループ（発光スペクトルの ON / OFF 用） ----------
+   同じ由来をもつ原子線をひとまとめにし、どの組成が効いているかを切り替えて確かめられるようにする。
+   自然天体は「岩石質・揮発性・大気起源」、人工天体は「機体構造・配線・電池・耐熱部材…」で分ける。 */
+NS.COMP_NATURAL = [
+  { key:'rock',  name:'岩石質（ケイ酸塩・金属）', els:['Mg I', 'Mg II', 'Si II', 'Ca I', 'Ca II', 'Fe I', 'Cr I', 'Mn I'],
+    color:'#E0873A', note:'母天体そのものの組成。Mg I 518.4 と Ca II 393/397 が最強で、Fe I の多重項が全域に分布する' },
+  { key:'volat', name:'揮発性（ナトリウム）', els:['Na I'],
+    color:'#E5C04A', note:'Na I 589 nm。融点・蒸気圧が低く最初に気化する。Na I / Mg I の強度比が母天体の熱履歴を表す' },
+  { key:'hyd',   name:'水素（含水鉱物・彗星由来）', els:['H I'],
+    color:'#7FB2E5', note:'H I 656.3 nm。含水鉱物や彗星起源の揮発性成分を示唆する' },
+  { key:'atmos', name:'大気起源（衝撃加熱された空気）', els:['O I', 'N I', 'N II', 'N₂'],
+    color:'#5FA98B', note:'流星体ではなく周囲の大気の発光。突入速度が速いほど強くなるので、速度の独立指標になる' }
+];
+NS.COMP_ARTIFICIAL = [
+  { key:'struct', name:'機体構造（アルミ合金）', els:['Al I', 'AlO 帯'],
+    color:'#6FA8DC', note:'Al I 394.4 / 396.2 nm。人工物で最強になる線で、機体外板・構造材に由来する' },
+  { key:'wire',   name:'配線・モーター（銅）', els:['Cu I'],
+    color:'#D98A5A', note:'Cu I 510.6 / 521.8 / 578.2 nm。ハーネスとモーター巻線の銅' },
+  { key:'batt',   name:'電池（リチウム）', els:['Li I'],
+    color:'#C77DBB', note:'Li I 670.8 nm。自然天体にはまず現れないため、人工物の決め手の一つになる' },
+  { key:'therm',  name:'耐熱部材・チタン合金', els:['Ti I', 'Nb I', 'Hf I'],
+    color:'#B0A24A', note:'Ti・Nb・Hf。アルミより高融点の部材が残っていることを示す。成層圏エアロゾル中の宇宙機由来金属（Murphy et al. 2023）に対応する' },
+  { key:'steel',  name:'ステンレス構体（鉄・クロム・ニッケル）', els:['Fe I', 'Cr I', 'Mn I', 'Ni I'],
+    color:'#9AA3AE', note:'エンジンや圧力容器のステンレス。爆発で内部が露出した局面で急増する' },
+  { key:'atmos',  name:'大気起源（衝撃加熱された空気）', els:['O I', 'N I', 'N₂'],
+    color:'#5FA98B', note:'O I 777.4 nm ほか。人工物は突入速度が遅いため、自然火球より弱い' },
+  { key:'other',  name:'その他（Ca・Sr・Mg・Na）', els:['Ca II', 'Sr I', 'Mg I', 'Na I'],
+    color:'#8C93A0', note:'塗料・接着剤・搭載物などに由来すると考えられる微量成分。自然天体で最強の Mg I 518 と Na I 589 が相対的に弱いことが識別の決め手になる' }
+];
+/* 元素名 → 組成グループの索引 */
+NS.compIndex = function (groups) {
+  var m = {};
+  groups.forEach(function (g) { g.els.forEach(function (e) { m[e] = g.key; }); });
+  return m;
+};
+/* 選ばれている組成だけを残す */
+NS.filterByComp = function (lines, groups, on) {
+  var idx = NS.compIndex(groups);
+  return lines.filter(function (l) {
+    var k = idx[l.el];
+    return k === undefined ? true : on[k] !== false;
+  });
+};
+
 /* 人工天体で「あってはならない／弱いはず」の指標線 */
 NS.ARTIFICIAL_MARKERS = ['Al I', 'Cu I', 'Li I', 'Ti I', 'Cr I', 'Nb I', 'Hf I', 'AlO 帯', 'Ni I', 'Sr I'];
 
@@ -173,7 +217,8 @@ NS.debrisSpectrum = function (opt) {
   for (var i = 0; i < NS.DEBRIS_PHASES.length; i++) if (NS.DEBRIS_PHASES[i].key === opt.phase) ph = NS.DEBRIS_PHASES[i];
   if (!ph) ph = NS.DEBRIS_PHASES[1];
   var on = opt.bands || {};
-  var lines = NS.LINES_ARTIFICIAL.map(function (l) {
+  var src = opt.comp ? NS.filterByComp(NS.LINES_ARTIFICIAL, NS.COMP_ARTIFICIAL, opt.comp) : NS.LINES_ARTIFICIAL;
+  var lines = src.map(function (l) {
     var k = ph.el[l.el];
     return { wl:l.wl, el:l.el, s:l.s * (k == null ? 0.6 : k), w:l.w };
   });
@@ -308,6 +353,8 @@ function reentryDemo() {
 }
 
 /* ---------- インフラサウンド事象 ---------- */
+NS.fujiT = function () { return Date.UTC(2028, 10, 23, 0, 41, 12); };   /* 2028-11-23 09:41 JST */
+
 function infraEvents() {
   var now = NS.now();
   return [
@@ -334,6 +381,29 @@ function infraEvents() {
             { id:'SKS', dist:41.3, dt:137.1, az: 41.6, azErr:5.6, amp:1.21, P:0.41, phase:'直達波' } ],
       locErr:11.2, cel:0.305, strikes:1842, note:'降水帯の移動速度 34 km/h、移動方位 072°。学校への注意喚起は雷検知から 4 分で発報（G-7 の試行）。',
       peakPa:2.41, freq:'0.8–14 Hz' },
+    { id:'NUS-SC-FUJI-2028', kind:'infrasound', cls:'火山（想定シナリオ）', scenario:true,
+      t: NS.fujiT(), name:'富士山 宝永火口 噴火（2028 年 想定シナリオ）',
+      src:{ lat:35.3361, lon:138.7439, name:'富士山 宝永火口（静岡県駿東郡小山町・裾野市）' }, srcKnown:true,
+      summary:'これは実際の観測ではなく、通報手順と学校対応を確かめるための訓練用シナリオである。1707 年の宝永噴火を参考に、南東斜面の宝永火口から噴煙高度 16 km の準プリニー式噴火が起きた場合に、本観測網の 11 局がどう捉えるかを計算した。三島局には 1 分 35 秒で 68 Pa の空振が到達し、20 分以内に東北地方まで検知が広がる。',
+      det:[ { id:'MSM', dist:28.6,  dt:95.4,   az:326.7, azErr:1.2, amp:67.9, P:8.2, phase:'直達波（Iw）' },
+            { id:'SNN', dist:66.0,  dt:220.0,  az:266.5, azErr:1.6, amp:28.3, P:7.8, phase:'直達波（Iw）' },
+            { id:'SKS', dist:88.4,  dt:294.6,  az:245.7, azErr:1.8, amp:20.8, P:7.6, phase:'直達波（Iw）' },
+            { id:'SRG', dist:100.8, dt:335.9,  az:246.7, azErr:1.9, amp:18.1, P:7.5, phase:'直達波（Iw）' },
+            { id:'TDN', dist:121.6, dt:405.3,  az:251.3, azErr:2.1, amp:14.9, P:7.4, phase:'直達波（Iw）' },
+            { id:'FNB', dist:126.2, dt:420.5,  az:250.3, azErr:2.1, amp:14.3, P:7.4, phase:'直達波（Iw）' },
+            { id:'NGN', dist:152.0, dt:506.6,  az:161.1, azErr:2.4, amp:11.8, P:7.2, phase:'直達波（Iw）' },
+            { id:'TCR', dist:156.0, dt:520.0,  az:238.2, azErr:2.4, amp:11.5, P:7.2, phase:'直達波（Iw）' },
+            { id:'OGK', dist:192.7, dt:642.2,  az: 90.5, azErr:3.0, amp: 9.2, P:6.9, phase:'直達波（Iw）' },
+            { id:'KYM', dist:271.5, dt:904.9,  az:213.2, azErr:3.8, amp: 6.4, P:6.6, phase:'成層圏反射波（Is）' },
+            { id:'YMG', dist:355.0, dt:1183.2, az:203.9, azErr:4.6, amp: 4.8, P:6.4, phase:'成層圏反射波（Is）' } ],
+      locErr:2.4, cel:0.300, peakPa:67.9, freq:'0.05 – 6 Hz',
+      plume:16.0, vei:4, ref:'1707 年 宝永噴火',
+      ashfall:[ ['三島局・湘南局（30–70 km、風下側）', '10 – 30 cm', '屋外活動の全面中止。校舎の屋根への堆積荷重に注意'],
+                ['駿河台局・桜上水局（90–100 km）', '2 – 10 cm', '休校の判断。通学路の視界低下と交通の乱れ'],
+                ['船橋局・津田沼局・土浦局（120–160 km）', '1 – 5 cm', '屋外活動の中止。空調フィルタの目詰まり'],
+                ['郡山局・山形局（270–360 km）', '痕跡程度', '通常運用。降灰の観測に徹する'] ],
+      note:'噴煙高度は空振の振幅と周期から推定する。全 11 局の到達時刻差で火口位置を ±2.4 km で決められるため、どの火口が開いたか（山頂か側火口か）を音だけで判別できる。これは降灰予測の初期値として効く。成層圏反射波（Is）が届く郡山局・山形局では、到達時刻から高度 40–50 km の東西風も同時に求まる。',
+      scenarioNote:'本事象は実際の観測記録ではない。中央防災会議・富士山火山防災対策協議会が想定する宝永噴火級の噴火を参考に、本観測網の応答を計算した訓練用シナリオである。噴火の予知・切迫性を示すものではなく、発生時期を予測するものでもない。' },
     { id:'NUS-IS-Q-0106', kind:'seismic', cls:'地震', t: now - 4.2 * 86400e3, name:'茨城県南部の地震（M4.8）に伴う校舎応答',
       src:{ lat:36.03, lon:140.05, name:'茨城県南部 深さ 48 km' }, srcKnown:true,
       summary:'微動計（DT-6）で 3 局の校舎応答を記録。土浦局の校舎 1 次固有振動数は地震前 3.42 Hz → 地震後 3.38 Hz（−1.2 %）で、構造的な損傷を示す変化ではないと判定。',

@@ -248,7 +248,7 @@ NS.AllSky = function (station, opts) {
         bctx.font = '600 11px "Zen Kaku Gothic New", sans-serif';
         bctx.textAlign = 'left'; bctx.textBaseline = 'middle';
         bctx.fillStyle = 'rgba(186,206,240,' + (0.72 * cloudCut).toFixed(3) + ')';
-        labels.forEach(function (lb2) { bctx.fillText(lb2[2], lb2[0] + lb2[3] + 4, lb2[1]); });
+        labels.forEach(function (lb2) { bctx.fillText(NS.t(lb2[2]), lb2[0] + lb2[3] + 4, lb2[1]); });
       }
     }
     /* --- 太陽（昼間・薄明） --- */
@@ -384,12 +384,12 @@ NS.AllSky = function (station, opts) {
     ctx.fillText(st.id + '  ' + NS.fmtJST(t, { sec:!small }) + (small ? '' : ' JST'), 7, 6);
     ctx.fillStyle = 'rgba(200,212,230,0.72)';
     ctx.fillText('SQM ' + (sb.mag == null ? '—' : NS.f(sb.mag, 2)) +
-      '  雲 ' + Math.round(w.cloud * 100) + '%' +
-      (small ? '' : '  限界等級 ' + (night ? NS.f(limMag, 1) : '—')), 7, small ? 18 : 22);
+      '  ' + NS.t('雲') + ' ' + Math.round(w.cloud * 100) + '%' +
+      (small ? '' : '  ' + NS.t('限界等級') + ' ' + (night ? NS.f(limMag, 1) : '—')), 7, small ? 18 : 22);
     if (!small) {
       ctx.textAlign = 'right';
       ctx.fillStyle = 'rgba(255,255,255,0.5)';
-      ctx.fillText('模擬映像（デモ）', size - 8, 6);
+      ctx.fillText(NS.t('模擬映像（デモ）'), size - 8, 6);
     }
 
     if (A.running) requestAnimationFrame(draw);

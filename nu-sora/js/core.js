@@ -80,6 +80,14 @@ NS.sig = function (v) {
   if (a >= 0.01) return v.toFixed(3);
   return v.toExponential(2);
 };
+/* 1.53e+7 → 1.53×10⁷ のように上付きで書く */
+NS.SUP = { '-':'⁻', '0':'⁰', '1':'¹', '2':'²', '3':'³', '4':'⁴', '5':'⁵', '6':'⁶', '7':'⁷', '8':'⁸', '9':'⁹' };
+NS.expo = function (v, n) {
+  if (v == null || !isFinite(v)) return '—';
+  var e = Math.floor(Math.log(Math.abs(v)) / Math.LN10);
+  var m = v / Math.pow(10, e);
+  return m.toFixed(n == null ? 2 : n) + '×10' + String(e).split('').map(function (c) { return NS.SUP[c] || c; }).join('');
+};
 NS.mag = function (v) { return (v > 0 ? '+' : '') + v.toFixed(1) + ' 等'; };
 NS.km = function (v, n) { return NS.f(v, n == null ? 1 : n) + ' km'; };
 NS.dms = function (deg) {
@@ -188,6 +196,8 @@ NS.table = function (head, rows, opts) {
 };
 NS.badge = function (text, kind) { return NS.el('span', { class: 'badge ' + (kind || ''), text: text }); };
 /* 画面全体の再描画。app.js が実体に差し替える */
+/* 既定は素通し。js/i18n.js が読み込まれると訳す関数に差し替わる */
+NS.t = function (x) { return x; };
 NS.rerender = function () {};
 /* 更新ボタン＋最終更新時刻。onRefresh は同期関数（再描画）を渡す */
 NS.refreshTool = function (onRefresh, opts) {

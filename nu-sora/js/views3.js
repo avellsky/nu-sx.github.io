@@ -1042,6 +1042,7 @@ NS.V.about = function (root, go) {
         '全局共通のフル構成（機材の型式・仕様・価格帯・用途）',
         '視野円の算出（高度 100 km を仰角 30° 以上で見込める地表半径 ' + Math.round(NS.groundRadius(100, 30)) + ' km）',
         '日本の都道府県境界（国土数値情報を簡略化したデータ）',
+        '全国 1,893 市区町村の境界：国土数値情報 行政区域データ（国土交通省, N03）を簡略化したもの。局所マップを拡大したときに、必要な都道府県の分だけを読み込んで表示する',
         'サブテーマ G-1〜G-8 とデジタルツイン DT-1〜DT-7 の対応',
         '恒星 9,096 個の位置・等級・色指数：エール輝星星表 第5版（BSC5, Hoffleit & Warren 1991, CDS/VizieR V/50）',
         '星座線 752 本：IAU 公式星座図形（Stellarium「modern_iau」スカイカルチャー, CC BY-SA 4.0）',
@@ -1292,7 +1293,7 @@ NS.rainbandSection = function (go) {
   M.addOverlay(s('circle', { cx:mp1[0], cy:mp1[1], r:M.px(4), fill:'var(--accent)' }));
 
   var mapPanel = panel('帯の推定位置と雷放電の定位', {
-    note:'緑の実線は各局のインフラサウンド到来方位（破線は方位のばらつき）。点は雷放電の推定位置で、色は発生時刻。青の破線は 3 時間後の帯の位置' }, []);
+    note:'緑の実線は各局のインフラサウンド到来方位（破線は方位のばらつき）。点は雷放電の推定位置で、色は発生時刻。青の破線は 3 時間後の帯の位置。市区町村の境界は国土数値情報 行政区域データ（国土交通省）による' }, []);
   var mb = mapPanel.querySelector('.panel-b'); mb.classList.add('flush'); mb.appendChild(M.node);
   NS.add(mb, el('div', { class:'maplegend' }, [
     el('span', { html:'<i style="background:var(--c-info);opacity:.45"></i>推定された帯（' + rb.lengthKm + ' × ' + rb.axis.width + ' km）' }),

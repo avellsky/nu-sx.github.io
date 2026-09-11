@@ -21,6 +21,50 @@ NS.unproj = function (px, py) {
 };
 NS.MAPW = W; NS.MAPH = H;
 
+/* =============== 市区町村境界（遅延読込） ===============
+   全国 1,893 市区町村を県別ファイルに分けておき、局所マップが必要な県だけを
+   その場で読み込む。全国表示では一切読み込まないので初期表示は軽い。 */
+var MUNI_BASE = (function () {
+  var sc = document.currentScript;
+  var src = sc ? sc.src : '';
+  var i = src.lastIndexOf('/');
+  return i < 0 ? 'js/' : src.slice(0, i + 1);
+})();
+var muniState = {};                       /* 県コード → 'load' | 'ok' | 'ng' */
+NS.MUNI_ZOOM  = 430;                      /* この viewBox 幅（px）より寄ったら境界を描く */
+NS.MUNI_LABEL = 165;                      /* この幅より寄ったら市区町村名も描く */
+
+NS.muniNeed = function (vb) {             /* 表示範囲に掛かる県コードを返す */
+  var idx = window.MUNI_INDEX;
+  if (!idx) return [];
+  var a = NS.unproj(vb.x, vb.y), b = NS.unproj(vb.x + vb.w, vb.y + vb.h);
+  var lo0 = Math.min(a.lon, b.lon), lo1 = Math.max(a.lon, b.lon);
+  var la0 = Math.min(a.lat, b.lat), la1 = Math.max(a.lat, b.lat);
+  var out = [];
+  for (var c in idx) {
+    var bb = idx[c].bb;                   /* [lon0, lat0, lon1, lat1] */
+    if (bb[2] < lo0 || bb[0] > lo1 || bb[3] < la0 || bb[1] > la1) continue;
+    out.push(c);
+  }
+  return out;
+};
+
+NS.muniLoad = function (codes, cb) {      /* 未読の県を読み込み、1 件でも増えたら cb */
+  var pend = 0, got = false;
+  codes.forEach(function (c) {
+    if (window.MUNI_DATA && window.MUNI_DATA[c]) return;
+    if (muniState[c]) return;
+    muniState[c] = 'load'; pend++;
+    var sc = document.createElement('script');
+    sc.src = MUNI_BASE + 'muni/' + c + '.js';
+    sc.onload  = function () { muniState[c] = 'ok'; got = true; if (--pend === 0 && cb) cb(); };
+    sc.onerror = function () { muniState[c] = 'ng';            if (--pend === 0 && cb) cb(); };
+    document.head.appendChild(sc);
+  });
+  return pend;
+};
+
+
 NS.ELEVS = [5, 10, 15, 20, 30, 45];
 NS.ELEV_DASH = { 5:'2 3', 10:'5 3', 15:'9 3', 20:'14 3', 30:'', 45:'1 2.5' };
 NS.FOV_ALT = 100;
@@ -66,11 +110,13 @@ NS.Map = function (opts) {
   var gSea = NS.s('rect', { x:0, y:0, width:W, height:H, class:'m-sea' });
   var gGrid = NS.s('g', { class:'m-grid' });
   var gLand = NS.s('g', { class:'m-land' });
+  var gCity = NS.s('g', { class:'m-city' });
+  var gCLbl = NS.s('g', { class:'m-cname' });
   var gFov  = NS.s('g', { class:'m-fov' });
   var gOv   = NS.s('g', { class:'m-ov' });
   var gSt   = NS.s('g', { class:'m-st' });
   var gLbl  = NS.s('g', { class:'m-lbl' });
-  NS.add(svg, [gSea, gGrid, gLand, gFov, gOv, gSt, gLbl]);
+  NS.add(svg, [gSea, gGrid, gLand, gCity, gCLbl, gFov, gOv, gSt, gLbl]);
   var wrap = NS.el('div', { class:'mapwrap' }, svg);
   var tip = NS.el('div', { class:'maptip', hidden:'hidden' });
   wrap.appendChild(tip);
@@ -85,7 +131,7 @@ NS.Map = function (opts) {
         var xy = NS.proj(ring[i][0], ring[i][1]);
         d += (i ? 'L' : 'M') + xy[0].toFixed(1) + ' ' + xy[1].toFixed(1);
       }
-      NS.add(gLand, NS.s('path', { d:d + 'Z', class:'m-pref' }, NS.s('title', { text:pref.n })));
+      NS.add(gLand, NS.s('path', { d:d + 'Z', class:'m-pref', 'vector-effect':'non-scaling-stroke' }, NS.s('title', { text:pref.n })));
     });
   });
   /* 経緯線 */
@@ -105,8 +151,66 @@ NS.Map = function (opts) {
   function apply() {
     svg.setAttribute('viewBox', vb.x + ' ' + vb.y + ' ' + vb.w + ' ' + vb.h);
     scaleMarks();
+    cityUpdate();
     if (M.onView) M.onView(vb);
   }
+
+  /* --- 市区町村境界：寄ったときだけ描く --- */
+  var cityKey = '';
+  function cityUpdate() {
+    if (M.city === false) return;
+    if (vb.w > NS.MUNI_ZOOM) {
+      if (cityKey) { NS.clear(gCity); NS.clear(gCLbl); cityKey = ''; gLand.style.opacity = ''; }
+      return;
+    }
+    var codes = NS.muniNeed(vb);
+    if (!codes.length) return;
+    var lbl = vb.w <= NS.MUNI_LABEL;
+    var key = codes.join(',') + '|' + (lbl ? 1 : 0) + '|' +
+              [vb.x, vb.y, vb.w].map(function (v) { return Math.round(v / 12); }).join(',');
+    if (key === cityKey) { if (lbl) cityScale(); return; }
+    if (NS.muniLoad(codes, function () { cityKey = ''; cityUpdate(); })) return;
+    cityKey = key;
+    NS.clear(gCity); NS.clear(gCLbl);
+    var data = window.MUNI_DATA || {};
+    var pad = vb.w * 0.15;                /* 画面外の環は描かない（少しだけ余白を取る） */
+    var cx0 = vb.x - pad, cx1 = vb.x + vb.w + pad, cy0 = vb.y - pad, cy1 = vb.y + vb.h + pad;
+    codes.forEach(function (c) {
+      (data[c] || []).forEach(function (mu) {
+        var big = null, bigN = 0;
+        mu.r.forEach(function (ring) {
+          if (ring.length < 4) return;
+          var n = ring.length, xs = new Array(n), ys = new Array(n);
+          var x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, sx = 0, sy = 0;
+          for (var i = 0; i < n; i++) {
+            var xy = NS.proj(ring[i][0], ring[i][1]);
+            xs[i] = xy[0]; ys[i] = xy[1]; sx += xy[0]; sy += xy[1];
+            if (xy[0] < x0) x0 = xy[0];
+            if (xy[0] > x1) x1 = xy[0];
+            if (xy[1] < y0) y0 = xy[1];
+            if (xy[1] > y1) y1 = xy[1];
+          }
+          if (x1 < cx0 || x0 > cx1 || y1 < cy0 || y0 > cy1) return;
+          var d = '';
+          for (var j = 0; j < n; j++) d += (j ? 'L' : 'M') + xs[j].toFixed(1) + ' ' + ys[j].toFixed(1);
+          NS.add(gCity, NS.s('path', { d:d + 'Z', 'vector-effect':'non-scaling-stroke' }, NS.s('title', { text:mu.n })));
+          if (n > bigN) { bigN = n; big = [sx / n, sy / n]; }
+        });
+        if (lbl && big && bigN > 12)
+          NS.add(gCLbl, NS.s('text', { x:big[0].toFixed(1), y:big[1].toFixed(1), text:mu.n }));
+      });
+    });
+    /* 市区町村の面で陸を描き直す。簡略化した都道府県ポリゴンより海岸線が細かいので、
+       描けたときだけ粗いほうを隠して二重の海岸線が出ないようにする。 */
+    gLand.style.opacity = gCity.childElementCount ? '0' : '';
+    cityScale();
+  }
+  function cityScale() {                  /* 文字の大きさと濃さをズームに追随させる（線幅は非拡大ストローク） */
+    gCLbl.setAttribute('font-size', Math.max(1.2, vb.w / W * 9).toFixed(2));
+    var f = (NS.MUNI_ZOOM - vb.w) / (NS.MUNI_ZOOM - NS.MUNI_LABEL);
+    gCity.style.strokeOpacity = (0.34 + 0.56 * Math.max(0, Math.min(1, f))).toFixed(2);
+  }
+  M.cityUpdate = cityUpdate;
   function scaleMarks() {
     var k = Math.max(0.055, Math.min(2.6, vb.w / W));
     svg.style.setProperty('--mk', k.toFixed(3));

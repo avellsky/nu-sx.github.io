@@ -231,6 +231,19 @@ NS.wbgtLevel = function (v) {
 /* =========================================================================
    5. 局の稼働状態
    ========================================================================= */
+/* 実況グラフの並び順：基幹の船橋局・駿河台局を先頭に置き、
+   以降は北（緯度の高い順）から南へ並べる。全局を横並びで見るときに位置関係が追いやすい。 */
+NS.LIVE_HEAD = ['FNB', 'SRG'];
+NS.liveOrder = function (list) {
+  var src = (list || NS.STATIONS).slice();
+  var head = [];
+  NS.LIVE_HEAD.forEach(function (id) {
+    for (var i = 0; i < src.length; i++) if (src[i].id === id) { head.push(src.splice(i, 1)[0]); break; }
+  });
+  src.sort(function (a, b) { return b.lat - a.lat; });
+  return head.concat(src);
+};
+
 NS.stationState = function (st, t) {
   var r = NS.rng(st.id + '|st|' + Math.floor(t / 3600e3));
   var w = NS.weather(st, t);

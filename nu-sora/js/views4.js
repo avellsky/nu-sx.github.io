@@ -180,7 +180,7 @@ NS.V.quake = function (root, go, arg) {
       'stroke-width':0.9, 'stroke-dasharray':'3 3', fill:'none', opacity:0.45, 'vector-effect':'non-scaling-stroke' }));
   });
   M.fit([{ lat:q.lat, lon:q.lon }].concat(NS.STATIONS.map(function (st) { return { lat:st.lat, lon:st.lon }; })), 0.15);
-  var mp = panel('震央と検知した観測局', { note:'✕ が震央。破線は震央と検知局を結ぶ（色＝センサーの種類）' }, []);
+  var mp = panel('震央と検知した観測局', { note:'✕ が震央。破線は震央と検知局を結ぶ（色＝センサーの種類）。拡大すると市区町村の境界を表示する（国土数値情報 行政区域データ）' }, []);
   var mb = mp.querySelector('.panel-b'); mb.classList.add('flush'); mb.appendChild(M.node);
   NS.add(mb, el('div', { class:'maplegend' }, [
     el('span', { html:'<i style="background:var(--c-warn)"></i>微動計' }),

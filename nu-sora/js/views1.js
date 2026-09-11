@@ -62,10 +62,11 @@ function evRow(e, onClick, sel) {
   else if (e.kind === 'reentry') { right = NS.mag(e.absMag); sub = e.stationsDet + ' 局'; }
   else if (e.kind === 'infrasound') { right = NS.f(e.peakPa, 2) + ' Pa'; sub = e.det.length + ' 局'; }
   else { right = 'M' + (e.name.match(/M([\d.]+)/) || [, '—'])[1]; sub = e.det.length + ' 局'; }
-  var r = el('div', { class:'evrow' + (sel === e.id ? ' on' : ''), onclick:function () { onClick(e); }, role:'button', tabindex:'0' }, [
+  var r = el('div', { class:'evrow' + (sel === e.id ? ' on' : '') + (e.scenario ? ' scn' : ''), onclick:function () { onClick(e); }, role:'button', tabindex:'0' }, [
     el('div', { class:'ei', text:evIcon(e) }),
     el('div', null, [
-      el('div', { class:'en' }, [e.name, e.auto ? null : badge('解析済', 'info')]),
+      el('div', { class:'en' }, [e.name,
+        e.scenario ? badge('想定シナリオ', 'warn') : (e.auto ? null : badge('解析済', 'info'))]),
       el('div', { class:'em', text:NS.fmtJST(e.t) + ' JST · ' + NS.ago(e.t) })
     ]),
     el('div', { class:'ev' }, [right, el('small', { text:sub })])
@@ -165,7 +166,7 @@ NS.V.dashboard = function (root, go) {
     el('span', { class:'hint', text:'出典：気象庁。ON にしたときだけ気象庁のサーバーから取得する' })
   ]);
 
-  mapPanel = panel('観測局配置と現況', { note:'ホイールで拡大・ドラッグで移動／局をクリックするとその局の全データ一覧へ',
+  mapPanel = panel('観測局配置と現況', { note:'ホイールで拡大・ドラッグで移動／局をクリックするとその局の全データ一覧へ（拡大すると市区町村の境界を表示）',
     tools:el('div', { class:'split' }, [NS.refreshTool(function () { NS.rerender(); }),
     el('div', { class:'seg' }, ['all', 'kanto', 'kyushu', 'tohoku'].map(function (k) {
       var b = el('button', { text:NS.VIEWS[k].name, 'aria-pressed':k === 'all' ? 'true' : 'false',
@@ -475,7 +476,7 @@ NS.V.stations = function (root, go) {
 
   /* 全局の全天カメラ（表示時刻を切り替えられる） */
   var skies = [], def = NS.defaultSkyTime();
-  var grid = el('div', { class:'skygrid' }, NS.STATIONS.map(function (st) {
+  var grid = el('div', { class:'skygrid' }, NS.liveOrder().map(function (st) {
     var A = NS.AllSky(st, { size:260, showConst:false, showGrid:false });
     A.setTime(def.t, def.live);
     skies.push(A);
@@ -520,7 +521,7 @@ NS.V.stations = function (root, go) {
   /* ---- インフラサウンド 実況グラフ（全 14 局） ---- */
   var infState = { chans:['HF', 'MF', 'LF'], win:300 };
   var strips = [];
-  var infGrid = el('div', { class:'infgrid' }, NS.STATIONS.map(function (st) {
+  var infGrid = el('div', { class:'infgrid' }, NS.liveOrder().map(function (st) {
     var S = NS.InfraStrip(st, { chans:infState.chans, win:infState.win, width:300 });
     strips.push(S);
     var s2 = NS.stationState(st, NS.now());
@@ -590,7 +591,7 @@ NS.V.stations = function (root, go) {
   /* ---- 電波流星受信機（HRO / FFT 画面） ---- */
   var hroState = { win:600 };
   var hros = [];
-  var hroGrid = el('div', { class:'hrogrid' }, NS.STATIONS.map(function (st) {
+  var hroGrid = el('div', { class:'hrogrid' }, NS.liveOrder().map(function (st) {
     var F = NS.HroFft(st, { win:hroState.win });
     hros.push(F);
     F.render();
@@ -650,6 +651,7 @@ NS.V.station = function (root, go, arg) {
     el('div', { class:'chips', style:{ marginTop:'8px' } },
       [['全天カメラ', 'sky'], ['インフラサウンド', 'inf'], ['気象・WBGT', 'met'], ['夜空輝度', 'sqm'],
        ['電波流星 FFT', 'hro'], ['2 周波 GNSS', 'gnss'], ['微動計', 'seis'], ['機材・実績', 'eq']]
+      .concat(st.id === 'FNB' ? [['ガンダム望遠鏡', 'gundam']] : [])
       .map(function (x) {
         return el('button', { class:'chip', text:x[0], onclick:function () {
           var n = document.getElementById('sec-' + x[1]);
@@ -891,6 +893,12 @@ NS.V.station = function (root, go, arg) {
       el('div', { class:'note', text:'付属校拠点では、生徒が自動検出の誤検出（雲・虫・飛行機・人工衛星）を目視で検証する作業を探究学習として組み込む（G-8 / DT-7）。' })
     ])
   ]));
+
+  /* 船橋局のみ：月面衝突閃光観測専用望遠鏡「ガンダム望遠鏡」 */
+  if (st.id === 'FNB' && NS.gundamSection) {
+    NS.add(root, el('div', { class:'grid', style:{ gap:'14px', marginTop:'14px' }, id:'sec-gundam' },
+      NS.gundamSection(go)));
+  }
 
   /* この局が関わった主なイベント */
   var rel = NS.EVENTS.filter(function (e) {

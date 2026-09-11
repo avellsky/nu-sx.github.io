@@ -209,9 +209,14 @@ svg.spark{display:block}
 svg.jmap{width:100%;height:auto;display:block;cursor:grab;touch-action:none}
 svg.jmap.grabbing{cursor:grabbing}
 .m-sea{fill:var(--sea)}
-.m-pref{fill:var(--land);stroke:#4A5462;stroke-width:.45;stroke-opacity:.9}
-:root[data-theme="light"] .m-pref{stroke:#FBFBFA;stroke-width:.5}
+.m-pref{fill:var(--land);stroke:#4A5462;stroke-width:.5;stroke-opacity:.9;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+:root[data-theme="light"] .m-pref{stroke:#C6CCD3;stroke-width:.6}
 .m-grid .gl{stroke:var(--rule);stroke-width:.5;opacity:.55}
+.m-city{fill:var(--land);stroke:#6E7886;stroke-opacity:.75;stroke-width:.5;stroke-linejoin:round;vector-effect:non-scaling-stroke;pointer-events:none}
+:root[data-theme="light"] .m-city{stroke:#BDC3CA;stroke-opacity:.95}
+.m-cname{fill:var(--muted);opacity:.62;pointer-events:none;text-anchor:middle;
+         font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif}
+.m-city path:hover{stroke-opacity:1}
 .m-grid .gt{font-size:8px;fill:var(--muted);opacity:.75;font-family:ui-monospace,monospace}
 .fov{fill:none;stroke:var(--accent);stroke-width:calc(1 * var(--mk));vector-effect:non-scaling-stroke}
 .stm{cursor:pointer}
@@ -317,6 +322,12 @@ canvas.infstrip{display:block;width:100%;height:auto}
   border-bottom:1px solid var(--rule);cursor:pointer}
 .evrow:hover{background:var(--panel2)}
 .evrow.on{background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.evrow.scn{border-left:3px solid var(--c-warn)}
+.scnbanner{display:flex;gap:12px;align-items:flex-start;flex-wrap:wrap;
+  background:color-mix(in srgb,var(--c-warn) 12%,transparent);
+  border:1px solid color-mix(in srgb,var(--c-warn) 46%,transparent);
+  border-left:4px solid var(--c-warn);border-radius:5px;padding:11px 14px;font-size:12px;color:var(--ink2)}
+.scnbanner b{color:var(--c-warn);font-size:13px;white-space:nowrap}
 .evrow:last-child{border-bottom:0}
 .evrow .ei{width:30px;height:30px;border-radius:5px;display:grid;place-items:center;font-size:14px;
   background:var(--panel2);border:1px solid var(--rule2)}
@@ -419,3 +430,15 @@ footer{max-width:1440px;margin:0 auto;padding:22px 18px 44px;border-top:1px soli
   color:var(--muted);font-size:11px;line-height:1.7}
 .skiplink{position:absolute;left:-9999px}
 .skiplink:focus{left:8px;top:8px;background:var(--panel);padding:6px 12px;z-index:99;border-radius:4px}
+
+/* ---- ガンダム望遠鏡（船橋局） ---- */
+.moonmap{width:100%;max-width:360px;display:block;margin:0 auto}
+.phead{font-size:12px;font-weight:600;color:var(--ink2);margin:0 0 6px;letter-spacing:.02em}
+.modecard{border:1px solid var(--line);border-radius:8px;padding:11px 12px;background:transparent}
+.modecard .mc-h{display:flex;align-items:center;gap:7px;margin-bottom:8px}
+.modecard .mc-i{font-size:15px}
+.statcard{display:flex;align-items:center;gap:9px;border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+.statcard b{font-size:12.5px}
+.lamp{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
+.lamp.on{background:var(--c-ok);box-shadow:0 0 0 3px rgba(79,160,122,.2)}
+.lamp.off{background:var(--c-warn);box-shadow:0 0 0 3px rgba(222,131,48,.2)}
