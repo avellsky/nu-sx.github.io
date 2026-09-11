@@ -1180,24 +1180,24 @@ NS.V.about = function (root, go) {
   ]))));
 
   NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('関連する実装',
-    { note:'同じ研究室が公開している、観測と理論を「動かして確かめる」ためのアプリ（いずれも無料・iPhone / iPad / Mac）' }, refTable([
+    { note:'NU-SX (Shinsuke Abe) が公開している、観測と理論を「動かして確かめる」ためのアプリ（いずれも無料・iPhone / iPad / Mac）' }, refTable([
     [el('span', null, [
       el('b', { text:'Meteorium（メテオリウム）' }), '　宇宙科学デジタルツイン アプリ', el('br'),
-      el('span', { class:'refsub', text:'Abe Space Science Lab (2026)　流星群のダストトレイルと流星嵐' }), el('br'),
+      el('span', { class:'refsub', text:'NU-SX (Shinsuke Abe) 2026　流星群のダストトレイルと流星嵐' }), el('br'),
       lnk('https://aero.cst.nihon-u.ac.jp/abe-s/2026/08/31/meteorium%ef%bc%88%e3%83%a1%e3%83%86%e3%82%aa%e3%83%aa%e3%82%a6%e3%83%a0%ef%bc%89/', '紹介記事'),
       lnk('https://apps.apple.com/jp/app/id6798546441', 'App Store')
     ]),
      '太陽系を俯瞰してダストトレイルと地球軌道の交差を見せ、そのまま地上視点に降りて流星雨の見え方を再現する。論文の計算結果をそのまま動かせる「宇宙科学デジタルツイン」の先行実装であり、本観測網の PF-2（デジタルツイン）・DT-7（学びのツイン）が目指す形を、観測データ側から補完する'],
     [el('span', null, [
       el('b', { text:'Astrarium（アストラリウム）' }), '　星空アプリ', el('br'),
-      el('span', { class:'refsub', text:'Abe Space Science Lab (2026)　その場の空の星座・天体を再現' }), el('br'),
+      el('span', { class:'refsub', text:'NU-SX (Shinsuke Abe) 2026　その場の空の星座・天体を再現' }), el('br'),
       lnk('https://aero.cst.nihon-u.ac.jp/abe-s/2026/08/01/%e3%83%97%e3%83%a9%e3%83%8d%e3%82%bf%e3%83%aa%e3%82%a6%e3%83%a0%e3%82%a2%e3%83%97%e3%83%aa%e3%82%92%e3%80%80%e5%85%ac%e9%96%8b/', '紹介記事'),
       lnk('https://apps.apple.com/jp/app/id6795053748', 'App Store')
     ]),
      '観測地・日時を指定してその空に見える星座・天体を再現する。本デモの「全天カメラ」が用いているエール輝星星表（BSC5）・IAU 公式星座図形・Tycho-2 の天の川は、いずれもこのアプリのために整備されたデータをそのまま取り込んだもので、描画の考え方も共通する。付属校の生徒が自分の空と観測画像を見比べる導入として DT-7（学びのツイン）・G-8（探究）に接続する'],
     [el('span', null, [
       el('b', { text:'Cometarium（コメタリウム）' }), '　彗星ビューア', el('br'),
-      el('span', { class:'refsub', text:'Abe Space Science Lab (2026)　彗星の位置・光度・尾を物理モデルで描く' }), el('br'),
+      el('span', { class:'refsub', text:'NU-SX (Shinsuke Abe) 2026　彗星の位置・光度・尾を物理モデルで描く' }), el('br'),
       lnk('https://apps.apple.com/jp/app/id6801072934', 'App Store')
     ]),
      '彗星が「いつ・どこに・どれだけ輝き・どんな尾を引くか」を、実測の軌道と物理モデルで描く。COBS（彗星観測データベース）の観測に光度式を当てはめ ±3σ 帯とともに示す手法は、本デモが火球の光度曲線とエネルギー推定の不確かさを併記する姿勢と同じである。恒星を B−V 色指数と実視等級で描く点、空の明るさを等/平方秒角で扱う点（G-3）も共通し、流星群の母天体である彗星の側から DT-1 を補完する']

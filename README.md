@@ -99,9 +99,9 @@ git add -A && git commit -m "Update NU-SORA demo" && git push
 - **Kakinami, Y., et al.** (2013), *Ionospheric ripples excited by superimposed wave fronts associated with Rayleigh waves in the thermosphere*, JGR: Space Physics, **118**, 905–911 — [doi:10.1002/jgra.50099](https://doi.org/10.1002/jgra.50099)
 - **Kamogawa, M., ..., Kakinami, Y., et al.** (2016), *A possible space-based tsunami early warning system using observations of the tsunami ionospheric hole*, Scientific Reports, **6**, 37989 — [doi:10.1038/srep37989](https://doi.org/10.1038/srep37989)
 - **Kakinami, Y., et al.** (2021), *Onset Altitudes of Co-Seismic Ionospheric Disturbances Determined by Multiple Distributions of GNSS TEC After the Foreshock of the 2011 Tohoku Earthquake on March 9, 2011*, Earth and Space Science, **8**, e2020EA001217 — [doi:10.1029/2020EA001217](https://doi.org/10.1029/2020EA001217)
-- **Meteorium（メテオリウム）** — 宇宙科学デジタルツイン アプリ、Abe Space Science Lab (2026)（[紹介記事](https://aero.cst.nihon-u.ac.jp/abe-s/2026/08/31/meteorium%ef%bc%88%e3%83%a1%e3%83%86%e3%82%aa%e3%83%aa%e3%82%a6%e3%83%a0%ef%bc%89/) ／ [App Store](https://apps.apple.com/jp/app/id6798546441)）
-- **Astrarium（アストラリウム）** — 星空アプリ、Abe Space Science Lab (2026)（[紹介記事](https://aero.cst.nihon-u.ac.jp/abe-s/2026/08/01/%e3%83%97%e3%83%a9%e3%83%8d%e3%82%bf%e3%83%aa%e3%82%a6%e3%83%a0%e3%82%a2%e3%83%97%e3%83%aa%e3%82%92%e3%80%80%e5%85%ac%e9%96%8b/) ／ [App Store](https://apps.apple.com/jp/app/id6795053748)）
-- **Cometarium（コメタリウム）** — 彗星ビューア、Abe Space Science Lab (2026)（[App Store](https://apps.apple.com/jp/app/id6801072934)）
+- **Meteorium（メテオリウム）** — 宇宙科学デジタルツイン アプリ、NU-SX (Shinsuke Abe) 2026（[紹介記事](https://aero.cst.nihon-u.ac.jp/abe-s/2026/08/31/meteorium%ef%bc%88%e3%83%a1%e3%83%86%e3%82%aa%e3%83%aa%e3%82%a6%e3%83%a0%ef%bc%89/) ／ [App Store](https://apps.apple.com/jp/app/id6798546441)）
+- **Astrarium（アストラリウム）** — 星空アプリ、NU-SX (Shinsuke Abe) 2026（[紹介記事](https://aero.cst.nihon-u.ac.jp/abe-s/2026/08/01/%e3%83%97%e3%83%a9%e3%83%8d%e3%82%bf%e3%83%aa%e3%82%a6%e3%83%a0%e3%82%a2%e3%83%97%e3%83%aa%e3%82%92%e3%80%80%e5%85%ac%e9%96%8b/) ／ [App Store](https://apps.apple.com/jp/app/id6795053748)）
+- **Cometarium（コメタリウム）** — 彗星ビューア、NU-SX (Shinsuke Abe) 2026（[App Store](https://apps.apple.com/jp/app/id6801072934)）
 - 恒星カタログ：エール輝星星表 第5版（BSC5, Hoffleit & Warren 1991, CDS/VizieR V/50。パブリックドメイン、要出典表示）
 - 星座線：IAU 公式星座図形（Stellarium「modern_iau」スカイカルチャー, CC BY-SA 4.0）
 - 天の川：Tycho-2 の V<11.5 星数密度（Hog et al. 2000, CDS I/259）
