@@ -44,7 +44,7 @@ NS.crSection = function (go) {
 
   out.appendChild(panel('宇宙線計測で何を見るか', {
     note:'1 台では統計に埋もれる数 % の変動を、14 局と長い平均で読み取る',
-    tools:badge('Accel Kitchen 素粒子検出器組み立てキット', 'info') }, [
+    tools:badge('素粒子検出器（プラスチックシンチレータ）', 'info') }, [
     el('p', { style:{ margin:'0 0 12px', color:'var(--ink2)' },
       text:'地上に降ってくる宇宙線ミューオンの数は、いつもほぼ一定に見える。しかし実際には頭上の大気の量（気圧）と'
         + '成層圏の気温、そして太陽活動でわずかに上下しており、その幅は数 % しかない。'

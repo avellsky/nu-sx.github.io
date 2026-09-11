@@ -634,7 +634,7 @@ NS.V.stations = function (root, go) {
 
   /* ---- 宇宙線計測器（全 14 局） ---- */
   NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('宇宙線計測器（全 14 局）',
-    { note:'Accel Kitchen 素粒子検出器組み立てキット。プラスチックシンチレータ 5×5×1 cm ＋ SiPM ＋ ESP32。1 分ごとの計数を常時記録',
+    { note:'素粒子検出器（プラスチックシンチレータ）。シンチレータ 5×5×1 cm ＋ SiPM 型光センサー ＋ ESP32。1 分ごとの計数を常時記録',
       tools:NS.refreshTool(function () { NS.rerender(); }) },
     [el('div', { class:'sngrid' }, NS.sensorCards('cray', go)),
      el('div', { class:'note', text:'海面での計数は毎分 30 前後で、気圧が 1 hPa 上がるとおよそ 0.15 % 下がる（気圧効果）。'
@@ -915,7 +915,7 @@ NS.V.station = function (root, go, arg) {
     var crPts = [];
     for (var ci = -180; ci <= 0; ci += 3) crPts.push([ci, NS.cosmicRay(st, t + ci * 60000).cpm]);
     NS.add(root, el('div', { class:'grid g-2-1', style:{ marginTop:'14px' }, id:'sec-cray' }, [
-      panel('宇宙線計測器', { note:'Accel Kitchen 素粒子検出器組み立てキット · プラスチックシンチレータ 5×5×1 cm ＋ SiPM ＋ ESP32' }, [
+      panel('宇宙線計測器', { note:'素粒子検出器（プラスチックシンチレータ）· シンチレータ 5×5×1 cm ＋ SiPM 型光センサー ＋ ESP32' }, [
         NS.chart.line({ series:[{ pts:crPts, color:'var(--c-spec)', width:1.2 }], width:660, height:200,
           xLabel:'現在からの分', yLabel:'計数 cpm', rules:[{ y:cr.mean, color:'var(--accent)', dash:'4 3', label:'期待値' }],
           xFmt:function (v) { return NS.f(v, 0); }, yFmt:function (v) { return NS.f(v, 0); } }),
