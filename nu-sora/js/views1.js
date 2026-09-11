@@ -143,6 +143,28 @@ NS.V.dashboard = function (root, go) {
   var ee = M.pt(fbShow.end.lon, fbShow.end.lat);
   M.addOverlay(s('circle', { cx:ee[0], cy:ee[1], r:M.px(4), fill:'var(--accent)' }));
 
+  /* ---- 気象庁の衛星画像オーバーレイ ---- */
+  var sat = NS.jmaSatLayer(M);
+  var satStat = el('span', { class:'jma-stat' });
+  M.onView = function () { sat.update(); };
+  var satChips = el('div', { class:'chips' }, [{ key:null, name:'なし' }].concat(NS.JMA_BANDS).map(function (b) {
+    var btn = el('button', { class:'chip', text:b.name, 'aria-pressed':b.key === null ? 'true' : 'false',
+      title:b.desc || '衛星画像を重ねない', onclick:function () {
+        Array.prototype.forEach.call(btn.parentNode.children, function (x) { x.setAttribute('aria-pressed', 'false'); });
+        btn.setAttribute('aria-pressed', 'true');
+        sat.setBand(b.key, function (msg) { satStat.textContent = msg; });
+      } });
+    return btn;
+  }));
+  var satOp = el('input', { type:'range', min:'15', max:'100', value:'62', class:'jma-op',
+    title:'衛星画像の不透明度', oninput:function (e) { sat.setOpacity(e.target.value / 100); } });
+  var satBar = el('div', { class:'mapbar jma-bar' }, [
+    el('span', { class:'lbl', text:'気象庁 ひまわり' }), satChips,
+    el('span', { class:'lbl', text:'濃さ' }), satOp,
+    satStat, el('div', { class:'spacer' }),
+    el('span', { class:'hint', text:'出典：気象庁。ON にしたときだけ気象庁のサーバーから取得する' })
+  ]);
+
   mapPanel = panel('観測局配置と現況', { note:'ホイールで拡大・ドラッグで移動／局をクリックするとその局の全データ一覧へ',
     tools:el('div', { class:'split' }, [NS.refreshTool(function () { NS.rerender(); }),
     el('div', { class:'seg' }, ['all', 'kanto', 'kyushu', 'tohoku'].map(function (k) {
@@ -155,6 +177,7 @@ NS.V.dashboard = function (root, go) {
       return b;
     }))]) }, []);
   mapPanel.querySelector('.panel-b').classList.add('flush');
+  mapPanel.querySelector('.panel-b').appendChild(satBar);
   mapPanel.querySelector('.panel-b').appendChild(M.node);
   mapPanel.querySelector('.panel-b').appendChild(el('div', { class:'maplegend' }, [
     el('span', { html:'<i style="background:var(--c-u)"></i>大学キャンパス拠点 6 局' }),
@@ -186,6 +209,50 @@ NS.V.dashboard = function (root, go) {
   NS.add(root, el('div', { class:'grid g-2-1', style:{ marginTop:'14px' } }, [
     mapPanel, el('div', { class:'grid', style:{ gap:'14px' } }, [evPanel, alertPanel])
   ]));
+
+  /* ---- 気象庁 天気図（図法が地図と異なるため参照図として並べる） ---- */
+  var chartImg = el('img', { class:'jma-chart', alt:'気象庁 天気図', hidden:'hidden' });
+  var chartStat = el('div', { class:'hint', text:'「表示」を押すと気象庁から天気図を取得する' });
+  var chartKind = { set:'near/now' };
+  function loadChart() {
+    chartStat.textContent = '気象庁から取得中…';
+    NS.jmaWeatherMapList().then(function (d) {
+      var parts = chartKind.set.split('/'), arr = (d[parts[0]] || {})[parts[1]] || [];
+      if (!arr.length) { chartStat.textContent = '該当する天気図がありません'; return; }
+      var file = arr[arr.length - 1], vt = NS.jmaChartTime(file);
+      chartImg.src = NS.jmaWeatherMapUrl(file);
+      chartImg.hidden = false;
+      chartStat.innerHTML = (vt ? NS.fmtJST(vt, { sec:false }) + ' JST' : '') +
+        '　<span class="hint">出典：気象庁</span>';
+    })['catch'](function (e) { chartStat.textContent = '取得できませんでした（' + e.message + '）'; });
+  }
+  var chartSeg = el('div', { class:'seg' }, [['実況', 'near/now'], ['24 時間予想', 'near/ft24'],
+    ['48 時間予想', 'near/ft48'], ['アジア実況', 'asia/now']].map(function (x) {
+    return el('button', { text:x[0], 'aria-pressed':x[1] === chartKind.set ? 'true' : 'false', onclick:function (ev) {
+      chartKind.set = x[1];
+      Array.prototype.forEach.call(ev.target.parentNode.children, function (c) { c.setAttribute('aria-pressed', 'false'); });
+      ev.target.setAttribute('aria-pressed', 'true');
+      loadChart();
+    } });
+  }));
+  var chartPanel = panel('気象庁 天気図', {
+    note:'地上天気図。図法が観測局マップと異なるため重ねず、参照図として並べる',
+    tools:el('div', { class:'split' }, [chartSeg,
+      el('button', { class:'iconbtn', text:'表示', onclick:loadChart })]) },
+    [chartStat, chartImg,
+     el('div', { class:'src', text:'出典：気象庁（https://www.jma.go.jp/bosai/weather_map/）。画像は気象庁のサーバーから直接取得している。ひまわりの衛星画像（可視・赤外・水蒸気・真彩色）は Web メルカトルのタイルで配信されているため、上の観測局マップに直接重ねられる。' })]);
+
+  var envPanel = panel('気象庁データの使いどころ', { note:'観測網の解析に取り込む公開データ' },
+    NS.table(['データ', '用途', '対応'], [
+      ['ひまわり 可視・赤外・水蒸気', '全天カメラの雲量判定の裏づけ、観測可能な局の見極め', 'G-3 / DT-2'],
+      ['数値予報 GPV（MSM）', '暗黒飛行（ダークフライト）の風補正（地上 1.5 km 〜 30 km）', 'G-1 / DT-1'],
+      ['高層気象観測（ラジオゾンデ）', '同（30 km 以上）、インフラサウンドの伝搬計算', 'G-1 / G-4'],
+      ['解析雨量・レーダー', '線状降水帯の判定の検証', 'G-6 / DT-4'],
+      ['噴火速報・降灰予報', 'インフラサウンドによる火山の定位結果との突き合わせ', 'G-4'],
+      ['津波警報・検潮所の潮位', '電離圏 TEC からの津波規模推定の検証', 'G-5 / DT-5'],
+      ['震源速報', '微動計による校舎判定の起動条件', 'G-6 / DT-6']
+    ]));
+  NS.add(root, el('div', { class:'grid g-1-2', style:{ marginTop:'14px' } }, [chartPanel, envPanel]));
 
   /* 局別カード */
   var cards = el('div', { class:'stgrid' }, NS.STATIONS.map(function (st) {

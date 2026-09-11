@@ -112,6 +112,10 @@ NS.V.weather = function (root, go, arg) {
 
   NS.add(root, el('div', { id:'rainband' }, NS.rainbandSection(go)));
 
+  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('防災科研（NIED）の公開データとの突き合わせ',
+    { note:'線状降水帯の判定の検証と、通報先を決める際の土砂災害リスクの重ね合わせ' },
+    [NS.niedTable('気象'), el('div', { class:'src', text:NS.niedNote })])));
+
   NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('気象データの他分野への利用', null,
     NS.table(['用途', '使うデータ', '担当学部', '対応テーマ'], [
       ['暗黒飛行（ダークフライト）の風補正（隕石落下域）', '各局の地上風・気温 ＋ 気象庁 数値予報 GPV（MSM）・高層気象観測', '理工学部（航空宇宙）', 'G-1 / DT-1'],
@@ -386,6 +390,10 @@ NS.V.alerts = function (root, go, arg) {
       ])
     ])
   ]));
+
+  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('防災科研（NIED）の公開データとの連携',
+    { note:'自治体が既に見ている画面に載せることが社会実装の近道になる' },
+    [NS.niedTable('災害'), el('div', { class:'src', text:NS.niedNote })])));
 
   NS.add(root, el('div', { class:'grid g3', style:{ marginTop:'14px' } }, [
     panel('通報の実績（デモ）', null, [
@@ -1024,7 +1032,7 @@ NS.V.data = function (root, go, arg) {
 NS.V.about = function (root, go) {
   NS.add(root, el('div', { class:'page-h' }, [
     el('h2', { text:'このデモについて' }),
-    el('p', { text:'令和9年度 日本大学特別研究の申請に向けた、観測ポータル「ソラ」のデモ版である。観測網の設計は申請書のとおりだが、表示されている観測値とイベントはすべて模擬データである。' })
+    el('p', { text:'令和9年度 日本大学特別研究の申請に向けた、観測ポータル「ソラ」のデモ版である。観測網の設計は申請書のとおりで、表示されている観測値とイベントは一部模擬データである。気象庁のひまわり衛星画像と天気図は実データを気象庁のサーバーから取得している。' })
   ]));
   NS.add(root, el('div', { class:'grid g2' }, [
     panel('実データ（申請書に基づく）', { note:'このデモで正確に反映している内容' },
@@ -1039,6 +1047,9 @@ NS.V.about = function (root, go) {
         '星座線 752 本：IAU 公式星座図形（Stellarium「modern_iau」スカイカルチャー, CC BY-SA 4.0）',
         '天の川：Tycho-2 の V<11.5 星数密度（Hog et al. 2000, CDS I/259）を 1 度グリッドに集計したもの',
         '物理関係式：Brown et al. (2002) の Er–E 関係、AFTAC の周期–収量関係、Ono & Tonouchi (2014) の WBGT 推定式、Bortle (2001) の空の等級',
+        '気象庁 ひまわり衛星画像（可視 B03・赤外 B13・水蒸気 B08・真彩色）と地上天気図：気象庁のサーバーから実データを取得して観測局マップに重ねている',
+        '流星群の活動期間・極大日・極大時の太陽黄経・ZHR：IMO Meteor Shower Calendar / IMO Working List（主要 16 群）',
+        '防災科学技術研究所（NIED）の公開観測網との対応：K-NET・KiK-net／Hi-net／F-net／S-net・DONET／J-RISQ／J-SHIS／V-net／クライシスレスポンス',
         '発光スペクトルの線同定と相対強度：実際に取得された流星スペクトル（S. Abe et al. 2000 のしし座流星群スペクトルほか）の代表例に合わせて構成。回折格子は 600 本/mm を想定',
         'スペースデブリの分子（酸化物）バンド AlO・CN・TiO・FeO の同定、励起温度、発光開始→アブレーション→爆発→分裂→終端の推移：Watanabe, Abe, Arima & Hanayama (ACM 2026) による LM-3B 第2段の再突入分光観測',
         '線状降水帯の参照事象：2023 年 9 月 8 日に千葉県で発生し気象庁が「顕著な大雨に関する情報」を発表した事例'

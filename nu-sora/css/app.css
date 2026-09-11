@@ -223,6 +223,14 @@ svg.jmap.grabbing{cursor:grabbing}
 .maplegend i{width:10px;height:10px;display:inline-block;border-radius:2px;margin-right:5px;vertical-align:-1px}
 .gradbar{height:9px;width:150px;border-radius:2px;display:inline-block;vertical-align:-1px}
 
+/* ---------- 気象庁オーバーレイ ---------- */
+.jma-bar{border-bottom:1px solid var(--rule)}
+.jma-bar .jma-stat{font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums;min-width:9em}
+.jma-op{width:92px;accent-color:var(--accent);vertical-align:middle}
+.jma-sat image{image-rendering:auto}
+.jma-chart{display:block;width:100%;height:auto;margin-top:8px;border:1px solid var(--rule);
+  border-radius:4px;background:#fff}
+
 /* ---------- 全天カメラ ---------- */
 .allsky{display:block;border-radius:4px;background:#0A0D12}
 .skygrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}

@@ -13,6 +13,12 @@ var S = Math.min(SX, SY);
 var OX = (W - (BOX.lon1 - BOX.lon0) * NS.d2r * S) / 2;
 var OY = (H - (merc(BOX.lat1) - merc(BOX.lat0)) * S) / 2;
 NS.proj = function (lon, lat) { return [OX + (lon - BOX.lon0) * NS.d2r * S, OY + (merc(BOX.lat1) - merc(lat)) * S]; };
+NS.unproj = function (px, py) {
+  var lon = BOX.lon0 + (px - OX) / (NS.d2r * S);
+  var my = merc(BOX.lat1) - (py - OY) / S;
+  var lat = (Math.atan(Math.exp(my)) - Math.PI / 4) * 360 / Math.PI;
+  return { lon:lon, lat:lat };
+};
 NS.MAPW = W; NS.MAPH = H;
 
 NS.ELEVS = [5, 10, 15, 20, 30, 45];
@@ -96,7 +102,11 @@ NS.Map = function (opts) {
 
   /* --- ズーム / パン --- */
   var vb = { x:0, y:0, w:W, h:H };
-  function apply() { svg.setAttribute('viewBox', vb.x + ' ' + vb.y + ' ' + vb.w + ' ' + vb.h); scaleMarks(); }
+  function apply() {
+    svg.setAttribute('viewBox', vb.x + ' ' + vb.y + ' ' + vb.w + ' ' + vb.h);
+    scaleMarks();
+    if (M.onView) M.onView(vb);
+  }
   function scaleMarks() {
     var k = Math.max(0.055, Math.min(2.6, vb.w / W));
     svg.style.setProperty('--mk', k.toFixed(3));
@@ -222,6 +232,8 @@ NS.Map = function (opts) {
     return node;
   };
   M.pt = function (lon, lat) { return NS.proj(lon, lat); };
+  M.viewBox = function () { return { x:vb.x, y:vb.y, w:vb.w, h:vb.h }; };
+  M.inv = function (px, py) { return NS.unproj(px, py); };
   /* 画面上でおよそ p ピクセルに見える半径をワールド単位で返す（拡大しても大きさが変わらない印用） */
   M.px = function (p) { return p * vb.w / 900; };
   M.select = function (id) { M.sel = id; };

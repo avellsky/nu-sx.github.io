@@ -55,6 +55,33 @@ NS.V.fireball = function (root, go, arg) {
   listPanel.querySelector('.panel-b').style.maxHeight = '520px';
   listPanel.querySelector('.panel-b').style.overflowY = 'auto';
 
+  /* ---- 活動中の流星群（IMO Meteor Shower Calendar） ---- */
+  var refSt = NS.ST.FNB, tNow = NS.nextMidnight();
+  var act = NS.activeShowers(tNow, refSt);
+  var mdT = function (a) { return a[0] + '/' + a[1]; };
+  NS.add(root, panel('活動中の流星群（IMO Meteor Shower Calendar）',
+    { note:'活動期間・極大日・極大時の太陽黄経 λ☉・ZHR は IMO の Working List による。推定 ZHR と輻射点高度は今夜 1 時・船橋局での値' },
+    [act.length ? NS.table(['流星群', 'IAU', '活動期間', '極大', 'λ☉', '極大 ZHR', '今夜の推定 ZHR', '速度', '輻射点（J2000）', '輻射点高度'],
+      act.map(function (a) {
+        var sh = a.sh;
+        return [el('b', { text:sh.ja }), { class:'mono sm', html:sh.code },
+          { class:'sm', html:mdT(sh.start) + ' – ' + mdT(sh.end) },
+          { class:'sm', html:mdT(sh.peak) + (Math.abs(a.dDays) < 1.5 ? '　<b style="color:var(--accent)">極大前後</b>' : '（' + (a.dDays > 0 ? '+' : '') + NS.f(a.dDays, 0) + ' 日）') },
+          { class:'r mono sm', html:NS.f(sh.sol, 2) + '°' },
+          { class:'r', html:String(sh.zhr) },
+          { class:'r', html:'<b>' + NS.f(a.zhr, 1) + '</b>' },
+          { class:'r', html:sh.v + ' km/s' },
+          { class:'mono sm', html:NS.f(sh.ra / 15, 1) + 'h ' + (sh.dec >= 0 ? '+' : '') + NS.f(sh.dec, 0) + '°' },
+          { class:'r', html:a.alt > 5 ? '<b>' + NS.f(a.alt, 0) + '°</b>' : '<span class="hint">' + NS.f(a.alt, 0) + '°（地平下）</span>' }];
+      }))
+      : el('div', { class:'hint', text:'今夜は主要な流星群の活動期間にあたらない。検出されるのは散在流星が主体となる。' }),
+    el('div', { class:'note', text:'検出カタログの母集団は、IMO の活動期間と ZHR に輻射点高度の効果（出現数 ∝ ZHR·sin h の 0.7 乗）を掛けた重みで決めている。散在流星は ZHR 10 相当として常に含める。速度は各群の大気圏突入速度に合わせてある。' }),
+    el('div', { class:'src', text:'出典：International Meteor Organization, Meteor Shower Calendar / IMO Working List of Meteor Showers（https://www.imo.net/resources/calendar/）。本デモでは主要 16 群を収録した。' })]));
+
+  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('防災科研（NIED）の公開データとの突き合わせ',
+    { note:'大火球の衝撃波は地面も揺らす。地震観測網の連続波形と突き合わせて音源高度を拘束する' },
+    [NS.niedTable('火球'), el('div', { class:'src', text:NS.niedNote })])));
+
   var detail = el('div', { class:'grid', style:{ gap:'14px' } });
   NS.add(root, el('div', { class:'grid g-1-2' }, [listPanel, detail]));
   renderDetail();
@@ -275,12 +302,15 @@ NS.V.fireball = function (root, go, arg) {
   function autoDetail(e) {
     return panel(e.name, { note:e.id + ' · ' + NS.fmtJST(e.t) + ' JST', tools:badge('自動検出のみ', 'dim') }, [
       el('div', { class:'grid g4' }, [
-        kpi('絶対等級', NS.f(e.absMag, 1), '等', e.shower),
+        kpi('絶対等級', NS.f(e.absMag, 1), '等', e.shower + (e.showerCode !== 'SPO' ? '（' + e.showerCode + '）' : '')),
         kpi('同時検出', e.stationsDet, '局', '視野内 ' + e.stationsFov + ' 局'),
-        kpi('突入速度', NS.f(e.vInf, 1), 'km/s', '発光 ' + NS.km(e.begin.alt, 0) + ' → ' + NS.km(e.end.alt, 0)),
+        kpi('突入速度', NS.f(e.vInf, 1), 'km/s', e.showerCode !== 'SPO' ? e.showerEn + ' の典型値に一致' : '発光 ' + NS.km(e.begin.alt, 0) + ' → ' + NS.km(e.end.alt, 0)),
         kpi('全エネルギー', NS.sig(e.EKt * 1e3), '× 10⁻³ kt', '光学推定のみ')
       ]),
       el('div', { class:'chips', style:{ marginTop:'12px' } }, [
+        e.showerCode !== 'SPO' ? badge(e.shower + '（' + e.showerCode + '）　輻射点 ' +
+          NS.f(e.radiant.ra / 15, 1) + 'h ' + (e.radiant.dec >= 0 ? '+' : '') + NS.f(e.radiant.dec, 0) + '°' +
+          (e.zhr != null ? '　推定 ZHR ' + NS.f(e.zhr, 1) : ''), 'info') : badge('散在流星', 'dim'),
         e.hasInfra ? badge('インフラサウンド検出あり', 'ok') : badge('インフラサウンド未検出', 'dim'),
         e.hasSpec ? badge('分光データあり', 'ok') : badge('分光なし', 'dim'),
         badge('検出局：' + (e.stationIds || []).join(' / '), '')
@@ -694,6 +724,10 @@ NS.V.infra = function (root, go, arg) {
 
   var detail = el('div', { class:'grid', style:{ gap:'14px' } });
   NS.add(root, el('div', { class:'grid g-1-2', style:{ marginTop:'14px' } }, [listPanel, detail]));
+
+  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('防災科研（NIED）の公開データとの突き合わせ',
+    { note:'火口近傍の空振計と突き合わせて、遠方からの規模推定を較正する' },
+    [NS.niedTable('火山'), el('div', { class:'src', text:NS.niedNote })])));
 
   var e = sel;
   if (e.kind === 'seismic') { renderSeismic(); } else { renderInfra(); }

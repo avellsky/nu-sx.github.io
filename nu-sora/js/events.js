@@ -344,25 +344,123 @@ function infraEvents() {
   ];
 }
 
+
+/* =========================================================================
+   流星群（IMO Meteor Shower Calendar / IMO Working List に基づく）
+   activity：活動期間、peak：極大日、sol：極大の太陽黄経、zhr：極大 ZHR、
+   v：大気圏突入速度 km/s、ra/dec：極大時の輻射点（J2000）、
+   r：質量分布指数、B：活動プロファイルの減衰係数（ZHR = ZHRmax·10^(−B|Δλ☉|)）
+   ========================================================================= */
+NS.SHOWERS = [
+  { code:'QUA', ja:'しぶんぎ座流星群',       en:'Quadrantids',
+    start:[12,28], peak:[1,3],  end:[1,12],  sol:283.15, zhr:110, v:41, ra:230.0, dec:49.5, r:2.1, B:2.20 },
+  { code:'LYR', ja:'こと座流星群',           en:'Lyrids',
+    start:[4,14],  peak:[4,22], end:[4,30],  sol:32.32,  zhr:18,  v:49, ra:271.0, dec:34.0, r:2.1, B:0.22 },
+  { code:'ETA', ja:'みずがめ座η流星群',      en:'η-Aquariids',
+    start:[4,19],  peak:[5,6],  end:[5,28],  sol:45.5,   zhr:50,  v:66, ra:338.0, dec:-1.0, r:2.4, B:0.08 },
+  { code:'CAP', ja:'やぎ座α流星群',          en:'α-Capricornids',
+    start:[7,3],   peak:[7,30], end:[8,15],  sol:127.0,  zhr:5,   v:23, ra:307.0, dec:-10.2, r:2.5, B:0.037 },
+  { code:'SDA', ja:'みずがめ座δ南流星群',    en:'Southern δ-Aquariids',
+    start:[7,12],  peak:[7,30], end:[8,23],  sol:127.0,  zhr:25,  v:41, ra:340.5, dec:-16.4, r:3.2, B:0.091 },
+  { code:'PER', ja:'ペルセウス座流星群',     en:'Perseids',
+    start:[7,17],  peak:[8,12], end:[8,24],  sol:140.0,  zhr:100, v:59, ra:48.2,  dec:58.1, r:2.2, B:0.19 },
+  { code:'AUR', ja:'ぎょしゃ座α流星群',      en:'α-Aurigids',
+    start:[8,28],  peak:[9,1],  end:[9,5],   sol:158.6,  zhr:6,   v:66, ra:84.0,  dec:39.0, r:2.6, B:0.90 },
+  { code:'SPE', ja:'ペルセウス座9月ε流星群', en:'September ε-Perseids',
+    start:[9,5],   peak:[9,9],  end:[9,21],  sol:166.7,  zhr:5,   v:64, ra:48.0,  dec:40.0, r:2.9, B:0.40 },
+  { code:'DRA', ja:'りゅう座流星群',         en:'October Draconids',
+    start:[10,6],  peak:[10,8], end:[10,10], sol:195.4,  zhr:5,   v:20, ra:262.0, dec:54.0, r:2.6, B:2.50 },
+  { code:'STA', ja:'おうし座南流星群',       en:'Southern Taurids',
+    start:[9,10],  peak:[10,10],end:[11,20], sol:197.0,  zhr:5,   v:27, ra:48.0,  dec:14.0, r:2.3, B:0.026 },
+  { code:'ORI', ja:'オリオン座流星群',       en:'Orionids',
+    start:[10,2],  peak:[10,21],end:[11,7],  sol:208.0,  zhr:20,  v:66, ra:95.2,  dec:15.6, r:2.5, B:0.12 },
+  { code:'NTA', ja:'おうし座北流星群',       en:'Northern Taurids',
+    start:[10,20], peak:[11,12],end:[12,10], sol:230.0,  zhr:5,   v:29, ra:59.0,  dec:22.7, r:2.3, B:0.026 },
+  { code:'LEO', ja:'しし座流星群',           en:'Leonids',
+    start:[11,6],  peak:[11,17],end:[11,30], sol:235.27, zhr:12,  v:71, ra:154.3, dec:21.6, r:2.5, B:0.55 },
+  { code:'MON', ja:'こいぬ座流星群',         en:'December Monocerotids',
+    start:[11,27], peak:[12,9], end:[12,20], sol:257.0,  zhr:3,   v:41, ra:103.0, dec:8.0,  r:3.0, B:0.25 },
+  { code:'GEM', ja:'ふたご座流星群',         en:'Geminids',
+    start:[12,4],  peak:[12,14],end:[12,20], sol:262.2,  zhr:150, v:35, ra:113.5, dec:32.3, r:2.6, B:0.39 },
+  { code:'URS', ja:'こぐま座流星群',         en:'Ursids',
+    start:[12,17], peak:[12,22],end:[12,26], sol:270.7,  zhr:10,  v:33, ra:219.0, dec:75.3, r:3.0, B:0.90 }
+];
+
+/* 日付 → 年内通日（うるう年は考慮しない近似） */
+var MD = [0,31,59,90,120,151,181,212,243,273,304,334];
+function doyOf(m, d) { return MD[m - 1] + d; }
+function doyT(t) { var p = NS.jstParts(t); return doyOf(p.mo, p.d) + p.h / 24; }
+/* 年をまたぐ期間も扱う日数差（−182〜182） */
+function dayDiff(a, b) { var d = a - b; while (d > 182.6) d -= 365.25; while (d < -182.6) d += 365.25; return d; }
+/* 期間内かどうか */
+function inPeriod(doy, s, e) {
+  if (s <= e) return doy >= s && doy <= e;
+  return doy >= s || doy <= e;            /* 年をまたぐ */
+}
+/* 輻射点の地平高度（度）。地平下なら負 */
+NS.radiantAlt = function (raDeg, decDeg, t, lat, lon) {
+  var lst = NS.lst(t, lon);
+  var ha = (lst - raDeg) * NS.d2r, dec = decDeg * NS.d2r, la = lat * NS.d2r;
+  return Math.asin(Math.max(-1, Math.min(1,
+    Math.sin(dec) * Math.sin(la) + Math.cos(dec) * Math.cos(la) * Math.cos(ha)))) * NS.r2d;
+};
+/* ある時刻に活動している流星群。zhr は IMO の ZHR = ZHRmax·10^(−B|Δ|) による推定値 */
+NS.activeShowers = function (t, st) {
+  st = st || NS.ST.FNB;
+  var doy = doyT(t), out = [];
+  NS.SHOWERS.forEach(function (sh) {
+    var s = doyOf(sh.start[0], sh.start[1]), e = doyOf(sh.end[0], sh.end[1]);
+    if (!inPeriod(doy, s, e)) return;
+    var dd = Math.abs(dayDiff(doy, doyOf(sh.peak[0], sh.peak[1])));
+    var zhr = sh.zhr * Math.pow(10, -sh.B * dd);
+    if (zhr < 0.25) return;
+    var alt = NS.radiantAlt(sh.ra, sh.dec, t, st.lat, st.lon);
+    out.push({ sh:sh, zhr:zhr, alt:alt, dDays:dayDiff(doy, doyOf(sh.peak[0], sh.peak[1])),
+      /* 観測される出現数は ZHR に輻射点高度の正弦をかけたものに比例する */
+      rate:alt > 5 ? zhr * Math.pow(Math.sin(alt * NS.d2r), 0.7) : 0 });
+  });
+  out.sort(function (a, b) { return b.rate - a.rate; });
+  return out;
+};
+/* 散在流星の基準（夜半前後の ZHR 相当） */
+NS.SPORADIC_ZHR = 10;
+/* その時刻に最もふさわしい母集団を 1 つ選ぶ（重みつき） */
+NS.pickShower = function (t, st, rnd) {
+  var act = NS.activeShowers(t, st);
+  var tot = NS.SPORADIC_ZHR, i;
+  for (i = 0; i < act.length; i++) tot += act[i].rate;
+  var x = rnd() * tot;
+  if (x < NS.SPORADIC_ZHR) return null;                 /* 散在 */
+  x -= NS.SPORADIC_ZHR;
+  for (i = 0; i < act.length; i++) { x -= act[i].rate; if (x <= 0) return act[i]; }
+  return null;
+};
+
 /* ---------- 通常の流星・小火球の自動生成（直近14夜） ---------- */
 function routineEvents() {
-  var out = [], now = NS.now();
-  var names = ['散在', 'ペルセウス座流星群', 'おうし座南流星群', 'ふたご座流星群', 'こと座流星群', '散在（アポロ型）'];
+  var out = [], now = NS.now(), ref = NS.ST.FNB;
   for (var n = 0; n <= 13; n++) {
     var r = NS.rng('rt|' + n + '|' + NS.fmtJST(NS.night(n, 23, 0), { dateOnly:true }));
     var k = r.int(1, 4);
     for (var j = 0; j < k; j++) {
-      var hh = r.int(19, 28), t = NS.night(n, hh % 24 + (hh >= 24 ? 0 : 0), r.int(0, 59), r.int(0, 59));
+      var hh = r.int(19, 28), t = NS.night(n, hh % 24, r.int(0, 59), r.int(0, 59));
       if (hh >= 24) t += 86400e3;
       if (t > now) continue;
+      /* 母集団は IMO の活動期間・極大・ZHR と輻射点高度から重みつきで選ぶ */
+      var pick = NS.pickShower(t, ref, r);
+      var sh = pick ? pick.sh : null;
+      var shower = sh ? sh.ja : '散在';
+      var v = sh ? Math.max(11.2, sh.v + r.norm(0, 1.1)) : r.range(11.5, 68);
+      var rad = sh ? { ra:sh.ra, dec:sh.dec } : { ra:r() * 360, dec:r.range(-25, 70) };
       var m = -(1.0 + Math.pow(r(), 2.4) * 9.6);
       var nst = Math.max(2, Math.min(9, Math.round(2 + (-m) * 0.62 + r.norm(0, 0.9))));
-      var v = r.range(12, 68);
-      var idx = NS.STATIONS.slice().sort(function () { return r() - 0.5; }).slice(0, nst).map(function (s) { return s.id; });
+      var idx = NS.STATIONS.slice().sort(function () { return r() - 0.5; }).slice(0, nst).map(function (s2) { return s2.id; });
       out.push({ id:'NUS-FB-' + NS.fmtJST(t, { dateOnly:true }).replace(/-/g, '') + '-' + NS.p2(j + 3),
-        kind:m < -4 ? 'fireball' : 'meteor', t:t, name:(m < -4 ? '火球' : '流星') + '（' + r.pick(names) + '）',
+        kind:m < -4 ? 'fireball' : 'meteor', t:t, name:(m < -4 ? '火球' : '流星') + '（' + shower + '）',
         absMag:m, dur:r.range(0.6, 3.4), stationsDet:nst, stationsFov:nst + r.int(0, 3), vInf:v,
-        shower:r.pick(names), stationIds:idx, auto:true,
+        shower:shower, showerCode:sh ? sh.code : 'SPO', showerEn:sh ? sh.en : 'Sporadic',
+        zhr:pick ? pick.zhr : null, radAlt:pick ? pick.alt : null,
+        radiant:{ ra:rad.ra, dec:rad.dec }, stationIds:idx, auto:true,
         EKt:NS.brownE(NS.lumPower(m) * r.range(0.25, 0.5) * r.range(0.6, 3.4) / NS.KT_J),
         hasInfra:m < -8 && r() > 0.4, hasSpec:m < -6 && r() > 0.35,
         begin:{ alt:r.range(88, 112) }, end:{ alt:r.range(28, 82) } });

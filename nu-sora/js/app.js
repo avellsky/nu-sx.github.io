@@ -10,6 +10,7 @@ var TABS = [
   { id:'reentry',   label:'デブリ再突入',     tag:'G-2' },
   { id:'infra',     label:'インフラサウンド', tag:'G-4' },
   { id:'weather',   label:'気象・熱中症',     tag:'G-6' },
+  { id:'quake',     label:'地震・津波',       tag:'G-5 / DT-5' },
   { id:'skyglow',   label:'夜空の明るさ',     tag:'G-3' },
   { id:'alerts',    label:'通報・社会実装',   tag:'G-7' },
   { id:'stations',  label:'観測局・機材',     tag:'PF-1' },
