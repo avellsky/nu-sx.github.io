@@ -3623,5 +3623,13 @@ var NS_EN = {
 "地球上の推定軌道（正距円筒図法）": "Estimated orbit over the Earth (equirectangular)",
 "赤の太線が観測した発光区間、赤の細線が最も当てはまる候補の地上軌跡。灰の破線は他の候補。青点は観測局。": "The thick red line is the observed luminous segment; the thin red line is the ground track of the best-fitting candidate. Grey dashed lines are the other candidates, and blue dots the stations. ",
 "ドラッグで東西・南北に動かし、ホイールで拡大縮小できる（ダブルクリックで全体に戻る）": "Drag to pan east–west and north–south, scroll to zoom (double-click returns to the whole world).",
-"海岸線と国境線は Natural Earth 50m（public domain）。国境線は 2 か国以上が共有する境界だけを取り出している。軌道は円軌道近似で、": "Coastlines and national borders from Natural Earth 50m (public domain); only boundaries shared by two or more countries are drawn. The orbit is treated as circular, "
+"海岸線と国境線は Natural Earth 50m（public domain）。国境線は 2 か国以上が共有する境界だけを取り出している。軌道は円軌道近似で、": "Coastlines and national borders from Natural Earth 50m (public domain); only boundaries shared by two or more countries are drawn. The orbit is treated as circular, ",
+"黄道座標・太陽中心。ドラッグで視点を回し（方位・仰角）、ホイールで拡大縮小、ダブルクリックで既定に戻る": "Ecliptic coordinates, centred on the Sun. Drag to rotate the view (azimuth and elevation), scroll to zoom, double-click to return to the default.",
+"中心": "Centre",
+"太陽中心": "Sun-centred",
+"地球中心": "Earth-centred",
+"軌道面": "Orbital plane",
+"春分点": "Vernal equinox",
+"中心：": "Centre: ",
+"リセット": "Reset"
 };
