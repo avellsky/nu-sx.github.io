@@ -359,35 +359,41 @@ NS.ScopeView = function (opts) {
     var ph = NS.moonPhase(S.t);                    /* 0 = 新月, 0.5 = 満月 */
     var fI = NS.moonIllum(S.t);                    /* 輝面比 */
     var waxing = ph < 0.5;                         /* 上弦へ向かう＝西（画面右）が光る */
-    var rr = NS.rng('moonface');
-    var craters = [];
-    for (var i = 0; i < 120; i++) {
-      var a = rr() * 7, d = Math.sqrt(rr()) * R * 0.95;
-      craters.push([Math.cos(a) * d, Math.sin(a) * d, 1.2 + rr() * 6, 0.05 + rr() * 0.18]);
+
+    /* 月面（海・クレーター・光条を月面座標から起こした画像。js/moon.js）。
+       キャンバスは 2 倍に拡大して描いているので、装置画素にあわせて作る。 */
+    var mimg = NS.moonImage ? NS.moonImage(Math.round(4 * R), fI, waxing) : null;
+    if (mimg) {
+      ctx.drawImage(mimg, CX - R, CY - R, 2 * R, 2 * R);
+    } else {                                       /* 念のための代替表示 */
+      ctx.save();
+      ctx.beginPath(); ctx.arc(CX, CY, R, 0, 7); ctx.clip();
+      ctx.fillStyle = '#191C22'; ctx.fillRect(CX - R, CY - R, 2 * R, 2 * R);
+      ctx.fillStyle = '#C9CBD0';
+      for (var y = -R; y <= R; y += 1) {
+        var w = Math.sqrt(Math.max(0, R * R - y * y));
+        var t = (1 - 2 * fI) * w;
+        if (waxing) ctx.fillRect(CX + t, CY + y, Math.max(0, w - t), 1);
+        else        ctx.fillRect(CX - w, CY + y, Math.max(0, w - t), 1);
+      }
+      ctx.restore();
     }
+    /* 明るい側の縁に出るにじみ（夜側を写す露出では実際にこう見える） */
+    /* 内側（半径 0）から作らないと、円の内部が塗りつぶされてしまう */
+    var gl = ctx.createRadialGradient(CX, CY, 0, CX, CY, R * 1.13);
+    gl.addColorStop(0, 'rgba(198,206,220,0)');
+    gl.addColorStop(0.87, 'rgba(198,206,220,0)');
+    gl.addColorStop(0.90, 'rgba(198,206,220,0.17)');
+    gl.addColorStop(1, 'rgba(198,206,220,0)');
     ctx.save();
-    ctx.beginPath(); ctx.arc(CX, CY, R, 0, 7); ctx.clip();
-
-    /* 夜側（地球照）。ごくわずかに光り、ここが衝突閃光の検出対象になる */
-    ctx.fillStyle = '#191C22'; ctx.fillRect(CX - R, CY - R, 2 * R, 2 * R);
-
-    /* 昼側。走査線ごとに明暗境界の x を求めて塗る（境界は半楕円になる） */
-    ctx.fillStyle = '#C9CBD0';
-    for (var y = -R; y <= R; y += 1) {
-      var w = Math.sqrt(Math.max(0, R * R - y * y));
-      var t = (1 - 2 * fI) * w;                    /* 明暗境界の x（符号つき） */
-      if (waxing) ctx.fillRect(CX + t, CY + y, Math.max(0, w - t), 1);
-      else        ctx.fillRect(CX - w, CY + y, Math.max(0, w - t), 1);
-    }
-    /* クレーター（昼夜どちらにも載せる。夜側は地球照で薄く見える） */
-    craters.forEach(function (c) {
-      var inDay = waxing ? (c[0] > (1 - 2 * fI) * R * 0.98) : (c[0] < -(1 - 2 * fI) * R * 0.98);
-      ctx.beginPath(); ctx.arc(CX + c[0], CY + c[1], c[2], 0, 7);
-      ctx.fillStyle = 'rgba(' + (inDay ? '0,0,0,' : '255,255,255,') + (c[3] * (inDay ? 1 : 0.20)).toFixed(3) + ')';
-      ctx.fill();
-    });
+    ctx.beginPath();
+    if (waxing) ctx.rect(CX - R * 0.15, CY - R * 1.2, R * 1.4, R * 2.4);
+    else        ctx.rect(CX - R * 1.25, CY - R * 1.2, R * 1.4, R * 2.4);
+    ctx.clip();
+    ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(CX, CY, R * 1.13, 0, 7); ctx.fill();
     ctx.restore();
-    ctx.strokeStyle = 'rgba(150,165,190,0.45)'; ctx.lineWidth = 1;
+    /* 夜側の縁が背景に沈まないよう、ごく薄い輪郭を添える */
+    ctx.strokeStyle = 'rgba(150,165,190,0.22)'; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(CX, CY, R, 0, 7); ctx.stroke();
 
     /* 観測視野（カメラが実際に写す範囲）を長方形で示す。既定では夜側の中心に向ける。 */
@@ -697,7 +703,11 @@ NS.V.telescope = function (root, go, arg) {
         redraw();
       } })
     ]),
-    view.node]);
+    view.node,
+    el('div', { class:'src', text:'月面は、海・大クレーター・光条・山脈を月面座標（東経・北緯）に置いて手前半球へ正射影し、'
+      + '太陽光の当たり方を Lommel–Seeliger の反射則 I ∝ μ₀/(μ₀+μ) で計算して描いている。'
+      + '斜面のぶんだけ入射角を動かすので、明暗境界に近いほどクレーターの影が長く伸びる。'
+      + '夜側は地球照で、海がうっすら見える明るさに合わせてある（月面衝突閃光を狙う露出）。' })]);
 
   /* 操作盤 */
   var padBtn = function (label, dRa, dDec) {

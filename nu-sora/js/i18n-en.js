@@ -3602,5 +3602,9 @@ var NS_EN = {
 "さらに地球の公転速度を加えて日心速度としたうえで、発生時刻の地球の位置を通る二体軌道として解いたものである。": "and Earth’s orbital velocity is added to give the heliocentric velocity, which is then solved as a two-body orbit through Earth’s position at the event time. ",
 " au は地球近傍小惑星（": " au is consistent with a near-Earth asteroid of the ",
 "）と整合する。": " class. ",
-"輻射点・地心速度・軌道要素は、多点三角測量で決めた軌跡と突入速度から、自転補正と天頂引力の補正を経て求めている。": "The radiant, geocentric speed and orbital elements are derived from the triangulated trajectory and entry speed, after correcting for Earth’s rotation and zenith attraction."
+"輻射点・地心速度・軌道要素は、多点三角測量で決めた軌跡と突入速度から、自転補正と天頂引力の補正を経て求めている。": "The radiant, geocentric speed and orbital elements are derived from the triangulated trajectory and entry speed, after correcting for Earth’s rotation and zenith attraction.",
+"月面は、海・大クレーター・光条・山脈を月面座標（東経・北緯）に置いて手前半球へ正射影し、": "The lunar surface is drawn by placing the maria, large craters, ray systems and mountain ranges at their selenographic coordinates (east longitude and north latitude) and projecting the near side orthographically; ",
+"太陽光の当たり方を Lommel–Seeliger の反射則 I ∝ μ₀/(μ₀+μ) で計算して描いている。": "the illumination follows the Lommel–Seeliger law, I ∝ μ₀/(μ₀+μ). ",
+"斜面のぶんだけ入射角を動かすので、明暗境界に近いほどクレーターの影が長く伸びる。": "Slopes shift the angle of incidence, so crater shadows lengthen towards the terminator. ",
+"夜側は地球照で、海がうっすら見える明るさに合わせてある（月面衝突閃光を狙う露出）。": "The night side is lit by earthshine, exposed so that the maria are just visible — the exposure used to hunt for lunar impact flashes."
 };
