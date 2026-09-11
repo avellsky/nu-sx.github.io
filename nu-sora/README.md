@@ -167,11 +167,14 @@ assets/             参照図の置き場（README 参照。画像を置くと�
 
 ### 関連する実装
 
+同じ研究室が公開している、観測と理論を「動かして確かめる」ためのアプリ（いずれも無料・iPhone / iPad / Mac）。
 
-- **Meteorium（メテオリウム）** — 宇宙科学デジタルツイン アプリ、Abe Space Science Lab (2026)（[紹介記事](https://aero.cst.nihon-u.ac.jp/abe-s/2026/08/31/meteorium%ef%bc%88%e3%83%a1%e3%83%86%e3%82%aa%e3%83%aa%e3%82%a6%e3%83%a0%ef%bc%89/) ／ [App Store](https://apps.apple.com/app/id6798546441)）
-  — 太陽系を俯瞰してダストトレイルと地球軌道の交差を見せ、そのまま地上視点に降りて流星雨を再現する。本観測網の PF-2（デジタルツイン）・DT-7（学びのツイン）が目指す形を、観測データ側から補完する
-- **Astrarium（アストラリウム）** — 星空アプリ、Abe Space Science Lab (2026)（[App Store](https://apps.apple.com/app/id6795053748)）
-  — その場の空に見える星座・天体を再現する。本デモの全天カメラ（疑似ライブ）が恒星の赤経・赤緯から地方恒星時で天球を再現しているのと同じ考え方であり、DT-7（学びのツイン）・G-8（探究）に接続する
+- **Meteorium（メテオリウム）** — 宇宙科学デジタルツイン アプリ、Abe Space Science Lab (2026)（[紹介記事](https://aero.cst.nihon-u.ac.jp/abe-s/2026/08/31/meteorium%ef%bc%88%e3%83%a1%e3%83%86%e3%82%aa%e3%83%aa%e3%82%a6%e3%83%a0%ef%bc%89/) ／ [App Store](https://apps.apple.com/jp/app/id6798546441)）
+  — ダストトレイルと地球軌道の交差を俯瞰し、そのまま地上視点で流星雨を再現する。PF-2（デジタルツイン）・DT-7 が目指す形を観測データ側から補完する
+- **Astrarium（アストラリウム）** — 星空アプリ、Abe Space Science Lab (2026)（[紹介記事](https://aero.cst.nihon-u.ac.jp/abe-s/2026/08/01/%e3%83%97%e3%83%a9%e3%83%8d%e3%82%bf%e3%83%aa%e3%82%a6%e3%83%a0%e3%82%a2%e3%83%97%e3%83%aa%e3%82%92%e3%80%80%e5%85%ac%e9%96%8b/) ／ [App Store](https://apps.apple.com/jp/app/id6795053748)）
+  — 本デモの全天カメラが用いる BSC5・IAU 星座図形・Tycho-2 天の川は、このアプリのために整備されたデータをそのまま取り込んだもの。DT-7・G-8 に接続する
+- **Cometarium（コメタリウム）** — 彗星ビューア、Abe Space Science Lab (2026)（[App Store](https://apps.apple.com/jp/app/id6801072934)）
+  — 彗星の位置・光度・尾を実測の軌道と物理モデルで描く。COBS の観測に光度式を当てはめ ±3σ 帯で示す姿勢は、本デモが火球の光度曲線とエネルギー推定の不確かさを併記する考え方と同じ。流星群の母天体の側から DT-1 を補完する
 
 ## 参考資料
 

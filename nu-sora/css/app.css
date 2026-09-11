@@ -168,6 +168,7 @@ table.tbl.refs td{padding:9px 12px;line-height:1.7}
 table.tbl.refs td:first-child{width:52%}
 table.tbl.refs i{font-style:normal;color:var(--ink)}
 table.tbl.refs td:last-child{color:var(--ink2);font-size:12px}
+table.tbl.refs .refsub{font-size:11px;color:var(--muted)}
 table.tbl.refs a.doi{display:inline-block;margin:4px 8px 0 0;font-size:11px;font-family:ui-monospace,monospace;
   border:1px solid var(--rule2);border-radius:3px;padding:1px 7px;text-decoration:none;color:var(--accent)}
 table.tbl.refs a.doi:hover{border-color:var(--accent);text-decoration:none}
