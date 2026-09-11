@@ -202,6 +202,9 @@ NS.ScopeView = function (opts) {
   cv.addEventListener('pointercancel', endDrag);
   cv.addEventListener('pointerleave', function () { if (!drag) cv.style.cursor = 'default'; });
 
+  /* 実データの月面地図など、あとから届いたものを反映させる */
+  function redrawScope() { if (A._S) { A._key = null; A.draw(A._S); } }
+
   A.draw = function (S) {
     A._S = S;
     var sc = S.scope, tg = S.target, exp = S.exp, gain = S.gain;
@@ -374,7 +377,9 @@ NS.ScopeView = function (opts) {
 
     /* 月面（海・クレーター・光条を月面座標から起こした画像。js/moon.js）。
        キャンバスは 2 倍に拡大して描いているので、装置画素にあわせて作る。 */
-    var mimg = NS.moonImage ? NS.moonImage(Math.round(4 * R), fI, waxing) : null;
+    var mimg = NS.moonImage
+      ? NS.moonImage(Math.round(4 * R), fI, waxing, function () { redrawScope(); })
+      : null;
     if (mimg) {
       ctx.drawImage(mimg, CX - R, CY - R, 2 * R, 2 * R);
     } else {                                       /* 念のための代替表示 */
@@ -716,10 +721,12 @@ NS.V.telescope = function (root, go, arg) {
       } })
     ]),
     view.node,
-    el('div', { class:'src', text:'月面は、海・大クレーター・光条・山脈を月面座標（東経・北緯）に置いて手前半球へ正射影し、'
-      + '太陽光の当たり方を Lommel–Seeliger の反射則 I ∝ μ₀/(μ₀+μ) で計算して描いている。'
-      + '斜面のぶんだけ入射角を動かすので、明暗境界に近いほどクレーターの影が長く伸びる。'
-      + '夜側は地球照で、海がうっすら見える明るさに合わせてある（月面衝突閃光を狙う露出）。' })]);
+    el('div', { class:'src', text:'月面は、NASA の月周回衛星 LRO の実データ（LROC 広角カメラの全球モザイクと '
+      + 'LOLA レーザー高度計の地形）を、月面座標から手前半球へ正射影して描いている。'
+      + '太陽光の当たり方は Lommel–Seeliger の反射則 I ∝ μ₀/(μ₀+μ) で求め、地形の斜面ぶん入射角を動かすので、'
+      + '明暗境界に近いほどクレーターの影が長く伸びる。夜側は地球照で、海がうっすら見える明るさに合わせてある'
+      + '（月面衝突閃光を狙う露出）。地図は NASA/GSFC Scientific Visualization Studio「CGI Moon Kit」による'
+      + '（パブリックドメイン）。' })]);
 
   /* 操作盤 */
   var padBtn = function (label, dRa, dDec) {

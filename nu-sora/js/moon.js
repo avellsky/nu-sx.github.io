@@ -468,31 +468,81 @@ function drawRidge(a, r, m, dir, Rt, C) {
 }
 
 /* =========================================================================
+   実データの地図（NASA/GSFC SVS「CGI Moon Kit」より、表側 ±105° を切り出したもの）
+     lroc-albedo.jpg … LRO / LROC 広角カメラ（WAC）の全球モザイク（実写）
+     lola-slope.jpg  … LRO / LOLA の地形から求めた斜面（R = 東向き, G = 北向き）
+   読み込めたらこちらを使い、読み込めない間は上の手描き地形で代用する。
+   ========================================================================= */
+var MOON_BASE = (function () {
+  var sc = document.currentScript && document.currentScript.src;
+  return sc ? sc.replace(/js\/moon\.js.*$/, '') : '';
+})();
+NS.MOON_MAP = { lonHalf:105, slopeK:0.5, state:'idle', alb:null, slp:null };
+
+function grabPixels(img) {
+  var c = el('canvas', { width:img.naturalWidth, height:img.naturalHeight });
+  var g = c.getContext('2d');
+  g.drawImage(img, 0, 0);
+  return { w:c.width, h:c.height, d:g.getImageData(0, 0, c.width, c.height).data };
+}
+
+/* 地図を読み込む。読み終わったら cb を呼ぶ（失敗しても呼ぶ）。 */
+NS.loadMoonMaps = function (cb) {
+  var M = NS.MOON_MAP;
+  if (M.state === 'ready' || M.state === 'fail') { if (cb) cb(); return; }
+  if (M.state === 'loading') { M.cbs.push(cb); return; }
+  if (!pixelsOK()) { M.state = 'fail'; if (cb) cb(); return; }
+  M.state = 'loading'; M.cbs = [cb];
+  var left = 2, bad = false;
+  function done() {
+    if (--left > 0) return;
+    M.state = (bad || !M.alb || !M.slp) ? 'fail' : 'ready';
+    imgCache = {};                                   /* 地図が入れ替わるので作り直す */
+    M.cbs.forEach(function (f) { if (f) f(); });
+    M.cbs = [];
+  }
+  [['alb', 'lroc-albedo.jpg'], ['slp', 'lola-slope.jpg']].forEach(function (v) {
+    var im = new Image();
+    im.onload = function () { try { M[v[0]] = grabPixels(im); } catch (e) { bad = true; } done(); };
+    im.onerror = function () { bad = true; done(); };
+    im.src = MOON_BASE + 'assets/moon/' + v[1];
+  });
+};
+
+/* =========================================================================
    陰影づけ：太陽の当たり方を計算して 1 枚の画像にする
    fI は輝面比（0–1）、waxing が真なら西（画面右）が光る。
    ========================================================================= */
 var imgCache = {};
 
-NS.moonImage = function (N, fI, waxing) {
+NS.moonImage = function (N, fI, waxing, onReady) {
   N = Math.max(40, Math.min(1000, Math.round(N)));
-  var key = N + '|' + Math.round(fI * 400) + '|' + (waxing ? 1 : 0);
+  var M = NS.MOON_MAP;
+  if (M.state === 'idle') NS.loadMoonMaps(onReady);   /* 実データの地図を取りにいく */
+  var real = M.state === 'ready';
+  var key = N + '|' + Math.round(fI * 400) + '|' + (waxing ? 1 : 0) + '|' + (real ? 'r' : 'p');
   if (imgCache.key === key) return imgCache.cv;
 
   var dir = waxing ? 1 : -1;                         /* 太陽のある側（＋1 = 画面右） */
-  var face = buildFace(N, dir);
-  if (!face) return null;
+  var face = real ? null : buildFace(N, dir);
+  if (!real && !face) return null;
   var C = N / 2, Rt = N / 2 - 1;
   var cosA = Math.max(-1, Math.min(1, 2 * fI - 1));  /* 位相角 α：cos α = 2f−1 */
   var sinA = Math.sqrt(Math.max(0, 1 - cosA * cosA));
   var sx = dir * sinA, sz = cosA;                    /* 太陽の向き（月の中心から見た単位ベクトル） */
   var EARTH = 0.105;                                 /* 地球照（昼側を 1 としたときの明るさ） */
-  var SLOPE = 0.52;                                  /* 起伏図の値を斜面の傾きに直す係数 */
+  var SLOPE = 0.52;                                  /* 手描き起伏図の値を斜面の傾きに直す係数 */
 
   var cv = el('canvas', { width:N, height:N }), g = cv.getContext('2d');
-  var img, alb = face.alb, rel = face.rel;
+  var img;
   try { img = g.createImageData(N, N); } catch (err) { return null; }
   if (!img || !img.data) return null;
   var o = img.data;
+  var alb = real ? M.alb : face.alb, slp = real ? M.slp : null, rel = real ? null : face.rel;
+  var AW = real ? M.alb.w : 0, AH = real ? M.alb.h : 0, AD = real ? M.alb.d : null;
+  var SW = real ? M.slp.w : 0, SH = real ? M.slp.h : 0, SD = real ? M.slp.d : null;
+  var LH = M.lonHalf * D2R, K = M.slopeK, GAIN = 1.18;   /* 地図の輝度を高地が 200 前後になるよう合わせる */
+
   for (var y = 0; y < N; y++) {
     var Y = (y + 0.5 - C) / Rt, Y2 = Y * Y;
     for (var x = 0; x < N; x++) {
@@ -501,19 +551,37 @@ NS.moonImage = function (N, fI, waxing) {
       if (s2 >= 1) { o[i + 3] = 0; continue; }
       var Z = Math.sqrt(1 - s2);
       var mu = Z;                                    /* 視線方向の余弦 */
-      var mu0 = sx * X + sz * Z;                     /* 太陽光の入射余弦 */
-      var gsl = (rel[i] - 128) / 128;
-      mu0 += gsl * SLOPE * Math.sqrt(Math.max(0, 1 - mu0 * mu0));
+      var mu0 = sx * X + sz * Z;                     /* 太陽光の入射余弦（平らな面） */
+      var lum;
+
+      if (real) {
+        /* 画面座標から月面座標へ。緯度 β = asin(−Y)、経度 λ = atan2(−X, Z)。 */
+        var lat = Math.asin(Math.max(-1, Math.min(1, -Y)));
+        var lon = Math.atan2(-X, Z);
+        var u = (lon + LH) / (2 * LH), v = (Math.PI / 2 - lat) / Math.PI;
+        lum = sample1(AD, AW, AH, u, v) * GAIN;
+        /* 斜面（東向き gx・北向き gy）から入射角を直す */
+        var gx = (sample3(SD, SW, SH, u, v, 0) - 128) / 127 * K;
+        var gy = (sample3(SD, SW, SH, u, v, 1) - 128) / 127 * K;
+        var c2 = Math.sqrt(Math.max(1e-6, 1 - Y2));  /* cos β */
+        var sE = sx * (-Z / c2) + sz * (X / c2);     /* 太陽の東向き成分 */
+        var sN = sx * (X * Y / c2) + sz * (Y * Z / c2);
+        mu0 = (mu0 - gx * sE - gy * sN) / Math.sqrt(1 + gx * gx + gy * gy);
+      } else {
+        var gsl = (rel[i] - 128) / 128;
+        mu0 += gsl * SLOPE * Math.sqrt(Math.max(0, 1 - mu0 * mu0));
+        lum = alb[i];
+      }
+
       var sh = mu0 > 0 ? 2 * mu0 / (mu0 + mu) : 0;   /* Lommel–Seeliger */
       /* そのままだと縁（μ→0）で明るくなりすぎる。実際の月面は細かい凹凸だらけで、
          斜めから見るほど影が見えるぶん暗くなるので、その効果を掛けておく。 */
       sh *= 0.60 + 0.40 * Math.pow(mu, 0.6);
       if (sh > 1.22) sh = 1.22;
       if (sh < EARTH) sh = EARTH;                    /* 夜側・影は地球照が下限 */
-      var k = sh * 0.98;
-      o[i]     = Math.min(255, alb[i] * k);
-      o[i + 1] = Math.min(255, alb[i + 1] * k);
-      o[i + 2] = Math.min(255, alb[i + 2] * k);
+      var val = lum * sh * 0.98;
+      if (val > 255) val = 255;
+      o[i] = val; o[i + 1] = val; o[i + 2] = real ? val : Math.min(255, alb[i + 2] * sh * 0.98);
       /* 縁は 1 px ぶんなめらかに落とす */
       o[i + 3] = Math.round(255 * Math.max(0, Math.min(1, (1 - Math.sqrt(s2)) * Rt)));
     }
@@ -522,5 +590,18 @@ NS.moonImage = function (N, fI, waxing) {
   imgCache = { key:key, cv:cv };
   return cv;
 };
+
+/* 地図の双一次補間。u・v は 0–1。sample1 は輝度、sample3 は指定チャンネル。 */
+function sample3(d, w, h, u, v, ch) {
+  var fx = u * (w - 1), fy = v * (h - 1);
+  var x0 = fx | 0, y0 = fy | 0;
+  if (x0 < 0) x0 = 0; if (y0 < 0) y0 = 0;
+  var x1 = x0 + 1 < w ? x0 + 1 : x0, y1 = y0 + 1 < h ? y0 + 1 : y0;
+  var tx = fx - x0, ty = fy - y0;
+  var a = d[(y0 * w + x0) * 4 + ch], b = d[(y0 * w + x1) * 4 + ch];
+  var c = d[(y1 * w + x0) * 4 + ch], e2 = d[(y1 * w + x1) * 4 + ch];
+  return (a + (b - a) * tx) + ((c + (e2 - c) * tx) - (a + (b - a) * tx)) * ty;
+}
+function sample1(d, w, h, u, v) { return sample3(d, w, h, u, v, 0); }
 
 })(NS);

@@ -3606,5 +3606,12 @@ var NS_EN = {
 "月面は、海・大クレーター・光条・山脈を月面座標（東経・北緯）に置いて手前半球へ正射影し、": "The lunar surface is drawn by placing the maria, large craters, ray systems and mountain ranges at their selenographic coordinates (east longitude and north latitude) and projecting the near side orthographically; ",
 "太陽光の当たり方を Lommel–Seeliger の反射則 I ∝ μ₀/(μ₀+μ) で計算して描いている。": "the illumination follows the Lommel–Seeliger law, I ∝ μ₀/(μ₀+μ). ",
 "斜面のぶんだけ入射角を動かすので、明暗境界に近いほどクレーターの影が長く伸びる。": "Slopes shift the angle of incidence, so crater shadows lengthen towards the terminator. ",
-"夜側は地球照で、海がうっすら見える明るさに合わせてある（月面衝突閃光を狙う露出）。": "The night side is lit by earthshine, exposed so that the maria are just visible — the exposure used to hunt for lunar impact flashes."
+"夜側は地球照で、海がうっすら見える明るさに合わせてある（月面衝突閃光を狙う露出）。": "The night side is lit by earthshine, exposed so that the maria are just visible — the exposure used to hunt for lunar impact flashes.",
+"月面は、NASA の月周回衛星 LRO の実データ（LROC 広角カメラの全球モザイクと ": "The lunar surface is drawn from real data returned by NASA’s Lunar Reconnaissance Orbiter — the global mosaic of the LROC wide-angle camera and ",
+"LOLA レーザー高度計の地形）を、月面座標から手前半球へ正射影して描いている。": "the topography measured by the LOLA laser altimeter — projected orthographically onto the near side from selenographic coordinates. ",
+"太陽光の当たり方は Lommel–Seeliger の反射則 I ∝ μ₀/(μ₀+μ) で求め、地形の斜面ぶん入射角を動かすので、": "The illumination follows the Lommel–Seeliger law, I ∝ μ₀/(μ₀+μ), with the angle of incidence shifted by the local slope, ",
+"明暗境界に近いほどクレーターの影が長く伸びる。夜側は地球照で、海がうっすら見える明るさに合わせてある": "so crater shadows lengthen towards the terminator. The night side is lit by earthshine, exposed so that the maria are just visible ",
+"（月面衝突閃光を狙う露出）。地図は NASA/GSFC Scientific Visualization Studio「CGI Moon Kit」による": "(the exposure used to hunt for lunar impact flashes). The maps come from the NASA/GSFC Scientific Visualization Studio “CGI Moon Kit” ",
+"（パブリックドメイン）。": "(public domain).",
+"月面：NASA 月周回衛星 LRO の実データ（LROC 広角カメラ全球モザイクと LOLA レーザー高度計の地形）。NASA/GSFC Scientific Visualization Studio「CGI Moon Kit」（SVS 4720, パブリックドメイン）から表側 ±105° を切り出し、リモート望遠鏡の月面描画に使っている": "The Moon: real data from NASA’s Lunar Reconnaissance Orbiter (the LROC wide-angle camera global mosaic and LOLA laser-altimeter topography). The near side (±105° of longitude) was cut from the NASA/GSFC Scientific Visualization Studio “CGI Moon Kit” (SVS 4720, public domain) and is used to render the Moon in the remote-telescope view."
 };
