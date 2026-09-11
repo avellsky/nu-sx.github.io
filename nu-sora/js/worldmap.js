@@ -1,4 +1,4 @@
-/* NU-SORA デモ / 地球図（メルカトル図法）と、再突入体の軌道フィッティング
+/* NU-SORA デモ / 地球図（正距円筒図法）と、再突入体の軌道フィッティング
    観測から得られるのは「いつ・どこを・どの向きに・どれだけの速さで」通ったかである。
    そこから軌道傾斜角を逆算し、公開カタログの候補と突き合わせてどの物体かを絞り込む。 */
 'use strict';
@@ -60,24 +60,84 @@ NS.trackThrough = function (inc, alt, lat, lon, az, span) {
 };
 
 /* =========================================================================
-   メルカトル図法の世界図
+   正距円筒図法（equirectangular）の世界図
+   経度・緯度をそのまま x・y に取る。面積は高緯度ほど引き伸ばされるが、
+   緯度が線形に読めるので、地上軌跡の傾きから軌道傾斜角を見るのに向く。
    ========================================================================= */
-var MW = 1000, MH = 640, LAT_MAX = 78;
-function my(lat) {
-  var l = Math.max(-LAT_MAX, Math.min(LAT_MAX, lat));
-  var m = Math.log(Math.tan(Math.PI / 4 + l * D2R / 2));
-  var mMax = Math.log(Math.tan(Math.PI / 4 + LAT_MAX * D2R / 2));
-  return MH / 2 - m / mMax * (MH / 2);
-}
+var MW = 1080, MH = 540;                 /* 360° × 180°（2:1） */
 function mx(lon) { return (lon + 180) / 360 * MW; }
-NS.mercXY = function (lon, lat) { return [mx(lon), my(lat)]; };
+function my(lat) { return (90 - lat) / 180 * MH; }
+NS.worldXY = function (lon, lat) { return [mx(lon), my(lat)]; };
+NS.mercXY = NS.worldXY;                  /* 旧名 */
 
-NS.WorldMercator = function (opts) {
+/* 詰めた座標列をほどく（js/geo-world50.js）。可変長の差分符号。 */
+var w50 = null;
+function unpack50() {
+  if (w50) return w50;
+  var G = window.GEO_W50;
+  if (!G) return (w50 = { land:[], bord:[] });
+  function take(str) {
+    var i = 0, out = [];
+    function num() {
+      var r = 0, sh = 0, c;
+      do { c = str.charCodeAt(i++) - 63; r |= (c & 0x1f) << sh; sh += 5; } while (c >= 0x20);
+      return (r & 1) ? ~(r >> 1) : (r >> 1);
+    }
+    while (i < str.length) {
+      var n = num(), line = [], px = 0, py = 0;
+      for (var k = 0; k < n; k++) {
+        px += num(); py += num();
+        line.push([px * G.q, py * G.q]);
+      }
+      out.push(line);
+    }
+    return out;
+  }
+  w50 = { land:take(G.l), bord:take(G.b) };
+  return w50;
+}
+
+/* 経度が日付変更線をまたぐ折れ線を、連続な経度に開く */
+function unwrap(line) {
+  var lon = [], lat = [], acc = 0, prev = line[0][0];
+  for (var i = 0; i < line.length; i++) {
+    var v = line[i][0];
+    if (i > 0) {
+      var d0 = v - prev;
+      if (d0 > 180) acc -= 360; else if (d0 < -180) acc += 360;
+    }
+    lon.push(v + acc); lat.push(line[i][1]); prev = v;
+  }
+  return { lon:lon, lat:lat };
+}
+function pathOf(lon, lat, sh, close) {
+  var d = '';
+  for (var j = 0; j < lon.length; j++) {
+    d += (j ? 'L' : 'M') + mx(lon[j] + sh).toFixed(1) + ' ' + my(lat[j]).toFixed(1);
+  }
+  return close ? d + 'Z' : d;
+}
+
+var mapSeq = 0;
+
+NS.WorldMap = function (opts) {
   opts = opts || {};
-  var svg = s('svg', { viewBox:'0 0 ' + MW + ' ' + MH, class:'wmap', preserveAspectRatio:'xMidYMid meet' });
-  NS.add(svg, s('rect', { x:0, y:0, width:MW, height:MH, class:'w-sea' }));
-  var gGrid = s('g', { class:'w-grid' }), gLand = s('g', { class:'w-land' }), gOv = s('g', { class:'w-ov' });
-  NS.add(svg, [gGrid, gLand, gOv]);
+  var svg = s('svg', { viewBox:'0 0 ' + MW + ' ' + MH, class:'wmap',
+                       preserveAspectRatio:'xMidYMid meet' });
+  var uid = 'wm' + (++mapSeq);
+  /* 日付変更線をまたぐ陸地は ±360° ずらした写しも描くので、図の外にはみ出す。
+     世界の枠で切り取っておかないと、右の複製（use）を通して本体に重なってしまう。 */
+  var clip = s('clipPath', { id:uid + 'c' }, s('rect', { x:0, y:0, width:MW, height:MH }));
+  var world = s('g', { id:uid, 'clip-path':'url(#' + uid + 'c)' });
+  var gGrid = s('g', { class:'w-grid' }), gLand = s('g', { class:'w-land' });
+  var gBord = s('g', { class:'w-bord' }), gOv = s('g', { class:'w-ov' });
+  NS.add(world, [s('rect', { x:0, y:0, width:MW, height:MH, class:'w-sea' }), gGrid, gLand, gBord, gOv]);
+  /* 東西に切れ目なくたどれるよう、同じ内容を 1 周ぶん右に複製する。
+     use は元をそのまま映すので、あとから足した軌跡も一緒に出る。 */
+  var copy = s('use', { transform:'translate(' + MW + ' 0)' });
+  copy.setAttribute('href', '#' + uid);
+  copy.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', '#' + uid);
+  NS.add(svg, [s('defs', {}, clip), world, copy]);
 
   /* 経緯線 */
   for (var la = -60; la <= 60; la += 30) {
@@ -90,35 +150,91 @@ NS.WorldMercator = function (opts) {
   }
   NS.add(gGrid, s('line', { x1:0, x2:MW, y1:my(0), y2:my(0), class:'gl eq' }));
 
-  /* 陸地。日付変更線をまたぐ環（ユーラシアなど）は経度を連続に展開してから描き、
-     はみ出したぶんを ±360° ずらしてもう一度描くことで、横に走る筋が出ないようにする。 */
-  (window.GEO_WORLD || []).forEach(function (ring) {
-    var lon = [], lat = [], prev = ring[0][0], acc = 0;
-    for (var i = 0; i < ring.length; i++) {
-      var v = ring[i][0];
-      if (i > 0) {
-        var d0 = v - prev;
-        if (d0 > 180) acc -= 360; else if (d0 < -180) acc += 360;
-      }
-      lon.push(v + acc); lat.push(ring[i][1]); prev = v;
-    }
-    var lo = Math.min.apply(null, lon), hi = Math.max.apply(null, lon);
-    var shifts = [0];
-    if (hi > 180) shifts.push(-360);
-    if (lo < -180) shifts.push(360);
-    shifts.forEach(function (sh) {
-      var d = '';
-      for (var j = 0; j < lon.length; j++) {
-        var p = NS.mercXY(lon[j] + sh, lat[j]);
-        d += (j ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1);
-      }
-      NS.add(gLand, s('path', { d:d + 'Z', class:'w-l' }));
+  /* 陸地と国境。日付変更線をまたぐ環は経度を開いてから描き、
+     はみ出したぶんを ±360° ずらしてもう一度描く。 */
+  var W = unpack50();
+  function drawLines(list, parent, cls, close) {
+    list.forEach(function (line) {
+      var u = unwrap(line);
+      var lo2 = Math.min.apply(null, u.lon), hi2 = Math.max.apply(null, u.lon);
+      var shifts = [0];
+      if (hi2 > 180) shifts.push(-360);
+      if (lo2 < -180) shifts.push(360);
+      shifts.forEach(function (sh) {
+        NS.add(parent, s('path', { d:pathOf(u.lon, u.lat, sh, close), class:cls }));
+      });
     });
-  });
+  }
+  drawLines(W.land, gLand, 'w-l', true);
+  drawLines(W.bord, gBord, 'w-b', false);
 
-  var M = { node:el('div', { class:'wmapwrap' }, svg), svg:svg, ov:gOv };
-  M.clear = function () { NS.clear(gOv); };
-  M.pt = function (lon, lat) { return NS.mercXY(lon, lat); };
+  var M = { node:el('div', { class:'wmapwrap' }, svg), svg:svg, ov:gOv, W:MW, H:MH };
+
+  /* --- 視野（東西の移動と拡大縮小） ---------------------------------- */
+  var V = { x:0, y:0, w:MW, z:1 }, scal = [];
+  function apply() {
+    var h = V.w * MH / MW;
+    V.x = ((V.x % MW) + MW) % MW;                    /* 東西は巻き戻して連続に */
+    V.y = Math.max(0, Math.min(MH - h, V.y));
+    svg.setAttribute('viewBox', V.x.toFixed(2) + ' ' + V.y.toFixed(2) + ' ' + V.w.toFixed(2) + ' ' + h.toFixed(2));
+    var z = MW / V.w;
+    if (z !== V.z) {
+      V.z = z;
+      scal.forEach(function (o) {
+        if (o.r != null) o.el.setAttribute('r', (o.r / z).toFixed(2));
+        if (o.fs != null) o.el.setAttribute('font-size', (o.fs / z).toFixed(2));
+        if (o.dx != null) o.el.setAttribute('x', (o.x0 + o.dx / z).toFixed(2));
+      });
+      gGrid.setAttribute('font-size', (10 / z).toFixed(2));
+    }
+  }
+  M.view = V;
+  M.reset = function () { V.x = 0; V.y = 0; V.w = MW; apply(); };
+  /* 経度 lon を中心に、倍率 z で寄る */
+  M.focus = function (lon, lat, z) {
+    V.w = MW / Math.max(1, Math.min(12, z));
+    var h = V.w * MH / MW;
+    V.x = mx(lon) - V.w / 2; V.y = my(lat) - h / 2;
+    apply();
+  };
+
+  var drag = null;
+  function userPos(ev) {
+    var r = svg.getBoundingClientRect();
+    var h = V.w * MH / MW;
+    return [V.x + (ev.clientX - r.left) / r.width * V.w, V.y + (ev.clientY - r.top) / r.height * h];
+  }
+  svg.style.cursor = 'grab';
+  svg.style.touchAction = 'none';
+  svg.addEventListener('pointerdown', function (ev) {
+    drag = { x:ev.clientX, y:ev.clientY, vx:V.x, vy:V.y, r:svg.getBoundingClientRect() };
+    svg.setPointerCapture(ev.pointerId); svg.style.cursor = 'grabbing';
+  });
+  svg.addEventListener('pointermove', function (ev) {
+    if (!drag) return;
+    var h = V.w * MH / MW;
+    V.x = drag.vx - (ev.clientX - drag.x) / drag.r.width * V.w;
+    V.y = drag.vy - (ev.clientY - drag.y) / drag.r.height * h;
+    apply();
+  });
+  function endDrag() { drag = null; svg.style.cursor = 'grab'; }
+  svg.addEventListener('pointerup', endDrag);
+  svg.addEventListener('pointercancel', endDrag);
+  svg.addEventListener('dblclick', function () { M.reset(); });
+  svg.addEventListener('wheel', function (ev) {
+    ev.preventDefault();
+    var p = userPos(ev), h0 = V.w * MH / MW;
+    var z = Math.max(1, Math.min(12, (MW / V.w) * Math.exp(-ev.deltaY * 0.0016)));
+    var w1 = MW / z, h1 = w1 * MH / MW;
+    V.x = p[0] - (p[0] - V.x) * (w1 / V.w);
+    V.y = p[1] - (p[1] - V.y) * (h1 / h0);
+    V.w = w1;
+    apply();
+  }, { passive:false });
+
+  /* --- 重ね描き ------------------------------------------------------ */
+  M.clear = function () { NS.clear(gOv); scal = []; };
+  M.pt = function (lon, lat) { return NS.worldXY(lon, lat); };
   /* 日付変更線をまたぐところで折れ線を切る */
   M.track = function (pts, attrs) {
     var segs = [[]], prev = null;
@@ -130,7 +246,7 @@ NS.WorldMercator = function (opts) {
     segs.forEach(function (seg) {
       if (seg.length < 2) return;
       var d = seg.map(function (p, i) {
-        var q = NS.mercXY(p.lon, p.lat);
+        var q = NS.worldXY(p.lon, p.lat);
         return (i ? 'L' : 'M') + q[0].toFixed(1) + ' ' + q[1].toFixed(1);
       }).join('');
       out.push(NS.add(gOv, s('path', Object.assign({ d:d, fill:'none', 'vector-effect':'non-scaling-stroke' }, attrs))));
@@ -138,15 +254,24 @@ NS.WorldMercator = function (opts) {
     return out;
   };
   M.mark = function (lon, lat, attrs) {
-    var q = NS.mercXY(lon, lat);
-    return NS.add(gOv, s('circle', Object.assign({ cx:q[0], cy:q[1], r:4 }, attrs)));
+    var q = NS.worldXY(lon, lat);
+    var r0 = (attrs && attrs.r) || 4;
+    var c = NS.add(gOv, s('circle', Object.assign({}, attrs, { cx:q[0], cy:q[1], r:r0 / V.z,
+      'vector-effect':'non-scaling-stroke' })));
+    scal.push({ el:c, r:r0 });
+    return c;
   };
   M.label = function (lon, lat, text, attrs) {
-    var q = NS.mercXY(lon, lat);
-    return NS.add(gOv, s('text', Object.assign({ x:q[0] + 7, y:q[1] + 3.5, class:'w-lbl', text:text }, attrs)));
+    var q = NS.worldXY(lon, lat);
+    var t = NS.add(gOv, s('text', Object.assign({ x:q[0] + 7 / V.z, y:q[1] + 3.5, class:'w-lbl', text:text,
+      'font-size':(11 / V.z).toFixed(2) }, attrs)));
+    scal.push({ el:t, fs:11, dx:7, x0:q[0] });
+    return t;
   };
+  apply();
   return M;
 };
+NS.WorldMercator = NS.WorldMap;            /* 旧名 */
 
 /* =========================================================================
    軌道フィッティング
@@ -179,7 +304,7 @@ NS.debrisTrackPanel = function (e, go) {
   var fit = NS.fitDebris(e, cands);
   var best = fit[0];
 
-  var M = NS.WorldMercator();
+  var M = NS.WorldMap();
   var COL = ['var(--accent)', 'var(--c-info)', 'var(--c-ok)', 'var(--c-warn)', 'var(--c-sky)'];
 
   /* 候補の地上軌跡（当てはまりの悪いものほど薄く） */
@@ -203,8 +328,9 @@ NS.debrisTrackPanel = function (e, go) {
   var per = NS.orbPeriod(best.c.alt);
 
   return [
-    panel('地球上の推定軌道（メルカトル図法）', {
-      note:'赤の太線が観測した発光区間、赤の細線が最も当てはまる候補の地上軌跡。灰の破線は他の候補。青点は観測局',
+    panel('地球上の推定軌道（正距円筒図法）', {
+      note:'赤の太線が観測した発光区間、赤の細線が最も当てはまる候補の地上軌跡。灰の破線は他の候補。青点は観測局。'
+         + 'ドラッグで東西・南北に動かし、ホイールで拡大縮小できる（ダブルクリックで全体に戻る）',
       tools:badge('軌道傾斜角 ' + f(incObs, 1) + '° と推定', 'info') }, [
       M.node,
       NS.chart.legend([['観測した発光区間', 'var(--c-crit)', 'line'], ['最良候補の地上軌跡', 'var(--accent)', 'line'],
@@ -249,7 +375,7 @@ NS.debrisTrackPanel = function (e, go) {
       el('div', { class:'note', text:'この手順は、光学観測だけで軌道要素の一部を独立に決められることを示している。'
         + '公開カタログに載っていない物体でも、方位と緯度から軌道傾斜角が、周回ごとの西へのずれから周期が出るので、'
         + '「カタログのどれでもない」という結論自体を根拠つきで出せる。結果は JAXA 宇宙状況把握（SSA）へ共有する。' }),
-      el('div', { class:'src', text:'海岸線は Natural Earth 110m（public domain）。軌道は円軌道近似で、'
+      el('div', { class:'src', text:'海岸線と国境線は Natural Earth 50m（public domain）。国境線は 2 か国以上が共有する境界だけを取り出している。軌道は円軌道近似で、'
         + '球面三角法（cos i = sin β cos φ）と地球の自転（15.04°/時）から地上軌跡を求めている。'
         + '候補カタログはデモ用の仮想の物体で、実在の衛星ではない。' })]
     )

@@ -445,12 +445,14 @@ footer{max-width:1440px;margin:0 auto;padding:22px 18px 44px;border-top:1px soli
 
 .sn-rows .tge{color:var(--c-crit);grid-column:1/-1}
 
-/* ---- 世界図（メルカトル図法） ---- */
+/* ---- 世界図（正距円筒図法） ---- */
 .wmapwrap{width:100%;border-radius:6px;overflow:hidden;background:var(--sea)}
 .wmap{display:block;width:100%;height:auto}
 .w-sea{fill:var(--sea)}
 .w-land .w-l{fill:var(--land);stroke:#4A5462;stroke-width:.5;stroke-opacity:.85;vector-effect:non-scaling-stroke}
 :root[data-theme="light"] .w-land .w-l{stroke:#C6CCD3}
+.w-bord path{fill:none;stroke:#8E99A8;stroke-width:.7;stroke-opacity:.9;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+:root[data-theme="light"] .w-bord path{stroke:#A9A89E}
 .w-grid .gl{stroke:var(--muted);stroke-width:.5;stroke-opacity:.22;vector-effect:non-scaling-stroke}
 .w-grid .gl.eq{stroke-opacity:.4;stroke-dasharray:6 4}
 .w-grid .gt{font-size:9px;fill:var(--muted);opacity:.7;font-family:ui-monospace,monospace}
