@@ -519,3 +519,53 @@ NS.alertLog = function () {
     return NS._rb;
   };
 })(NS);
+
+/* =========================================================================
+   津波（地震 → 電離圏 TEC ＋ インフラサウンド）の模擬イベント
+   Kakinami et al. (2012) の津波性電離圏ホール、Kamogawa et al. (2016) の
+   TEC 減少率による津波早期警戒、Nishikawa et al. (2022) のトンガ噴火に
+   伴う大気重力波・ラム波の観測を踏まえた構成。
+   ========================================================================= */
+(function (NS) {
+  NS.tsunami = function () {
+    if (NS._ts) return NS._ts;
+    var t0 = NS.now() - 5.3 * 86400e3;            /* 5 日前の地震発生時刻 */
+    var r = NS.rng('tsunami');
+
+    /* --- 電離圏 TEC の時系列（地震発生からの分） --- */
+    var tec = [];
+    for (var m = -10; m <= 120; m += 2) {
+      var base = 22 + 2.2 * Math.sin(2 * Math.PI * (m + 60) / 720) + r.norm(0, 0.06);
+      /* 音波共振（約 4.4 mHz ＝ 周期 3.8 分）：発生 8 分後から */
+      var res = m > 8 ? 0.55 * Math.exp(-Math.pow((m - 26) / 20, 2)) * Math.sin(2 * Math.PI * (m - 8) / 3.8) : 0;
+      /* 津波性電離圏ホール：19 分後から電子密度が減少 */
+      var hole = m > 19 ? -1.85 * Math.exp(-Math.pow((m - 38) / 17, 2)) : 0;
+      tec.push({ m:m, tec:base + res + hole, res:res, hole:hole });
+    }
+
+    return (NS._ts = {
+      id:'NUS-TS-2028-0703-01', kind:'tsunami', t:t0, name:'三陸沖の地震（M7.8）と津波',
+      quake:{ lat:38.32, lon:143.86, depth:24, mw:7.8, name:'三陸沖', src:'気象庁 震源速報（参考情報として取り込む）' },
+      det:[
+        { id:'FNB', kind:'微動計', dt:0.0,  val:'P 波 +112 s / PGA 6.8 gal', note:'校舎応答に異常なし' },
+        { id:'TCR', kind:'微動計', dt:0.0,  val:'P 波 +104 s / PGA 9.1 gal', note:'校舎応答に異常なし' },
+        { id:'KYM', kind:'GNSS',   dt:8.2,  val:'TEC 共振 4.4 mHz / 振幅 0.55 TECU', note:'最初に擾乱を捉えた局' },
+        { id:'YMG', kind:'GNSS',   dt:9.6,  val:'TEC 共振 4.4 mHz / 振幅 0.48 TECU', note:'' },
+        { id:'TCR', kind:'GNSS',   dt:11.4, val:'TEC 共振 3.6 mHz / 振幅 0.41 TECU', note:'' },
+        { id:'FNB', kind:'GNSS',   dt:12.8, val:'TEC 共振 3.6 mHz / 振幅 0.33 TECU', note:'' },
+        { id:'SPR', kind:'GNSS',   dt:14.1, val:'TEC 共振 4.4 mHz / 振幅 0.27 TECU', note:'' },
+        { id:'KYM', kind:'インフラサウンド', dt:13.2, val:'0.8–4 mHz 帯 / 0.42 Pa', note:'大気重力波の到達' },
+        { id:'FNB', kind:'インフラサウンド', dt:16.7, val:'0.8–4 mHz 帯 / 0.31 Pa', note:'' },
+        { id:'KYM', kind:'GNSS',   dt:19.4, val:'TEC 減少 開始', note:'津波性電離圏ホール' },
+        { id:'TCR', kind:'GNSS',   dt:22.1, val:'TEC 減少 −1.85 TECU（最大）', note:'減少率 −0.11 TECU/分' }
+      ],
+      tec:tec, holeMax:-1.85, holeRate:-0.11, resFreq:[4.4, 3.6],
+      estWave:2.4, estErr:0.8, obsWave:2.1, obsPlace:'宮古 検潮所',
+      jmaWarn:{ dt:3.0, text:'津波警報（岩手・宮城・福島）' },
+      coastSchools:['日本大学山形高等学校（内陸・避難所指定）', '土浦日本大学高等学校', '日本大学東北高等学校'],
+      refs:['Kakinami et al. (2012) 津波性電離圏ホール', 'Kamogawa et al. (2016) TEC 減少率による早期警戒',
+            'Nishikawa et al. (2022) トンガ噴火の大気重力波と後続津波'],
+      note:'本観測網は気象庁の津波警報を置き換えるものではない。警報の後に届く「実際にどれだけの津波が来るか」を、電離圏と大気の応答から独立に見積もり、沿岸から離れた学校の判断材料として補うことを目的とする。'
+    });
+  };
+})(NS);

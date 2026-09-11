@@ -231,6 +231,23 @@ svg.jmap.grabbing{cursor:grabbing}
 .skycard .sc-h{display:flex;justify-content:space-between;align-items:center;padding:6px 9px;font-size:11.5px}
 .skycard .sc-h b{font-weight:700}
 
+/* ---------- インフラサウンド 実況グラフ ---------- */
+.infbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding-bottom:10px;
+  border-bottom:1px solid var(--rule);margin-bottom:11px}
+.infbar .lbl{font-size:10.5px;letter-spacing:.08em;color:var(--muted);font-weight:700}
+.chip.chch{display:inline-flex;align-items:center;gap:6px}
+.chip.chch .bdot{width:9px;height:9px;border-radius:2px;display:inline-block;opacity:.3}
+.chip.chch .chband{font-size:9.5px;color:var(--muted);font-family:ui-monospace,monospace}
+.chip.chch[aria-pressed="true"]{background:var(--panel2);color:var(--ink);border-color:var(--bc);font-weight:700}
+.chip.chch[aria-pressed="true"] .bdot{opacity:1}
+.infgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px}
+.infcard{background:var(--bg2);border:1px solid var(--rule);border-radius:5px;padding:7px 9px 4px;cursor:pointer}
+.infcard:hover{border-color:var(--accent)}
+.infcard.bad{border-left:3px solid var(--c-warn)}
+.infcard .inf-h{display:flex;align-items:center;gap:7px;font-size:12px;margin-bottom:3px}
+.infcard .inf-h .sid{font-size:9.5px;color:var(--muted);font-family:ui-monospace,monospace}
+canvas.infstrip{display:block;width:100%;height:auto}
+
 /* ---------- イベント一覧 ---------- */
 .evlist{display:flex;flex-direction:column}
 .evrow{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:9px 14px;
@@ -309,6 +326,13 @@ svg.jmap.grabbing{cursor:grabbing}
   font-family:ui-monospace,monospace;overflow-x:auto;white-space:pre;line-height:1.6;color:var(--ink2)}
 .api .k{color:var(--c-info)} .api .m{color:var(--c-ok);font-weight:700} .api .c{color:var(--muted)}
 /* 通報ワークフロー */
+.chip.wfchip{display:inline-flex;align-items:center;gap:7px;padding:5px 12px;font-size:12.5px}
+.chip.wfchip .wfic{font-size:14px;line-height:1}
+.chip.wfchip .wftag{font-size:9.5px;color:var(--muted);letter-spacing:.04em}
+.chip.wfchip[aria-pressed="true"] .wftag{color:color-mix(in srgb,var(--bg) 70%,var(--ink))}
+:root[data-theme="light"] .chip.wfchip[aria-pressed="true"] .wftag{color:rgba(255,255,255,.75)}
+.wflead{font-size:12.5px;color:var(--ink2);margin:12px 0 4px;line-height:1.6}
+.wflead b{font-family:"Shippori Mincho",serif;font-size:14px;color:var(--ink)}
 svg.wf .wfstep{cursor:pointer}
 svg.wf .wfstep rect{fill:var(--panel2);stroke:var(--rule2);stroke-width:1;transition:stroke .12s,fill .12s}
 svg.wf .wfstep:hover rect{stroke:var(--accent)}

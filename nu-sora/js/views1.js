@@ -442,6 +442,62 @@ NS.V.stations = function (root, go) {
   applySkyTime(def.t, def.live, def.label);
   skies.forEach(function (A) { A.start(); });
   NS.onLeave(function () { skies.forEach(function (A) { A.stop(); }); });
+
+  /* ---- インフラサウンド 実況グラフ（全 13 局） ---- */
+  var infState = { chans:['HF', 'MF', 'LF'], win:300 };
+  var strips = [];
+  var infGrid = el('div', { class:'infgrid' }, NS.STATIONS.map(function (st) {
+    var S = NS.InfraStrip(st, { chans:infState.chans, win:infState.win, width:300 });
+    strips.push(S);
+    var s2 = NS.stationState(st, NS.now());
+    var bad = s2.sub.filter(function (x) { return x.key === 'infra' && !x.ok; })[0];
+    return el('div', { class:'infcard' + (bad ? ' bad' : ''), onclick:function () { go('station', st.id); },
+      role:'button', tabindex:'0' }, [
+      el('div', { class:'inf-h' }, [
+        el('b', { text:st.name }), el('span', { class:'sid', text:st.id }),
+        el('div', { class:'spacer' }),
+        bad ? badge(bad.note, 'warn') : el('span', { class:'hint', text:'風 ' + NS.f(s2.weather.wind, 1) + ' m/s' })
+      ]),
+      S.node
+    ]);
+  }));
+  function applyInf() {
+    strips.forEach(function (S) { S.setChans(infState.chans); S.setWin(infState.win); });
+  }
+  var chChips = el('div', { class:'chips' }, NS.INFRA_CH.map(function (C) {
+    var on = infState.chans.indexOf(C.key) >= 0;
+    var b2 = el('button', { class:'chip chch', 'aria-pressed':on ? 'true' : 'false',
+      style:{ '--bc':C.color }, title:C.name + '　' + C.band + '　' + C.unit,
+      onclick:function () {
+        var i = infState.chans.indexOf(C.key);
+        if (i >= 0) { if (infState.chans.length === 1) return; infState.chans.splice(i, 1); }
+        else infState.chans = NS.INFRA_CH.filter(function (x) {
+          return x.key === C.key || infState.chans.indexOf(x.key) >= 0; }).map(function (x) { return x.key; });
+        b2.setAttribute('aria-pressed', infState.chans.indexOf(C.key) >= 0 ? 'true' : 'false');
+        applyInf();
+      } }, [el('i', { class:'bdot', style:{ background:C.color } }), C.name,
+            el('span', { class:'chband', text:C.band })]);
+    return b2;
+  }));
+  var winSeg = el('div', { class:'seg' }, [['1 分', 60], ['5 分', 300], ['10 分', 600], ['30 分', 1800], ['1 時間', 3600]]
+    .map(function (x) {
+      return el('button', { text:x[0], 'aria-pressed':x[1] === infState.win ? 'true' : 'false', onclick:function (ev) {
+        infState.win = x[1];
+        Array.prototype.forEach.call(ev.target.parentNode.children, function (c2) { c2.setAttribute('aria-pressed', 'false'); });
+        ev.target.setAttribute('aria-pressed', 'true');
+        applyInf();
+      } });
+    }));
+  var pInf = panel('インフラサウンド 実況グラフ（全 13 局）', {
+    note:'複合型センサー（サヤ INF03 ／ 高知工科大学と共同開発の ADXII-INF01 系）の 6 チャンネル。0.5 秒ごとに更新',
+    tools:el('div', { class:'split' }, [winSeg, NS.refreshTool(function () { applyInf(); })]) },
+    [el('div', { class:'infbar' }, [el('span', { class:'lbl', text:'チャンネル' }), chChips]),
+     infGrid,
+     el('div', { class:'note', text:'HF（1–20 Hz）は雷放電・爆発音・近傍の人工雑音、MF（0.1–1 Hz）は海洋起源の脈動微気圧振動（マイクロバロム）と火球の衝撃波、LF（0.005–0.1 Hz）は大気重力波・津波・気圧変動を捉える帯域。X・Y・Z は 3 成分加速度で、常時微動から校舎の固有振動数を求め、地震後の使用可否判定（DT-6）に使う。' }),
+     el('div', { class:'src', text:'表示の体裁は、一般財団法人 日本気象協会「インフラサウンド・モニタリング・ネットワーク」の実況グラフ（micos-sc.jwa.or.jp/infrasound-net/observed/）および高知工科大学インフラサウンド観測ネットワーク KISONS（geosci.mydns.jp/infrasound/graph.php）を参考にした。表示している波形はデモ用の模擬データであり、実観測ではない。' })]);
+  NS.add(root, el('div', { style:{ marginTop:'14px' } }, pInf));
+  strips.forEach(function (S) { S.start(); });
+  NS.onLeave(function () { strips.forEach(function (S) { S.stop(); }); });
 };
 
 /* =========================================================================
