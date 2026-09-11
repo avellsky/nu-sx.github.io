@@ -790,7 +790,11 @@ NS.V.telescope = function (root, go, arg) {
       }))
     ]),
     numRow('ビニング', [['1×1', 1], ['2×2', 2]], function () { return S.bin; }, function (v) { S.bin = v; }),
-    numRow('フィルター', [['なし', 'none'], ['L', 'L'], ['Hα', 'Hα'], ['ND', 'ND']], function () { return S.filter; }, function (v) { S.filter = v; }),
+    /* 測光に使うフィルター。g′r′i′ は SDSS 系、BV・VR は同時 2 色測光に使う組み合わせ */
+    numRow('フィルター', [['なし', 'none'], ['g\u2032', 'g\u2032'], ['r\u2032', 'r\u2032'], ['i\u2032', 'i\u2032'],
+                     ['BV', 'BV'], ['VR', 'VR']],
+      function () { return S.filter; },
+      function (v) { S.filter = v; pushLog(NS.t('フィルターを ') + (v === 'none' ? NS.t('なし') : v) + NS.t(' に切り替えた'), 'cmd'); redraw(); }),
     el('div', { class:'split', style:{ marginTop:'8px' } }, [
       el('button', { class:'iconbtn', text:'自動導入（GoTo）', onclick:function () {
         pushLog(NS.t('自動導入を実行：') + S.target.name + NS.t('（所要 18 秒・整定 4 秒）'), 'ok'); redraw(); } }),

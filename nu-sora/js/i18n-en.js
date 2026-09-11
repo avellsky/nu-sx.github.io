@@ -3617,5 +3617,7 @@ var NS_EN = {
 "素粒子検出器（プラスチックシンチレータ）": "Particle detector (plastic scintillator)",
 "シンチレータ 5×5×1 cm ＋ SiPM 型光センサー ＋ ESP32。OLED 表示・USB 給電・ブラウザで波形と計数を表示。1 分値を常時記録": "5×5×1 cm scintillator with a SiPM photosensor and an ESP32; OLED display, USB power, waveforms and counts shown in a browser, one-minute values recorded continuously",
 "素粒子検出器（プラスチックシンチレータ）。シンチレータ 5×5×1 cm ＋ SiPM 型光センサー ＋ ESP32。1 分ごとの計数を常時記録": "Particle detector (plastic scintillator): a 5×5×1 cm scintillator with a SiPM photosensor and an ESP32, recording counts every minute",
-"素粒子検出器（プラスチックシンチレータ）· シンチレータ 5×5×1 cm ＋ SiPM 型光センサー ＋ ESP32": "Particle detector (plastic scintillator) · 5×5×1 cm scintillator, SiPM photosensor, ESP32"
+"素粒子検出器（プラスチックシンチレータ）· シンチレータ 5×5×1 cm ＋ SiPM 型光センサー ＋ ESP32": "Particle detector (plastic scintillator) · 5×5×1 cm scintillator, SiPM photosensor, ESP32",
+"フィルターを ": "Filter set to ",
+" に切り替えた": ""
 };
