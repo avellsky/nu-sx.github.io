@@ -73,11 +73,13 @@ function fieldStars(ra0, dec0, fovX, fovY, limMag) {
   var area = fovX * fovY;
   /* 銀緯が低いほど星が多い。ごく粗い近似 */
   var gb = Math.abs(dec0) < 30 ? 1.7 : 1.0;
-  var n = Math.min(700, Math.round(area * gb * 42 * Math.pow(10, 0.34 * (limMag - 9))));
+  /* 回転しても四隅が空かないよう、対角ぶんの正方形に撒く */
+  var side = Math.hypot(fovX, fovY) * 1.02;
+  var n = Math.min(900, Math.round(side * side * gb * 42 * Math.pow(10, 0.34 * (limMag - 9))));
   var out = [];
   for (var i = 0; i < n; i++) {
     var m = limMag - Math.log10(1 - r() * (1 - Math.pow(10, -0.34 * (limMag - 6.5)))) / 0.34;
-    out.push([ (r() - 0.5) * fovX, (r() - 0.5) * fovY, Math.min(limMag, m), r() ]);
+    out.push([ (r() - 0.5) * side, (r() - 0.5) * side, Math.min(limMag, m), r() ]);
   }
   return out;
 }
@@ -94,8 +96,14 @@ NS.ScopeView = function (opts) {
   var bctx = bg.getContext('2d'); bctx.scale(2, 2);
   /* 視野のずれ（度）。月モードでは枠を、星野モードでは指向そのものを動かす。
      度で持つので、鏡筒や表示倍率が変わっても同じ場所を指したままになる。 */
+  /* fovRot はカメラのポジションアングル（度）。北から東回りを正とする。
+     画面は北が上・東が左なので、正の回転は反時計回りに見える。 */
   var A = { node:cv, W:W, H:H, t0:performance.now(), _key:null,
-            fovOff:{ x:0, y:0 }, _moon:null, _S:null };
+            fovOff:{ x:0, y:0 }, fovRot:0, _moon:null, _S:null };
+  function rotLocal(dx, dy, th) {                  /* 画面 → 枠のローカル座標 */
+    var c = Math.cos(th * D2R), sn = Math.sin(th * D2R);
+    return [dx * c - dy * sn, dx * sn + dy * c];
+  }
 
   /* --- マウス操作 -----------------------------------------------------
      月モード：観測視野の枠をドラッグして、月面のどこを写すかを決める。
@@ -108,7 +116,14 @@ NS.ScopeView = function (opts) {
   function onFrame(p) {
     var m = A._moon;
     if (!m) return false;
-    return Math.abs(p[0] - m.nx) <= m.fw / 2 + 8 && Math.abs(p[1] - m.fcy) <= m.fh / 2 + 8;
+    var l = rotLocal(p[0] - m.nx, p[1] - m.fcy, m.th || 0);
+    return Math.abs(l[0]) <= m.fw / 2 + 8 && Math.abs(l[1]) <= m.fh / 2 + 8;
+  }
+  function onHandle(p) {
+    var m = A._moon;
+    if (!m) return false;
+    var l = rotLocal(p[0] - m.nx, p[1] - m.fcy, m.th || 0);
+    return Math.hypot(l[0], l[1] + m.hd) <= 11;
   }
   function schedule() {
     if (raf) return;
@@ -116,13 +131,20 @@ NS.ScopeView = function (opts) {
   }
   cv.addEventListener('pointermove', function (e2) {
     if (!drag) {                                   /* 掴めるところで手の形にする */
-      var S = A._S;
+      var S = A._S, q = toCanvas(e2);
       cv.style.cursor = (S && S.target.kind === 'moon')
-        ? (onFrame(toCanvas(e2)) ? 'move' : 'default') : 'grab';
+        ? (onHandle(q) ? 'crosshair' : (onFrame(q) ? 'move' : 'default')) : 'grab';
       return;
     }
     var p = toCanvas(e2), dx = p[0] - drag.x, dy = p[1] - drag.y;
-    if (drag.kind === 'fov') {
+    if (drag.kind === 'rot') {
+      /* ハンドルがマウスの方を向くような回転角を求める（画面上：北が上・東が左） */
+      var mx = p[0] - drag.cx, my = p[1] - drag.cy;
+      if (Math.hypot(mx, my) > 6) {
+        var a = Math.atan2(-mx, -my) / D2R;
+        A.fovRot = Math.round(((a + 540) % 360 - 180) * 10) / 10;
+      }
+    } else if (drag.kind === 'fov') {
       var m = A._moon;
       var lim = NS.MOON_DIAM_DEG * 1.1;            /* 月から離れすぎないようにする */
       A.fovOff.x = Math.max(-lim, Math.min(lim, drag.ox + dx / m.pxDeg));
@@ -141,6 +163,12 @@ NS.ScopeView = function (opts) {
     var S = A._S; if (!S) return;
     var p = toCanvas(e2);
     if (S.target.kind === 'moon') {
+      if (onHandle(p)) {
+        drag = { kind:'rot', cx:A._moon.nx, cy:A._moon.fcy };
+        A.dragging = 'rot';
+        cv.setPointerCapture(e2.pointerId); e2.preventDefault();
+        return;
+      }
       if (!onFrame(p)) return;
       drag = { kind:'fov', x:p[0], y:p[1], ox:A.fovOff.x, oy:A.fovOff.y };
     } else {
@@ -187,7 +215,7 @@ NS.ScopeView = function (opts) {
 
     if (tg.kind === 'moon') { drawMoon(S); }
     else {
-      var key = [sc.id, S.mode, f(S.ra, 3), f(S.dec, 3), S.exp, S.gain, S.bin, f(S.seeing, 2), f(S.track, 2)].join('|');
+      var key = [sc.id, S.mode, f(S.ra, 3), f(S.dec, 3), S.exp, S.gain, S.bin, f(S.seeing, 2), f(S.track, 2), f(A.fovRot, 1)].join('|');
       if (key !== A._key) { A._key = key; drawField(S, lim); }   /* 裏画面を作り直す */
       ctx.drawImage(bg, 0, 0, W, H);
       drawTarget(S);                                             /* 動くものだけ毎フレーム */
@@ -199,7 +227,9 @@ NS.ScopeView = function (opts) {
   function drawField(S, lim) {
     var sc = S.scope;
     var fx = S.mode === 'wide' ? 85.7 : sc.fovX, fy = S.mode === 'wide' ? 64.3 : sc.fovY;
-    var kx = W / fx, ky = H / fy;
+    /* 回転させるので縦横のスケールは揃える（実際の検出器も画素が正方形で等方） */
+    var kx = Math.min(W / fx, H / fy), ky = kx;
+    var cth = Math.cos(-A.fovRot * D2R), sth = Math.sin(-A.fovRot * D2R);
     var rBase = Math.max(0.7, S.seeing / 3600 * kx * 0.8);
     var sky = NS.unpackSky ? NS.unpackSky() : null;
     var jit = S.track * 0.6;
@@ -212,7 +242,9 @@ NS.ScopeView = function (opts) {
     bctx.fillRect(0, 0, W, H);
 
     function star(dx, dy, mag, bv) {
-      var x = W / 2 - dx * kx, y = H / 2 - dy * ky;     /* 東を左に */
+      /* 東が左・北が上。そのうえでカメラの回転角ぶん回す */
+      var ux = -dx * kx, uy = -dy * ky;
+      var x = W / 2 + ux * cth + uy * sth, y = H / 2 - ux * sth + uy * cth;
       if (x < -8 || x > W + 8 || y < -8 || y > H + 8) return;
       var amp = Math.pow(10, -0.4 * (mag - lim));
       if (amp < 0.015) return;
@@ -239,7 +271,7 @@ NS.ScopeView = function (opts) {
         if (sky.mag[i2] > lim) continue;
         if (sd0 * sky.sinD[i2] + cd0 * sky.cosD[i2] < cosLim - 0.02) continue;   /* まず粗くふるう */
         var p = gnomonic(sky.ra[i2], sky.dec[i2], S.ra, S.dec);
-        if (!p || Math.abs(p[0]) > fx * 0.62 || Math.abs(p[1]) > fy * 0.62) continue;
+        if (!p || Math.hypot(p[0], p[1]) > Math.hypot(fx, fy) * 0.56) continue;
         star(p[0], p[1], sky.mag[i2], sky.bv[i2]);
       }
     }
@@ -283,12 +315,12 @@ NS.ScopeView = function (opts) {
   function drawTarget(S) {
     var sc = S.scope, tg = S.target;
     var fx = S.mode === 'wide' ? 85.7 : sc.fovX, fy = S.mode === 'wide' ? 64.3 : sc.fovY;
-    var kx = W / fx, ky = H / fy;
+    var kx = Math.min(W / fx, H / fy), ky = kx;
     var el2 = (performance.now() - A.t0) / 1000;
     if (tg.kind === 'neb' || tg.kind === 'clus') {
       var rx = tg.sz * kx, ry = tg.sz * ky * 0.72;
       var col = tg.col || '#8FB9E0';
-      ctx.save(); ctx.translate(W / 2, H / 2); ctx.scale(1, ry / rx);
+      ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(-A.fovRot * D2R); ctx.scale(1, ry / rx);
       /* グラデーションは変換後の座標系で作らないと、中心がずれる */
       var gg2 = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
       gg2.addColorStop(0, col + 'b0'); gg2.addColorStop(0.4, col + '4a'); gg2.addColorStop(1, col + '00');
@@ -361,35 +393,50 @@ NS.ScopeView = function (opts) {
     /* 観測視野（カメラが実際に写す範囲）を長方形で示す。既定では夜側の中心に向ける。 */
     var fw = sc.fovX * pxDeg, fh = sc.fovY * pxDeg;
     var nx = CX + (waxing ? -R * 0.42 : R * 0.42);
-    /* 視野が月より狭いときだけ夜側へ寄せる。広いときは月を収めるため中心に置く */
-    if (fw > R * 1.6) nx = CX;
+    /* 視野が月面全体を収められるなら中心に置き、収まらないなら夜側へ寄せる */
+    if (fw >= R * 2 && fh >= R * 2) nx = CX;
     var baseX = nx, baseY = CY;
     nx += A.fovOff.x * pxDeg;                      /* ドラッグ量（度）を px に戻す */
     var fcy = CY + A.fovOff.y * pxDeg;
     A._moon = { CX:CX, CY:CY, R:R, pxDeg:pxDeg, fw:fw, fh:fh,
                 nx:nx, fcy:fcy, baseX:baseX, baseY:baseY, waxing:waxing, fI:fI };
+    var th = A.fovRot;
     ctx.save();
+    ctx.translate(nx, fcy); ctx.rotate(-th * D2R);
     ctx.setLineDash([5, 4]);
     ctx.strokeStyle = A.dragging ? 'rgba(214,64,95,0.95)' : 'rgba(214,64,95,0.72)';
     ctx.lineWidth = A.dragging ? 1.6 : 1.2;
-    ctx.strokeRect(nx - fw / 2, fcy - fh / 2, fw, fh);
+    ctx.strokeRect(-fw / 2, -fh / 2, fw, fh);
     /* 四隅に掴み代を出して、動かせることが分かるようにする */
     ctx.setLineDash([]); ctx.lineWidth = 1.6;
     var cs = 7;
     [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(function (q) {
-      var x0 = nx + q[0] * fw / 2, y0 = fcy + q[1] * fh / 2;
+      var x0 = q[0] * fw / 2, y0 = q[1] * fh / 2;
       ctx.beginPath();
       ctx.moveTo(x0 - q[0] * cs, y0); ctx.lineTo(x0, y0); ctx.lineTo(x0, y0 - q[1] * cs);
       ctx.stroke();
     });
+    /* 回転ハンドル：枠の上に伸ばした棒の先の丸 */
+    var hd = fh / 2 + 18;
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(214,64,95,0.55)';
+    ctx.beginPath(); ctx.moveTo(0, -fh / 2); ctx.lineTo(0, -hd); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, -hd, 5, 0, 7);
+    ctx.fillStyle = A.dragging === 'rot' ? 'rgba(214,64,95,0.95)' : 'rgba(214,64,95,0.35)';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(214,64,95,0.9)'; ctx.lineWidth = 1.2; ctx.stroke();
     ctx.restore();
+    A._moon.th = th; A._moon.hd = hd;
     /* ラベルは長方形の左上、枠の外に出す */
     ctx.font = '10px ui-monospace, monospace'; ctx.fillStyle = 'rgba(232,121,143,0.92)';
     ctx.textAlign = 'left'; ctx.textBaseline = 'bottom';
     var off = (A.fovOff.x || A.fovOff.y)
       ? '   ' + NS.t('中心から') + ' ' + f(A.fovOff.x * 60, 1) + '′ / ' + f(-A.fovOff.y * 60, 1) + '′' : '';
+    if (th) off += '   ' + NS.t('回転') + ' ' + (th > 0 ? '+' : '') + f(th, 1) + '°';
+    /* 回転後の外接矩形の左上に置く。画面の端と上部の文字に重ならないよう内側へ寄せる */
+    var ca = Math.abs(Math.cos(th * D2R)), sa = Math.abs(Math.sin(th * D2R));
+    var bw = (fw * ca + fh * sa) / 2, bh = (fw * sa + fh * ca) / 2;
     ctx.fillText(NS.t('観測視野') + '  ' + f(sc.fovX * 60, 1) + '′ × ' + f(sc.fovY * 60, 1) + '′' + off,
-                 nx - fw / 2, fcy - fh / 2 - 4);
+                 Math.max(18, nx - bw), Math.max(66, fcy - bh - 24));
     ctx.textBaseline = 'bottom'; ctx.fillStyle = 'rgba(170,182,200,0.75)';
     ctx.fillText(NS.t('月齢 ') + f(ph * 29.53, 1) + NS.t('　輝面比 ') + Math.round(fI * 100) + ' %', CX, CY - R - 8);
 
@@ -402,7 +449,9 @@ NS.ScopeView = function (opts) {
       /* 閃光は「視野の内側」かつ「月の夜側」でしか検出できない。両方を満たす点を選ぶ。 */
       var fx2 = nx, fy2 = fcy;
       for (var k = 0; k < 40; k++) {
-        var px2 = nx + (r2() - 0.5) * fw * 0.86, py2 = fcy + (r2() - 0.5) * fh * 0.86;
+        var lx = (r2() - 0.5) * fw * 0.86, ly = (r2() - 0.5) * fh * 0.86;
+        var ct = Math.cos(-A.fovRot * D2R), st2 = Math.sin(-A.fovRot * D2R);
+        var px2 = nx + lx * ct - ly * st2, py2 = fcy + lx * st2 + ly * ct;
         var dx2 = px2 - CX, dy2 = py2 - CY;
         if (dx2 * dx2 + dy2 * dy2 > R * R * 0.88) continue;          /* 月の外 */
         var wHalf = Math.sqrt(Math.max(0, R * R - dy2 * dy2));
@@ -524,6 +573,10 @@ NS.V.telescope = function (root, go, arg) {
   }
   /* 枠を動かしたら、どこを向けたかをログに残す */
   view.onMoved = function (kind) {
+    if (kind === 'rot') {
+      pushLog(NS.t('カメラ回転角を変更：') + (view.fovRot > 0 ? '+' : '') + f(view.fovRot, 1) + '°', 'cmd');
+      redraw(); return;
+    }
     if (kind === 'fov') {
       var o2 = view.fovOff;
       pushLog(NS.t('観測視野を移動：月の中心から ') + f(o2.x * 60, 1) + '′ / ' + f(-o2.y * 60, 1) + '′', 'cmd');
@@ -536,7 +589,7 @@ NS.V.telescope = function (root, go, arg) {
   function setTarget(tg) {
     S.target = tg;
     S.mode = tg.mode;
-    view.fovOff.x = 0; view.fovOff.y = 0;          /* 目標を変えたら視野のずれは戻す */
+    view.fovOff.x = 0; view.fovOff.y = 0; view.fovRot = 0;   /* 目標を変えたら視野のずれ・回転は戻す */
     if (tg.ra != null) { S.ra = tg.ra; S.dec = tg.dec; }
     else { S.ra = 205.0; S.dec = 12.0; }
     if (tg.kind === 'moon') {
@@ -566,6 +619,7 @@ NS.V.telescope = function (root, go, arg) {
       ['光学系', '口径 ' + sc.ap + ' mm・焦点距離 ' + sc.fl + ' mm（F' + sc.fr.toFixed(1) + '）・分解能 ' + sc.res.toFixed(1) + '″'],
       ['カメラ', sc.cam + '　' + sc.px],
       ['指向', 'α ' + f(S.ra, 3) + '°　δ ' + (S.dec >= 0 ? '+' : '') + f(S.dec, 3) + '°'],
+      ['カメラ回転角', (view.fovRot > 0 ? '+' : '') + f(view.fovRot, 1) + '°　<span class="hint">北から東回り。枠の上のハンドルで回せる</span>'],
       ['追尾残差', f(S.track, 2) + ' ″/min　<span class="hint">目標 2″/min 以内</span>'],
       ['シーイング', f(S.seeing, 2) + ' ″　<span class="hint">全天カメラの星像から推定</span>'],
       ['焦点（HFD）', f(S.focus, 2) + ' ″　<span class="hint">気温からモデルで先に動かす</span>'],
@@ -626,7 +680,7 @@ NS.V.telescope = function (root, go, arg) {
   }));
   tsegRef = tseg;
   var viewPanel = panel('リアルタイム画面', {
-    note:'恒星は BSC5 の実データ。それより暗い星・ノイズ・目標天体はデモ用の模擬。赤い破線の枠（観測視野）はドラッグで動かせる' }, [
+    note:'恒星は BSC5 の実データ。それより暗い星・ノイズ・目標天体はデモ用の模擬。赤い破線の枠（観測視野）はドラッグで移動、枠の上のハンドルで回転できる' }, [
     el('div', { class:'specbar' }, [
       el('span', { class:'lbl', text:'表示時刻' }), tseg,
       el('div', { class:'spacer' }),
@@ -696,6 +750,16 @@ NS.V.telescope = function (root, go, arg) {
     numRow('露出 (s)', [['1', 1], ['10', 10], ['60', 60], ['300', 300]], function () { return S.exp; }, function (v) { S.exp = v; pushLog(NS.t('露出を ') + v + NS.t(' 秒に設定'), 'cmd'); }),
     numRow('ゲイン', [['100', 100], ['180', 180], ['300', 300], ['500', 500]], function () { return S.gain; }, function (v) { S.gain = v; pushLog(NS.t('ゲインを ') + v + NS.t(' に設定'), 'cmd'); }),
     numRow('積算', [['1', 1], ['30', 30], ['120', 120], ['600', 600]], function () { return S.frames; }, function (v) { S.frames = v; pushLog(NS.t('積算枚数を ') + v + NS.t(' に設定'), 'cmd'); }),
+    el('div', { class:'ctlrow' }, [
+      el('span', { class:'cl-l', text:'カメラ回転角' }),
+      el('div', { class:'seg' }, [['−15°', -15], ['−5°', -5], ['0°', 0], ['＋5°', 5], ['＋15°', 15]].map(function (v) {
+        return el('button', { text:v[0], onclick:function () {
+          view.fovRot = v[1] === 0 ? 0 : Math.round(((view.fovRot + v[1] + 540) % 360 - 180) * 10) / 10;
+          pushLog(NS.t('カメラ回転角を変更：') + (view.fovRot > 0 ? '+' : '') + f(view.fovRot, 1) + '°', 'cmd');
+          redraw();
+        } });
+      }))
+    ]),
     numRow('ビニング', [['1×1', 1], ['2×2', 2]], function () { return S.bin; }, function (v) { S.bin = v; }),
     numRow('フィルター', [['なし', 'none'], ['L', 'L'], ['Hα', 'Hα'], ['ND', 'ND']], function () { return S.filter; }, function (v) { S.filter = v; }),
     el('div', { class:'split', style:{ marginTop:'8px' } }, [
@@ -707,8 +771,8 @@ NS.V.telescope = function (root, go, arg) {
       el('button', { class:'iconbtn', text:'1 枚 取得', onclick:function () {
         pushLog(NS.t('露光を取得：') + S.exp + ' s × 1・gain ' + S.gain + NS.t('（保存しました）'), 'ok'); } }),
       el('button', { class:'iconbtn', text:'視野を戻す', onclick:function () {
-        view.fovOff.x = 0; view.fovOff.y = 0;
-        pushLog(NS.t('観測視野を既定の位置へ戻した'), 'ok');
+        view.fovOff.x = 0; view.fovOff.y = 0; view.fovRot = 0;
+        pushLog(NS.t('観測視野の位置と回転を既定へ戻した'), 'ok');
         redraw();
       } })
     ])

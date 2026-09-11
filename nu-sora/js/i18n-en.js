@@ -3574,7 +3574,13 @@ var NS_EN = {
 "中心から": "offset",
 "観測視野を移動：月の中心から ": "Field of view moved: from the Moon’s centre ",
 "指向を移動：": "Pointing moved: ",
-"恒星は BSC5 の実データ。それより暗い星・ノイズ・目標天体はデモ用の模擬。赤い破線の枠（観測視野）はドラッグで動かせる": "Stars from the real BSC5 catalogue; fainter stars, noise and the target are simulated for this demo. The red dashed frame (the field of view) can be dragged.",
+"恒星は BSC5 の実データ。それより暗い星・ノイズ・目標天体はデモ用の模擬。赤い破線の枠（観測視野）はドラッグで移動、枠の上のハンドルで回転できる": "Stars from the real BSC5 catalogue; fainter stars, noise and the target are simulated for this demo. The red dashed frame (the field of view) can be dragged to move it, and the handle above the frame rotates it",
 "視野を戻す": "Recentre field",
-"観測視野を既定の位置へ戻した": "Field of view returned to its default position"
+"観測視野の位置と回転を既定へ戻した": "Field of view position and rotation reset to their defaults",
+"回転": "Rotation",
+"カメラ回転角": "Camera rotation",
+"カメラ回転角を変更：": "Camera rotation set: ",
+"北から東回り。枠の上のハンドルで回せる": "North through east; drag the handle above the frame to rotate",
+"violet 系 · 386–422 nm": "violet system · 386–422 nm",
+"γ・γ′ 系 · 515–725 nm": "γ and γ′ systems · 515–725 nm"
 };
