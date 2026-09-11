@@ -498,6 +498,62 @@ NS.V.stations = function (root, go) {
   NS.add(root, el('div', { style:{ marginTop:'14px' } }, pInf));
   strips.forEach(function (S) { S.start(); });
   NS.onLeave(function () { strips.forEach(function (S) { S.stop(); }); });
+
+  /* ---- 複合気象センサー（全 13 局） ---- */
+  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('複合気象センサー（全 13 局）',
+    { note:'Vaisala WXT530 系。気温・湿度・気圧・風向風速・雨量・日射を 1 分値で取得し、WBGT を算出する',
+      tools:NS.refreshTool(function () { NS.rerender(); }) },
+    [el('div', { class:'sngrid' }, NS.sensorCards('met', go)),
+     el('div', { class:'note', text:'地上 1.5 km 以下の風は暗黒飛行（ダークフライト）の風補正にそのまま使われる（G-1）。WBGT は屋上 1 点の値で、校庭内の分布は校舎 3D モデルでダウンスケーリングする（G-6 / DT-3）。' })])));
+
+  /* ---- 夜空輝度計（全 13 局） ---- */
+  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('夜空輝度計（全 13 局）',
+    { note:'Unihedron SQM-LU-DL ＋ 窓付き野外ハウジング。視野 FWHM 約 20°、天頂向き、IR カット',
+      tools:NS.refreshTool(function () { NS.rerender(); }) },
+    [el('div', { class:'sngrid' }, NS.sensorCards('sqm', go)),
+     el('div', { class:'note', text:'昼間・薄明の局は平常値を表示している。全天カメラの恒星測光と相互較正し、人工光・月・雲・衛星コンステレーションの寄与を分離する（G-3 / DT-2）。' })])));
+
+  /* ---- 電波流星受信機（HRO / FFT 画面） ---- */
+  var hroState = { win:600 };
+  var hros = [];
+  var hroGrid = el('div', { class:'hrogrid' }, NS.STATIONS.map(function (st) {
+    var F = NS.HroFft(st, { win:hroState.win });
+    hros.push(F);
+    F.render();
+    var rate = Math.round(NS.hroRate(st, NS.now()));
+    return el('div', { class:'hrocard', onclick:function () { go('station', st.id); }, role:'button', tabindex:'0' }, [
+      el('div', { class:'hro-h' }, [el('b', { text:st.name }), el('span', { class:'sid', text:st.id }),
+        el('div', { class:'spacer' }), el('span', { class:'hint', text:rate + ' echo/h' })]),
+      F.node]);
+  }));
+  var hroSeg = el('div', { class:'seg' }, [['5 分', 300], ['10 分', 600], ['30 分', 1800], ['1 時間', 3600]].map(function (x) {
+    return el('button', { text:x[0], 'aria-pressed':x[1] === hroState.win ? 'true' : 'false', onclick:function (ev) {
+      hroState.win = x[1];
+      Array.prototype.forEach.call(ev.target.parentNode.children, function (c2) { c2.setAttribute('aria-pressed', 'false'); });
+      ev.target.setAttribute('aria-pressed', 'true');
+      hros.forEach(function (F) { F.setWin(x[1]); });
+    } });
+  }));
+  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('電波流星受信機（全 13 局・FFT 画面）',
+    { note:'HRO 方式：53.755 MHz の連続波ビーコンの前方散乱を受信。表示は HROFFT 形式のスペクトログラム（横軸 時刻／縦軸 ビーコンからの周波数差／色 強度）',
+      tools:el('div', { class:'split' }, [hroSeg, NS.refreshTool(function () { hros.forEach(function (F) { F.render(); }); })]) },
+    [hroGrid,
+     el('div', { class:'hrolegend' }, [
+       el('span', null, [el('i', { class:'gradbar', style:{ width:'120px', background:'linear-gradient(90deg,#040610,#0c1c5c,#0a6e96,#14a55a,#d2c828,#eb6e1e,#f53c3c,#fff6ee)' } }), ' 弱 ← 受信強度 → 強']),
+       el('span', { html:'0 Hz の横線＝ビーコンの直接波' }),
+       el('span', { html:'短い輝点＝過疎エコー（暗い流星）' }),
+       el('span', { html:'太い横帯＝過密エコー（明るい流星）' }),
+       el('span', { html:'立ち上がりの周波数降下＝ヘッドエコー' })]),
+     el('div', { class:'note', text:'流星が残すプラズマ柱に電波が前方散乱され、見通し外の局にビーコンが届く。光学が使えない昼間・曇天・満月期でも流星数を数え続けられるため、全天カメラの検出効率の較正と、流星群の活動プロファイルの連続監視に使う。エコー継続時間は流星の明るさとおおむね対応する。' })])));
+  NS.onLeave(function () { hros.forEach(function (F) { F.stop(); }); });
+  hros.forEach(function (F) { F.start(); });
+
+  /* ---- 2 周波 GNSS 受信機（全 13 局） ---- */
+  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('2 周波 GNSS 受信機（全 13 局）',
+    { note:'測地級 2 周波受信機（L1/L2、PPS 出力）。全局の時刻同期と電離圏 TEC を担う',
+      tools:NS.refreshTool(function () { NS.rerender(); }) },
+    [el('div', { class:'sngrid' }, NS.sensorCards('gnss', go)),
+     el('div', { class:'note', text:'PPS 出力は全局共通の時刻基準で、多点三角測量とインフラサウンドの到達時刻差はこの精度に支えられている（同期 < 1 ms）。L1/L2 の搬送波位相差から求める TEC は、電離圏擾乱の検出（G-5 / DT-5）と GNSS 気象学による可降水量の算出に使う。' })])));
 };
 
 /* =========================================================================
