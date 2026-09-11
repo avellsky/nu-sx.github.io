@@ -67,17 +67,18 @@ NS.GD_MODES = [
 ];
 
 /* 観測条件のインターロック（デモ：局の気象・空の明るさから判定する） */
-NS.gdInterlock = function (t) {
-  var st = NS.ST.FNB, w = NS.weather(st, t), sb = NS.skyBrightness(st, t);
+NS.gdInterlock = function (t, station) {
+  var st = station || NS.ST.FNB, w = NS.weather(st, t);
   var items = [
     { key:'rain',  label:'雨量計',        ok:w.rain < 0.2,   val:f(w.rain, 1) + ' mm/h',  lim:'0.2 mm/h 未満' },
     { key:'wind',  label:'風速',          ok:w.wind < 12,    val:f(w.wind, 1) + ' m/s',   lim:'12 m/s 未満' },
     { key:'cloud', label:'雲量（全天カメラ）', ok:w.cloud < 0.5, val:Math.round(w.cloud * 100) + ' %', lim:'50 % 未満' },
     { key:'hum',   label:'湿度',          ok:w.rh < 90,      val:f(w.rh, 0) + ' %',       lim:'90 % 未満' },
-    { key:'sun',   label:'太陽高度',      ok:sb.sunAlt < -6, val:f(sb.sunAlt, 1) + '°',   lim:'−6° 以下（市民薄明より暗い）' }
+    /* 太陽高度は気象オブジェクトが持つ（skyBrightness は薄明のとき mag を返さないだけ） */
+    { key:'sun',   label:'太陽高度',      ok:w.sunAlt < -6,  val:f(w.sunAlt, 1) + '°',    lim:'−6° 以下（市民薄明より暗い）' }
   ];
   var open = items.every(function (x) { return x.ok; });
-  return { items:items, open:open, w:w, sb:sb };
+  return { items:items, open:open, w:w, st:st };
 };
 
 /* 予約キュー（デモ：日付から決まる固定の並び） */
@@ -221,8 +222,10 @@ NS.gundamSection = function (go) {
   out.push(NS.gdTwinPanel(t));
 
   out.push(el('div', { class:'src', html:'諸元と 2018 年ふたご座流星群の観測結果（表 1 – 表 3・フラックス・各指数）は、'
-    + '阿部新助ほか「2018 年ふたご座流星群の月面衝突閃光観測」<i>遊星人</i>（日本惑星科学会誌, 2024）の実測値による。'
-    + 'リモート運用画面・観測予約・デジタルツインの残差はデモ用の模擬値である。' }));
+    + '阿部新助・柳澤正久・小野寺圭祐「ふたご座流星群の月面衝突閃光から探る活動小惑星 Phaethon の cm サイズ粒子」'
+    + '<i>日本惑星科学会誌 遊星人</i> <b>33</b> (3), 262–269 (2024)　'
+    + '<a href="https://doi.org/10.14909/yuseijin.33.3_262" target="_blank" rel="noopener">doi:10.14909/yuseijin.33.3_262</a>　'
+    + 'の実測値による。リモート運用画面・観測予約・デジタルツインの残差はデモ用の模擬値である。' }));
   return out;
 };
 

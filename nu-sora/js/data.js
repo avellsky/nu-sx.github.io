@@ -79,7 +79,7 @@ NS.EQUIPMENT = [
     spec:'OLED 表示・USB 給電・ブラウザで波形と計数を表示。1 分値を常時記録', target:'宇宙線ミューオンの連続計数（気圧効果・フォーブッシュ減少・雷雲ガンマ線）', all:true },
   { key:'draco',  cat:'光学', name:'Draco スマート望遠鏡（特注ハウジング）', model:'DWARFLAB Draco（口径 90 mm・焦点距離 340 mm F3.8／50 MP 1/1.3" ＋ 広角 1/1.55"）',
     spec:'露出 1/10000–300 s, 内蔵ガイド, センサー回転で視野回転を補正, USB3.0 / Ethernet',
-    target:'流星群・突発天体・人工衛星の自動追尾観測と付属校のリモート観測', all:false, at:['FNB','KYM'] },
+    target:'流星群・突発天体・人工衛星の自動追尾観測と付属校のリモート観測（船橋局・郡山局＝工学部 の 2 局）', all:false, at:['FNB','KYM'] },
   { key:'pc',     cat:'基盤', name:'制御PC・電源',           model:'8コア16スレッド / 32 GB / NVMe 2 TB ＋ UPS ＋ 雷サージ対策 ＋ PoEスイッチ',
     spec:'UFOCaptureIP / HD2, GNSS時刻付与, 一次保存', target:'取得・一次処理・伝送', all:true }
 ];

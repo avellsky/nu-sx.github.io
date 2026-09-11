@@ -459,3 +459,24 @@ footer{max-width:1440px;margin:0 auto;padding:22px 18px 44px;border-top:1px soli
 /* ---- 太陽系 3D ---- */
 .ss3d{border-radius:6px;background:linear-gradient(180deg,#0B0E13,#12161D);cursor:grab;margin:0 auto}
 .ss3d:active{cursor:grabbing}
+
+/* ---- リモート望遠鏡 ---- */
+.scopeview{border-radius:6px;background:#0A0D12;display:block;margin:0 auto}
+.ctlrow{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:9px}
+.ctlrow .cl-l{font-size:11.5px;color:var(--muted);min-width:6.4em;letter-spacing:.02em}
+.sel{appearance:none;background:var(--panel2);color:var(--ink);border:1px solid var(--rule2);
+  border-radius:5px;padding:5px 9px;font:inherit;font-size:12px;flex:1;min-width:180px}
+.slewpad{display:grid;grid-template-columns:repeat(3,42px);grid-auto-rows:34px;gap:5px;
+  justify-content:center;margin:4px 0 12px}
+.padb{appearance:none;border:1px solid var(--rule2);background:var(--panel2);color:var(--ink);
+  border-radius:5px;font-size:13px;cursor:pointer;transition:border-color .12s,background .12s}
+.padb:hover{border-color:var(--accent);background:var(--panel)}
+.padb:active{background:var(--accent);color:#fff}
+.padc{display:flex;align-items:center;justify-content:center;font-size:10.5px;color:var(--muted)}
+.cmdlog{font-size:11.5px;max-height:250px;overflow:auto}
+.cmdlog .cl{display:flex;gap:8px;padding:4px 0;border-bottom:1px solid var(--rule);line-height:1.5}
+.cmdlog .cl:last-child{border-bottom:0}
+.cmdlog .ct{font-family:ui-monospace,monospace;font-size:10.5px;color:var(--muted);flex:0 0 auto}
+.cmdlog .cl.ok span:last-child{color:var(--c-ok)}
+.cmdlog .cl.warn span:last-child{color:var(--c-warn)}
+.cmdlog .cl.cmd span:last-child{color:var(--ink2)}

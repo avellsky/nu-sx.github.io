@@ -256,7 +256,7 @@ NS.V.dashboard = function (root, go) {
   NS.add(root, el('div', { class:'grid g-1-2', style:{ marginTop:'14px' } }, [chartPanel, envPanel]));
 
   /* 局別カード */
-  var cards = el('div', { class:'stgrid' }, NS.STATIONS.map(function (st) {
+  var cards = el('div', { class:'stgrid' }, NS.liveOrder().map(function (st) {
     var s2 = NS.stationState(st, NS.now()), sb = NS.skyBrightness(st, NS.now());
     return el('div', { class:'stcard ' + (s2.status === 'ok' ? '' : s2.status), onclick:function () { go('station', st.id); },
       role:'button', tabindex:'0' }, [
@@ -450,7 +450,9 @@ NS.V.stations = function (root, go) {
       return el('div', { class:'eqrow' }, [
         el('span', { class:'ec', text:e.cat }),
         el('div', null, [
-          el('div', { class:'en' }, [e.name, e.all ? null : badge('4 局のみ', 'info')]),
+          el('div', { class:'en' }, [e.name, e.all ? null :
+            el('span', { class:'badge info', title:e.at.map(function (i) { return NS.ST[i].name; }).join('・'),
+              text:e.at.length + ' 局のみ' })]),
           el('div', { class:'ed', text:e.model }),
           el('div', { class:'et', text:e.spec })
         ]),

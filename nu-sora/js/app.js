@@ -8,6 +8,7 @@ var TABS = [
   { id:'dashboard', label:'ダッシュボード',   tag:'OVERVIEW',      icon:'◎', row:0 },
   { id:'map',       label:'観測局マップ',     tag:'NETWORK',       icon:'⊕', row:0 },
   { id:'stations',  label:'観測局・機材',     tag:'PF-1',          icon:'⚙', row:0 },
+  { id:'telescope', label:'リモート望遠鏡',   tag:'PF-1',          icon:'⊙', row:0 },
   { id:'data',      label:'データ・API',      tag:'PF-2',          icon:'⌗', row:0 },
   { id:'about',     label:'このデモについて', tag:'',              icon:'ⓘ', row:0 },
   { id:'fireball',  label:'火球・隕石',       tag:'G-1',           icon:'☄', row:1 },
