@@ -442,3 +442,5 @@ footer{max-width:1440px;margin:0 auto;padding:22px 18px 44px;border-top:1px soli
 .lamp{width:9px;height:9px;border-radius:50%;flex:0 0 auto}
 .lamp.on{background:var(--c-ok);box-shadow:0 0 0 3px rgba(79,160,122,.2)}
 .lamp.off{background:var(--c-warn);box-shadow:0 0 0 3px rgba(222,131,48,.2)}
+
+.sn-rows .tge{color:var(--c-crit);grid-column:1/-1}

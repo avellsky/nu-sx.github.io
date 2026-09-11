@@ -629,6 +629,17 @@ NS.V.stations = function (root, go) {
       tools:NS.refreshTool(function () { NS.rerender(); }) },
     [el('div', { class:'sngrid' }, NS.sensorCards('gnss', go)),
      el('div', { class:'note', text:'PPS 出力は全局共通の時刻基準で、多点三角測量とインフラサウンドの到達時刻差はこの精度に支えられている（同期 < 1 ms）。L1/L2 の搬送波位相差から求める TEC は、電離圏擾乱の検出（G-5 / DT-5）と GNSS 気象学による可降水量の算出に使う。' })])));
+
+  /* ---- 宇宙線計測器（全 14 局） ---- */
+  NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('宇宙線計測器（全 14 局）',
+    { note:'Accel Kitchen 素粒子検出器組み立てキット。プラスチックシンチレータ 5×5×1 cm ＋ SiPM ＋ ESP32。1 分ごとの計数を常時記録',
+      tools:NS.refreshTool(function () { NS.rerender(); }) },
+    [el('div', { class:'sngrid' }, NS.sensorCards('cray', go)),
+     el('div', { class:'note', text:'海面での計数は毎分 30 前後で、気圧が 1 hPa 上がるとおよそ 0.15 % 下がる（気圧効果）。'
+       + 'この観測網は同じ局に気圧計を持っているので、計数をその場で気圧補正でき、残った変動を太陽活動や雷雲の寄与として読める。'
+       + '1 台では統計が足りない変化も、14 局を足し合わせれば見えてくる。' })])));
+
+  NS.add(root, el('div', { style:{ marginTop:'14px' } }, NS.crSection(go)));
 };
 
 /* =========================================================================
@@ -651,6 +662,8 @@ NS.V.station = function (root, go, arg) {
     el('div', { class:'chips', style:{ marginTop:'8px' } },
       [['全天カメラ', 'sky'], ['インフラサウンド', 'inf'], ['気象・WBGT', 'met'], ['夜空輝度', 'sqm'],
        ['電波流星 FFT', 'hro'], ['2 周波 GNSS', 'gnss'], ['微動計', 'seis'], ['機材・実績', 'eq']]
+      .concat([['宇宙線', 'cray']])
+      .concat(st.draco ? [['Draco 望遠鏡', 'draco']] : [])
       .concat(st.id === 'FNB' ? [['ガンダム望遠鏡', 'gundam']] : [])
       .map(function (x) {
         return el('button', { class:'chip', text:x[0], onclick:function () {
@@ -893,6 +906,44 @@ NS.V.station = function (root, go, arg) {
       el('div', { class:'note', text:'付属校拠点では、生徒が自動検出の誤検出（雲・虫・飛行機・人工衛星）を目視で検証する作業を探究学習として組み込む（G-8 / DT-7）。' })
     ])
   ]));
+
+  /* 宇宙線計測器（全局） */
+  if (NS.cosmicRay) {
+    var cr = NS.cosmicRay(st, t), tge = NS.crTGE(st, t);
+    var crPts = [];
+    for (var ci = -180; ci <= 0; ci += 3) crPts.push([ci, NS.cosmicRay(st, t + ci * 60000).cpm]);
+    NS.add(root, el('div', { class:'grid g-2-1', style:{ marginTop:'14px' }, id:'sec-cray' }, [
+      panel('宇宙線計測器', { note:'Accel Kitchen 素粒子検出器組み立てキット · プラスチックシンチレータ 5×5×1 cm ＋ SiPM ＋ ESP32' }, [
+        NS.chart.line({ series:[{ pts:crPts, color:'var(--c-spec)', width:1.2 }], width:660, height:200,
+          xLabel:'現在からの分', yLabel:'計数 cpm', rules:[{ y:cr.mean, color:'var(--accent)', dash:'4 3', label:'期待値' }],
+          xFmt:function (v) { return NS.f(v, 0); }, yFmt:function (v) { return NS.f(v, 0); } }),
+        el('div', { class:'note', text:'計数はポアソン統計に従うため、1 分値は期待値のまわりに ±√N でばらつく。'
+          + 'この装置で読みたいのは 1 分ごとの上下ではなく、長時間平均に残る数 % の変化である。' })
+      ]),
+      panel('計数と補正', { note:NS.f(cr.cpm, 1) + ' cpm（統計誤差 ± ' + NS.f(cr.sigma, 1) + '）' }, [
+        NS.kv([
+          ['1 分あたりの計数', '<b>' + NS.f(cr.cpm, 1) + '</b> cpm'],
+          ['気圧補正後', '<b>' + NS.f(cr.corr, 1) + '</b> cpm'],
+          ['現地気圧（同じ屋上の実測）', NS.f(cr.pSta, 1) + ' hPa（海面補正 ' + NS.f(cr.press, 1) + ' hPa）'],
+          ['気圧効果：天気ぶん', NS.f(cr.baro, 2) + ' %（平年の現地気圧からのずれ。補正で取り除く）'],
+          ['気圧効果：標高ぶん', '＋' + NS.f(cr.alt, 2) + ' %（標高 ' + st.alt + ' m。常に一定なので残す）'],
+          ['地磁気の遮断能', NS.f(cr.rig, 2) + ' GV（北ほど低く、計数は上がる）'],
+          ['太陽活動の寄与', NS.f(cr.solar.total * 100, 2) + ' %'],
+          ['受光面積', '25 cm²（5 × 5 cm）']
+        ], 'wide'),
+        tge ? el('div', { class:'scnbanner', style:{ marginTop:'10px' } }, [
+          el('b', { text:'雷雲ガンマ線（TGE）' }),
+          el('span', { text:'平常比 ＋' + Math.round(tge.amp * 100) + ' %（' + tge.band + '・継続 ' + tge.dur + ' 分）。' + tge.note })
+        ]) : el('div', { class:'note', text:'雷雲ガンマ線は検知していない。雨量 4 mm/h 以上かつ雲量 85 % 超のときに監視状態へ入る。' })
+      ])
+    ]));
+  }
+
+  /* 船橋局・郡山局：Draco スマート望遠鏡 */
+  if (st.draco && NS.dracoSection) {
+    NS.add(root, el('div', { class:'grid', style:{ gap:'14px', marginTop:'14px' }, id:'sec-draco' },
+      NS.dracoSection(st, go)));
+  }
 
   /* 船橋局のみ：月面衝突閃光観測専用望遠鏡「ガンダム望遠鏡」 */
   if (st.id === 'FNB' && NS.gundamSection) {

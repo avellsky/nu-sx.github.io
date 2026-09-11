@@ -8,9 +8,9 @@
    ========================================================================= */
 NS.STATIONS = [
   { id:'FNB', name:'船橋局',   en:'Funabashi',  kind:'u', pref:'千葉県',  city:'船橋市',
-    lat:35.7265, lon:140.0530, alt:70,  swir:true,  host:'理工学部（船橋）・薬学部・短期大学部・日本大学習志野高等学校', role:'ハブ局' },
+    lat:35.7265, lon:140.0530, alt:70,  swir:true, draco:true,  host:'理工学部（船橋）・薬学部・短期大学部・日本大学習志野高等学校', role:'ハブ局' },
   { id:'KYM', name:'郡山局',   en:'Koriyama',   kind:'u', pref:'福島県',  city:'郡山市',
-    lat:37.3900, lon:140.3830, alt:280, swir:true,  host:'工学部・日本大学東北高等学校', role:'東北拠点' },
+    lat:37.3900, lon:140.3830, alt:280, swir:true, draco:true,  host:'工学部・日本大学東北高等学校', role:'東北拠点' },
   { id:'SNN', name:'湘南局',   en:'Shonan',     kind:'u', pref:'神奈川県',city:'藤沢市',
     lat:35.3750, lon:139.4700, alt:65,  swir:true,  host:'生物資源科学部・日本大学藤沢高等学校・中学校・小学校', role:'南関東' },
   { id:'MSM', name:'三島局',   en:'Mishima',    kind:'u', pref:'静岡県',  city:'三島市',
@@ -75,6 +75,11 @@ NS.EQUIPMENT = [
     spec:'時刻同期 < 1 ms, 30 s TEC', target:'全局時刻同期・電離圏TEC', all:true },
   { key:'seis',   cat:'構造', name:'微動計',                 model:'3成分加速度計（常時微動）',
     spec:'100 Hz サンプリング', target:'校舎固有振動数・地震後の使用可否判定', all:true },
+  { key:'cray',   cat:'宇宙線', name:'宇宙線計測器（素粒子検出器）', model:'Accel Kitchen 素粒子検出器組み立てキット（プラスチックシンチレータ 5×5×1 cm ＋ SiPM ＋ ESP32）',
+    spec:'OLED 表示・USB 給電・ブラウザで波形と計数を表示。1 分値を常時記録', target:'宇宙線ミューオンの連続計数（気圧効果・フォーブッシュ減少・雷雲ガンマ線）', all:true },
+  { key:'draco',  cat:'光学', name:'Draco スマート望遠鏡（特注ハウジング）', model:'DWARFLAB Draco（口径 90 mm・焦点距離 340 mm F3.8／50 MP 1/1.3" ＋ 広角 1/1.55"）',
+    spec:'露出 1/10000–300 s, 内蔵ガイド, センサー回転で視野回転を補正, USB3.0 / Ethernet',
+    target:'流星群・突発天体・人工衛星の自動追尾観測と付属校のリモート観測', all:false, at:['FNB','KYM'] },
   { key:'pc',     cat:'基盤', name:'制御PC・電源',           model:'8コア16スレッド / 32 GB / NVMe 2 TB ＋ UPS ＋ 雷サージ対策 ＋ PoEスイッチ',
     spec:'UFOCaptureIP / HD2, GNSS時刻付与, 一次保存', target:'取得・一次処理・伝送', all:true }
 ];

@@ -160,6 +160,105 @@ NS.gnssState = function (st, t) {
 };
 
 /* ===================== まとめ：各センサーのカード群 ===================== */
+/* =========================================================================
+   宇宙線計測（Accel Kitchen 素粒子検出器組み立てキット）
+   プラスチックシンチレータ 5×5×1 cm ＋ SiPM ＋ ESP32。海面での計数は
+   おおむね毎分 30 前後で、気圧・気温・太陽活動でわずかに上下する。
+   その「わずかな上下」を全 14 局で同時に測ることが、この装置の狙いである。
+   ========================================================================= */
+NS.CR = {
+  area:25,            /* 受光面積 cm²（5 × 5 cm） */
+  base:34.0,          /* 海面・1013.25 hPa での計数 cpm（ミューオン ＋ 環境ガンマ） */
+  beta:-0.0015,       /* 気圧効果 −0.15 %/hPa（ミューオンの代表値） */
+  alphaT:-0.0009,     /* 気温効果 −0.09 %/K（成層圏の実効気温に対する） */
+  hAtm:8434           /* 気圧の尺度高さ m。標高による増加は気圧効果そのものとして扱う */
+};
+/* 地磁気の遮断能（vertical cutoff rigidity）。日本では南ほど高く、北ほど低い。
+   遮断能が高いほど届く一次宇宙線が減るので、計数はわずかに下がる。 */
+NS.crRigidity = function (lat) { return 11.9 - (lat - 31.9) * 0.155; };
+
+/* 太陽活動に伴う変動。フォーブッシュ減少（CME の通過で数 % 下がり、数日かけて戻る）を含む。 */
+NS.crSolar = function (t) {
+  var day = t / 86400e3;
+  var slow = 0.006 * Math.sin(day / 58.0);            /* 27 日周期（太陽自転）ほかの緩い変動 */
+  var onset = NS.CR_FB_T || (NS.CR_FB_T = NS.now() - 21.3 * 86400e3);
+  var dt = (t - onset) / 86400e3, fb = 0;
+  if (dt > 0) fb = -0.058 * Math.exp(-dt / 2.6) * (1 - Math.exp(-dt / 0.18));
+  return { slow:slow, forbush:fb, total:slow + fb };
+};
+
+/* ある局・ある時刻の期待計数（雑音なし）。標高と天気の効果はどちらも「頭上の大気の量」なので、
+   現地気圧ひとつにまとめて扱う。分けて表示するときだけ、標高ぶんと天気ぶんに切り分ける。 */
+NS.crMean = function (st, t) {
+  var w = NS.weather(st, t);
+  var k = Math.exp(-st.alt / NS.CR.hAtm);
+  var pRef = 1013.25 * k;                             /* この局の平年の現地気圧 */
+  var pSta = w.press * k;                             /* いまの現地気圧 */
+  var baroAlt = Math.exp(NS.CR.beta * (pRef - 1013.25));   /* 標高ぶん（常に一定） */
+  var baroWx  = Math.exp(NS.CR.beta * (pSta - pRef));      /* 天気による日々の変動 */
+  var rig = 1 - (NS.crRigidity(st.lat) - 11.0) * 0.021;
+  var tEff = -55 + (w.temp - 15) * 0.35;              /* 成層圏の実効気温（地上気温と緩く連動） */
+  var temp = Math.exp(NS.CR.alphaT * (tEff + 55));
+  var sol = NS.crSolar(t);
+  var diurnal = 1 + 0.004 * Math.sin((t / 3600e3 % 24 - 15) / 24 * 2 * Math.PI);
+  return { mean:NS.CR.base * baroAlt * baroWx * rig * temp * diurnal * (1 + sol.total),
+           baroAlt:baroAlt, baroWx:baroWx, pSta:pSta, pRef:pRef, press:w.press,
+           rig:NS.crRigidity(st.lat), temp:temp, solar:sol };
+};
+
+/* 1 分値。計数はポアソン統計に従うので、期待値のまわりに ±√N でばらつく。 */
+NS.cosmicRay = function (st, t) {
+  var m = NS.crMean(st, t);
+  var r = NS.rng(st.id + '|cr|' + Math.floor(t / 60000));
+  var obs = Math.max(0, m.mean + r.norm(0, Math.sqrt(m.mean)));
+  return { cpm:obs, mean:m.mean, press:m.press, pSta:m.pSta,
+           baro:(m.baroWx - 1) * 100, alt:(m.baroAlt - 1) * 100,
+           rig:m.rig, solar:m.solar, sigma:Math.sqrt(m.mean),
+           /* 天気による気圧変動ぶんだけを取り除く。局ごとの標高差はそのまま残す */
+           corr:obs / m.baroWx };
+};
+
+/* 全 14 局を合計した系列。1 点あたり avgMin 分ぶんを平均するので、
+   統計誤差は √(計数 / 分数) まで下がる。1 台では埋もれる数 % がここで見えてくる。 */
+NS.crNetSeries = function (days, stepH) {
+  var t1 = NS.now(), out = [];
+  var avgMin = stepH * 60;
+  for (var h = -days * 24; h <= 0; h += stepH) {
+    var t = t1 + h * 3600e3, mRaw = 0, mCor = 0, pSum = 0;
+    NS.STATIONS.forEach(function (st) {
+      var m = NS.crMean(st, t);
+      mRaw += m.mean; mCor += m.mean / m.baroWx; pSum += m.press;
+    });
+    var r = NS.rng('crnet' + h);
+    var sd = Math.sqrt(mRaw / avgMin);                /* 合計計数の統計誤差 */
+    var n = r.norm(0, sd);
+    out.push({ t:t, h:h, raw:mRaw + n, corr:mCor + n / 1.0, press:pSum / NS.STATIONS.length });
+  }
+  return out;
+};
+
+/* 1 局の系列（比較用） */
+NS.crSeries = function (st, days, stepH) {
+  var t1 = NS.now(), out = [], avgMin = stepH * 60;
+  for (var h = -days * 24; h <= 0; h += stepH) {
+    var t = t1 + h * 3600e3, m = NS.crMean(st, t), r = NS.rng(st.id + '|crs|' + h);
+    var n = r.norm(0, Math.sqrt(m.mean / avgMin));
+    out.push({ t:t, h:h, raw:m.mean + n, corr:m.mean / m.baroWx + n });
+  }
+  return out;
+};
+
+/* 雷雲に伴う地上放射線増加（TGE）。雷放電のインフラサウンド検知と同じ時間帯に現れる。 */
+NS.crTGE = function (st, t) {
+  var w = NS.weather(st, t);
+  var active = w.rain > 4 && w.cloud > 0.85;
+  if (!active) return null;
+  var r = NS.rng(st.id + '|tge|' + Math.floor(t / 600000));
+  var amp = 0.08 + r() * 0.42;                        /* 平常比 ＋8 〜 50 % */
+  return { amp:amp, band:'0.2 – 10 MeV', dur:Math.round(3 + r() * 14),
+           note:'雷雲の電場で加速された電子が制動放射を出す現象。雷放電の直前に増加し、放電と同時に止まることが多い' };
+};
+
 NS.sensorCards = function (kind, go) {
   var t = NS.now();
   return NS.liveOrder().map(function (st) {
@@ -183,6 +282,26 @@ NS.sensorCards = function (kind, go) {
           NS.el('span', { html:'WBGT <b style="color:' + wl.color + '">' + NS.f(w.wbgt, 1) + '</b> ℃' }),
           NS.el('span', { html:'雲量 <b>' + Math.round(w.cloud * 100) + '</b> %' })]),
         NS.el('div', { class:'sn-foot' }, [NS.el('span', { class:'hint', text:'気温 24 時間' }), NS.chart.spark(spark, { color:'var(--c-warn)', width:96, height:20 })])
+      ]);
+    } else if (kind === 'cray') {
+      var cr = NS.cosmicRay(st, t), tge = NS.crTGE(st, t);
+      var sp = [];
+      for (var m = -60; m <= 0; m++) sp.push(NS.cosmicRay(st, t + m * 60000).cpm);
+      NS.add(head, NS.el('span', { class:'hint', text:s2.sub.filter(function (x) { return x.key === 'cray'; })[0].ok ? '正常' : '障害' }));
+      NS.add(card, [
+        NS.el('div', { class:'sn-big' }, [NS.f(cr.cpm, 1), NS.el('small', { text:'cpm' }),
+          NS.el('span', { class:'sn-sub', text:'± ' + NS.f(cr.sigma, 1) + '（統計誤差）' })]),
+        NS.el('div', { class:'sn-rows' }, [
+          NS.el('span', { html:'気圧補正後 <b>' + NS.f(cr.corr, 1) + '</b> cpm' }),
+          NS.el('span', { html:'現地気圧 <b>' + NS.f(cr.pSta, 1) + '</b> hPa' }),
+          NS.el('span', { html:'天気ぶん <b>' + NS.f(cr.baro, 2) + '</b> %' }),
+          NS.el('span', { html:'標高ぶん <b>＋' + NS.f(cr.alt, 2) + '</b> %' }),
+          NS.el('span', { html:'遮断能 <b>' + NS.f(cr.rig, 2) + '</b> GV' }),
+          NS.el('span', { html:'太陽成分 <b>' + NS.f(cr.solar.total * 100, 2) + '</b> %' })]),
+        tge ? NS.el('div', { class:'sn-rows' }, NS.el('span', { class:'tge',
+          html:'雷雲ガンマ線 <b>＋' + Math.round(tge.amp * 100) + ' %</b>（' + tge.band + '）' })) : null,
+        NS.el('div', { class:'sn-foot' }, [NS.el('span', { class:'hint', text:'計数 60 分' }),
+          NS.chart.spark(sp, { color:'var(--c-spec)', width:96, height:20 })])
       ]);
     } else if (kind === 'sqm') {
       var sb = NS.skyBrightness(st, t), mag = sb.mag == null ? st.sqm : sb.mag;
