@@ -140,13 +140,16 @@ NS.WorldMap = function (opts) {
   NS.add(svg, [s('defs', {}, clip), world, copy]);
 
   /* 経緯線 */
+  var gridTxt = [];
   for (var la = -60; la <= 60; la += 30) {
     NS.add(gGrid, s('line', { x1:0, x2:MW, y1:my(la), y2:my(la), class:'gl' }));
-    NS.add(gGrid, s('text', { x:4, y:my(la) - 3, class:'gt', text:(la > 0 ? '+' : '') + la + '°' }));
+    var tla = s('text', { x:4, y:my(la) - 3, class:'gt', text:(la > 0 ? '+' : '') + la + '°' });
+    NS.add(gGrid, tla); gridTxt.push({ el:tla, fs:9 });
   }
   for (var lo = -150; lo <= 150; lo += 30) {
     NS.add(gGrid, s('line', { x1:mx(lo), x2:mx(lo), y1:0, y2:MH, class:'gl' }));
-    NS.add(gGrid, s('text', { x:mx(lo) + 3, y:MH - 5, class:'gt', text:lo + '°' }));
+    var tlo = s('text', { x:mx(lo) + 3, y:MH - 5, class:'gt', text:lo + '°' });
+    NS.add(gGrid, tlo); gridTxt.push({ el:tlo, fs:9 });
   }
   NS.add(gGrid, s('line', { x1:0, x2:MW, y1:my(0), y2:my(0), class:'gl eq' }));
 
@@ -171,7 +174,15 @@ NS.WorldMap = function (opts) {
   var M = { node:el('div', { class:'wmapwrap' }, svg), svg:svg, ov:gOv, W:MW, H:MH };
 
   /* --- 視野（東西の移動と拡大縮小） ---------------------------------- */
-  var V = { x:0, y:0, w:MW, z:1 }, scal = [];
+  /* 拡大しても印と字の大きさは画面上で一定に保つ。
+     scal は「画面上の大きさを保つもの」、deta は「ある倍率から出すもの」。 */
+  var V = { x:0, y:0, w:MW, z:1 }, scal = [], deta = [];
+  function fit(o, z) {
+    if (o.r != null) o.el.setAttribute('r', (o.r / z).toFixed(2));
+    if (o.fs != null) o.el.style.fontSize = (o.fs / z).toFixed(2) + 'px';
+    if (o.dx != null) o.el.setAttribute('x', (o.x0 + o.dx / z).toFixed(2));
+    if (o.dy != null) o.el.setAttribute('y', (o.y0 + o.dy / z).toFixed(2));
+  }
   function apply() {
     var h = V.w * MH / MW;
     V.x = ((V.x % MW) + MW) % MW;                    /* 東西は巻き戻して連続に */
@@ -180,19 +191,27 @@ NS.WorldMap = function (opts) {
     var z = MW / V.w;
     if (z !== V.z) {
       V.z = z;
-      scal.forEach(function (o) {
-        if (o.r != null) o.el.setAttribute('r', (o.r / z).toFixed(2));
-        if (o.fs != null) o.el.setAttribute('font-size', (o.fs / z).toFixed(2));
-        if (o.dx != null) o.el.setAttribute('x', (o.x0 + o.dx / z).toFixed(2));
+      scal.forEach(function (o) { fit(o, z); });
+      gridTxt.forEach(function (o) { fit(o, z); });
+      /* 名前は重なったら落とす（近い局どうしは、さらに寄れば出てくる） */
+      var kept = [];
+      deta.forEach(function (o) {
+        var vis = z >= o.min;
+        if (vis && o.dc) {
+          for (var i = 0; i < kept.length; i++) {
+            if (Math.abs(kept[i][0] - o.x) * z < 42 && Math.abs(kept[i][1] - o.y) * z < 10) { vis = false; break; }
+          }
+          if (vis) kept.push([o.x, o.y]);
+        }
+        o.el.style.display = vis ? '' : 'none';
       });
-      gGrid.setAttribute('font-size', (10 / z).toFixed(2));
     }
   }
   M.view = V;
   M.reset = function () { V.x = 0; V.y = 0; V.w = MW; apply(); };
   /* 経度 lon を中心に、倍率 z で寄る */
   M.focus = function (lon, lat, z) {
-    V.w = MW / Math.max(1, Math.min(12, z));
+    V.w = MW / Math.max(1, Math.min(24, z));
     var h = V.w * MH / MW;
     V.x = mx(lon) - V.w / 2; V.y = my(lat) - h / 2;
     apply();
@@ -224,7 +243,7 @@ NS.WorldMap = function (opts) {
   svg.addEventListener('wheel', function (ev) {
     ev.preventDefault();
     var p = userPos(ev), h0 = V.w * MH / MW;
-    var z = Math.max(1, Math.min(12, (MW / V.w) * Math.exp(-ev.deltaY * 0.0016)));
+    var z = Math.max(1, Math.min(24, (MW / V.w) * Math.exp(-ev.deltaY * 0.0016)));
     var w1 = MW / z, h1 = w1 * MH / MW;
     V.x = p[0] - (p[0] - V.x) * (w1 / V.w);
     V.y = p[1] - (p[1] - V.y) * (h1 / h0);
@@ -233,7 +252,7 @@ NS.WorldMap = function (opts) {
   }, { passive:false });
 
   /* --- 重ね描き ------------------------------------------------------ */
-  M.clear = function () { NS.clear(gOv); scal = []; };
+  M.clear = function () { NS.clear(gOv); scal = []; deta = []; };
   M.pt = function (lon, lat) { return NS.worldXY(lon, lat); };
   /* 日付変更線をまたぐところで折れ線を切る */
   M.track = function (pts, attrs) {
@@ -256,17 +275,68 @@ NS.WorldMap = function (opts) {
   M.mark = function (lon, lat, attrs) {
     var q = NS.worldXY(lon, lat);
     var r0 = (attrs && attrs.r) || 4;
-    var c = NS.add(gOv, s('circle', Object.assign({}, attrs, { cx:q[0], cy:q[1], r:r0 / V.z,
-      'vector-effect':'non-scaling-stroke' })));
+    /* NS.add は親を返すので、要素を作ってから入れる */
+    var c = s('circle', Object.assign({}, attrs, { cx:q[0], cy:q[1], r:r0 / V.z,
+      'vector-effect':'non-scaling-stroke' }));
+    NS.add(gOv, c);
     scal.push({ el:c, r:r0 });
     return c;
   };
   M.label = function (lon, lat, text, attrs) {
     var q = NS.worldXY(lon, lat);
-    var t = NS.add(gOv, s('text', Object.assign({ x:q[0] + 7 / V.z, y:q[1] + 3.5, class:'w-lbl', text:text,
-      'font-size':(11 / V.z).toFixed(2) }, attrs)));
+    var t = s('text', Object.assign({ x:q[0] + 7 / V.z, y:q[1] + 3.5, class:'w-lbl', text:text }, attrs));
+    t.style.fontSize = (11 / V.z).toFixed(2) + 'px';
+    NS.add(gOv, t);
     scal.push({ el:t, fs:11, dx:7, x0:q[0] });
     return t;
+  };
+
+  /* 地表の円（中心から km 単位の半径。大円に沿って点を取る） */
+  function circlePts(lon, lat, km, n) {
+    var out = [], d = km / 6371.0, b = lat * D2R, l = lon * D2R;
+    for (var i = 0; i <= n; i++) {
+      var az = i / n * 2 * Math.PI;
+      var sb = Math.sin(b) * Math.cos(d) + Math.cos(b) * Math.sin(d) * Math.cos(az);
+      var b2 = Math.asin(Math.max(-1, Math.min(1, sb)));
+      var l2 = l + Math.atan2(Math.sin(az) * Math.sin(d) * Math.cos(b), Math.cos(d) - Math.sin(b) * sb);
+      out.push([l2 / D2R, b2 / D2R]);
+    }
+    return out;
+  }
+
+  /* 観測局。倍率に応じて見せる情報を増やす：
+     点 → （1.8 倍）名前 → （3.5 倍）視野円（高度 100 km を仰角 30° 以上で見込める範囲）。 */
+  M.station = function (lon, lat, name, opts) {
+    opts = opts || {};
+    var q = NS.worldXY(lon, lat), col = opts.color || 'var(--c-s)';
+    var g = s('g', { class:'w-st' });
+    if (opts.fov) {
+      var pts = circlePts(lon, lat, opts.fov, 64), d = '';
+      for (var i = 0; i < pts.length; i++) {
+        var p = NS.worldXY(pts[i][0], pts[i][1]);
+        d += (i ? 'L' : 'M') + p[0].toFixed(2) + ' ' + p[1].toFixed(2);
+      }
+      var fov = s('path', { d:d + 'Z', fill:col, 'fill-opacity':0.05, stroke:col,
+        'stroke-opacity':0.5, 'stroke-dasharray':'3 3', 'vector-effect':'non-scaling-stroke' });
+      fov.style.display = 'none';
+      NS.add(g, fov);
+      deta.push({ el:fov, min:3.5 });
+    }
+    var ring = s('circle', { cx:q[0], cy:q[1], r:3.2 / V.z, fill:'none', stroke:col,
+      'stroke-opacity':0.95, 'vector-effect':'non-scaling-stroke' });
+    var core = s('circle', { cx:q[0], cy:q[1], r:1.1 / V.z, fill:col });
+    NS.add(g, [ring, core]);
+    scal.push({ el:ring, r:3.2 }); scal.push({ el:core, r:1.1 });
+    if (name) {
+      var t = s('text', { x:q[0] + 5 / V.z, y:q[1] - 4 / V.z, class:'w-lbl', text:name, fill:col });
+      t.style.fontSize = (9 / V.z).toFixed(2) + 'px';
+      t.style.display = 'none';
+      NS.add(g, t);
+      scal.push({ el:t, fs:9, dx:5, x0:q[0], dy:-4, y0:q[1] });
+      deta.push({ el:t, min:1.8, dc:true, x:q[0], y:q[1] });
+    }
+    NS.add(gOv, g);
+    return g;
   };
   apply();
   return M;
@@ -317,8 +387,9 @@ NS.debrisTrackPanel = function (e, go) {
       opacity:rank === 0 ? 1 : 0.32 });
   });
   /* 観測点・観測局 */
+  var fovKm = NS.groundRadius ? NS.groundRadius(100, 30) : 173;
   NS.STATIONS.forEach(function (st) {
-    M.mark(st.lon, st.lat, { r:2.2, fill:'var(--c-s)', 'fill-opacity':0.9 });
+    M.station(st.lon, st.lat, st.name, { fov:fovKm });
   });
   M.track([e.begin, e.end], { stroke:'var(--c-crit)', 'stroke-width':3.4 });
   M.mark(lon, lat, { r:5, fill:'none', stroke:'var(--c-crit)', 'stroke-width':2 });
