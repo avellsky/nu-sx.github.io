@@ -69,6 +69,31 @@ NS.SCOPE_TARGETS = [
   { id:'geo',    name:'静止衛星帯（東経 110°）', kind:'geo', mode:'debris', ra:196.0, dec:-6.4, mag:12.1 }
 ];
 
+/* ---------------- 目標天体の実写（DSS2） ----------------
+   NASA/GSFC SkyView から取り出した Digitized Sky Survey 2 の合成画像。
+   向きは北が上・東が左で、観測画面と同じ。画角と視野中心を持たせてあるので、
+   鏡筒を変えても、指向をずらしても、実際の見かけの大きさで貼れる。 */
+var SKY_BASE = (function () {
+  var sc = document.currentScript && document.currentScript.src;
+  return sc ? sc.replace(/js\/telescope\.js.*$/, '') : '';
+})();
+NS.SKY_PHOTOS = {
+  m42:{ file:'m42.jpg', ra:83.822, dec:-5.391,  w:1.40, h:1.40 },
+  m31:{ file:'m31.jpg', ra:10.684, dec:41.035, w:3.60, h:3.132 },
+  m45:{ file:'m45.jpg', ra:56.750, dec:24.117, w:2.60, h:2.60 }
+};
+/* 画像は使うときに読み、届いたら cb で描き直してもらう */
+NS.skyPhoto = function (id, cb) {
+  var p = NS.SKY_PHOTOS[id];
+  if (!p) return null;
+  if (p.img) return p.ok ? p.img : null;
+  p.img = new Image();
+  p.img.onload = function () { p.ok = true; if (cb) cb(); };
+  p.img.onerror = function () { p.ok = false; };
+  p.img.src = SKY_BASE + 'assets/sky/' + p.file;
+  return null;
+};
+
 /* ---------------- 視野の描画 ---------------- */
 /* 接平面投影。中心 (ra0, dec0) から見た (ra, dec) の視野内座標を度で返す。 */
 function gnomonic(ra, dec, ra0, dec0) {
@@ -230,7 +255,8 @@ NS.ScopeView = function (opts) {
 
     if (tg.kind === 'moon') { drawMoon(S); }
     else {
-      var key = [sc.id, S.mode, f(S.ra, 3), f(S.dec, 3), S.exp, S.gain, S.bin, f(S.seeing, 2), f(S.track, 2), f(A.fovRot, 1)].join('|');
+      var key = [sc.id, S.mode, f(S.ra, 3), f(S.dec, 3), S.exp, S.gain, S.bin, f(S.seeing, 2), f(S.track, 2),
+                 f(A.fovRot, 1), NS.skyPhoto(tg.id) ? 'p' : '-'].join('|');
       if (key !== A._key) { A._key = key; drawField(S, lim); }   /* 裏画面を作り直す */
       ctx.drawImage(bg, 0, 0, W, H);
       drawTarget(S);                                             /* 動くものだけ毎フレーム */
@@ -255,6 +281,25 @@ NS.ScopeView = function (opts) {
     bctx.clearRect(0, 0, W, H);
     bctx.fillStyle = 'rgb(' + Math.round(6 + lum * 24) + ',' + Math.round(8 + lum * 24) + ',' + Math.round(14 + lum * 28) + ')';
     bctx.fillRect(0, 0, W, H);
+
+    /* 目標天体の実写（DSS2）。恒星より先に敷いて、この上に星像とノイズを乗せる。 */
+    var tgt = S.target, photo = (tgt.kind === 'neb' || tgt.kind === 'clus')
+      ? NS.skyPhoto(tgt.id, function () { A._key = null; if (A._S) A.draw(A._S); }) : null;
+    if (photo) {
+      var P = NS.SKY_PHOTOS[tgt.id], gp = gnomonic(P.ra, P.dec, S.ra, S.dec);
+      if (gp) {
+        var upx = -gp[0] * kx, upy = -gp[1] * ky;
+        var ppx = W / 2 + upx * cth + upy * sth, ppy = H / 2 - upx * sth + upy * cth;
+        /* 露出とゲインで淡いところの出かたが変わる */
+        var br = 0.62 + 0.24 * Math.log(S.exp / 10) / Math.LN10 + 0.24 * Math.log(S.gain / 180) / Math.LN10;
+        bctx.save();
+        bctx.translate(ppx, ppy); bctx.rotate(-A.fovRot * D2R);
+        bctx.globalCompositeOperation = 'lighter';
+        bctx.globalAlpha = Math.max(0.2, Math.min(1, br));
+        bctx.drawImage(photo, -P.w * kx / 2, -P.h * kx / 2, P.w * kx, P.h * kx);
+        bctx.restore();
+      }
+    }
 
     function star(dx, dy, mag, bv) {
       /* 東が左・北が上。そのうえでカメラの回転角ぶん回す */
@@ -290,9 +335,9 @@ NS.ScopeView = function (opts) {
         star(p[0], p[1], sky.mag[i2], sky.bv[i2]);
       }
     }
-    /* 星表より暗い星を補う */
+    /* 星表より暗い星を補う（実写を貼ったときは、写真に写っている星と二重になるので撒かない） */
     /* 暗い星は K・M 型（B−V 0.8–1.6 の橙〜赤）が多数を占めるので、その向きに寄せる */
-    fieldStars(S.ra, S.dec, fx, fy, lim).forEach(function (s2) {
+    if (!photo) fieldStars(S.ra, S.dec, fx, fy, lim).forEach(function (s2) {
       star(s2[0], s2[1], s2[2], 0.15 + Math.pow(s2[3], 0.65) * 1.45);
     });
     /* ノイズ。点を何千個も打つと重いので、小さなタイルを 1 枚作って敷き詰める。 */
@@ -333,13 +378,16 @@ NS.ScopeView = function (opts) {
     var kx = Math.min(W / fx, H / fy), ky = kx;
     var el2 = (performance.now() - A.t0) / 1000;
     if (tg.kind === 'neb' || tg.kind === 'clus') {
-      var rx = tg.sz * kx, ry = tg.sz * ky * 0.72;
-      var col = tg.col || '#8FB9E0';
-      ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(-A.fovRot * D2R); ctx.scale(1, ry / rx);
-      /* グラデーションは変換後の座標系で作らないと、中心がずれる */
-      var gg2 = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
-      gg2.addColorStop(0, col + 'b0'); gg2.addColorStop(0.4, col + '4a'); gg2.addColorStop(1, col + '00');
-      ctx.fillStyle = gg2; ctx.beginPath(); ctx.arc(0, 0, rx, 0, 7); ctx.fill(); ctx.restore();
+      /* 実写（DSS2）は裏画面に貼ってあるので、ここでは代替のぼかしだけを描く */
+      if (!NS.skyPhoto(tg.id)) {
+        var rx = tg.sz * kx, ry = tg.sz * ky * 0.72;
+        var col = tg.col || '#8FB9E0';
+        ctx.save(); ctx.translate(W / 2, H / 2); ctx.rotate(-A.fovRot * D2R); ctx.scale(1, ry / rx);
+        /* グラデーションは変換後の座標系で作らないと、中心がずれる */
+        var gg2 = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+        gg2.addColorStop(0, col + 'b0'); gg2.addColorStop(0.4, col + '4a'); gg2.addColorStop(1, col + '00');
+        ctx.fillStyle = gg2; ctx.beginPath(); ctx.arc(0, 0, rx, 0, 7); ctx.fill(); ctx.restore();
+      }
     } else if (tg.kind === 'ast') {
       var mx = W / 2 + Math.cos(el2 * 0.18) * 22, my = H / 2 + Math.sin(el2 * 0.18) * 9;
       ctx.beginPath(); ctx.arc(mx, my, 2.6, 0, 7); ctx.fillStyle = '#F2C14E'; ctx.fill();
@@ -703,7 +751,7 @@ NS.V.telescope = function (root, go, arg) {
   }));
   tsegRef = tseg;
   var viewPanel = panel('リアルタイム画面', {
-    note:'恒星は BSC5 の実データ。それより暗い星・ノイズ・目標天体はデモ用の模擬。赤い破線の枠（観測視野）はドラッグで移動、枠の上のハンドルで回転できる' }, [
+    note:'恒星は BSC5、メシエ天体は DSS2 の実写、月面は LRO の実データ。それより暗い星とノイズはデモ用の模擬。赤い破線の枠（観測視野）はドラッグで移動、枠の上のハンドルで回転できる' }, [
     el('div', { class:'specbar' }, [
       el('span', { class:'lbl', text:'表示時刻' }), tseg,
       el('div', { class:'spacer' }),
@@ -726,7 +774,11 @@ NS.V.telescope = function (root, go, arg) {
       + '太陽光の当たり方は Lommel–Seeliger の反射則 I ∝ μ₀/(μ₀+μ) で求め、地形の斜面ぶん入射角を動かすので、'
       + '明暗境界に近いほどクレーターの影が長く伸びる。夜側は地球照で、海がうっすら見える明るさに合わせてある'
       + '（月面衝突閃光を狙う露出）。地図は NASA/GSFC Scientific Visualization Studio「CGI Moon Kit」による'
-      + '（パブリックドメイン）。' })]);
+      + '（パブリックドメイン）。'
+      + 'メシエ天体は NASA/GSFC SkyView から取り出した Digitized Sky Survey 2（DSS2）の実写で、'
+      + 'IR・Red・Blue の 3 板を背景を平坦化して合成し、視野中心と画角にあわせて貼っている。'
+      + 'DSS は Space Telescope Science Institute が米国政府交付金 NAG W-2166 により作成したもので、'
+      + '原板はパロマー天文台オシュキン・シュミット望遠鏡と英国シュミット望遠鏡による。' })]);
 
   /* 操作盤 */
   var padBtn = function (label, dRa, dDec) {
