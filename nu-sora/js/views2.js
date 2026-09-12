@@ -904,7 +904,8 @@ NS.V.reentry = function (root, go, arg) {
 
   /* SWIR + 検出局 */
   NS.add(root, el('div', { class:'grid g-2-1', style:{ marginTop:'14px' } }, [
-    panel('SWIR 冷却カメラによる熱放射観測', { note:'ZWO ASI992MM Pro（IMX992 InGaAs, 0.4–1.7 µm）· 設置 4 局中 ' + e.swirObs.stations.length + ' 局で取得' }, [
+    panel('SWIR 冷却カメラによる熱放射観測', { note:'ZWO ASI992MM Pro（IMX992 InGaAs, 0.4–1.7 µm）· '
+      + NS.t('設置 ') + NS.swirStations().length + NS.t(' 局中 ') + e.swirObs.stations.length + NS.t(' 局で取得') }, [
       el('div', { class:'split' }, [
         NS.chart.gauge({ value:e.swirObs.tempK, min:800, max:3000, unit:'K（破片表面）', text:String(e.swirObs.tempK),
           color:'var(--accent)', zones:[[800, 930, 'var(--c-info)'], [930, 2400, 'var(--c-warn)'], [2400, 3000, 'var(--c-crit)']],

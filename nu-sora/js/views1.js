@@ -847,7 +847,9 @@ NS.V.station = function (root, go, arg) {
         ['用途', '地震直後の校舎の使用可否判定（DT-6）'],
         ['電波流星受信機', 'HRO 53.755 MHz ＋ 3 素子八木　' + Math.round(NS.hroRate(st, t)) + ' echo/h'],
         ['4K 分光カメラ', 'Sony ZV-E10 ＋ 回折格子 600 lpm'],
-        ['SWIR 冷却カメラ', st.swir ? 'ZWO ASI992MM Pro（設置局）' : '未設置（船橋・湘南・郡山・三島の 4 局のみ）'],
+        ['SWIR 冷却カメラ', st.swir ? 'ZWO ASI992MM Pro（設置局）'
+          : NS.t('未設置（') + NS.swirStations().map(function (x) { return NS.t(x.name); }).join(NS.t('・'))
+            + NS.t(' の ') + NS.swirStations().length + NS.t(' 局のみ）')],
         ['制御 PC', '8 コア 16 スレッド / 32 GB / NVMe 2 TB'],
         ['一次保存', NS.f(s2.disk, 0) + ' % 使用　伝送遅延 ' + NS.f(s2.latency, 0) + ' ms']
       ], 'wide')

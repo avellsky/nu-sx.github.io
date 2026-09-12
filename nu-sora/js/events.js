@@ -340,8 +340,8 @@ function reentryDemo() {
     flares:[{ at:0.31, amp:1.8, w:0.012 }, { at:0.46, amp:2.6, w:0.010 }, { at:0.58, amp:2.1, w:0.011 }, { at:0.71, amp:1.4, w:0.014 }] });
   var ErJ = NS.integrateEr(lc);
   var det = [
-    { id:'MSM', mag:-8.2, elev:58.3, snr:184, swir:true,  infra:{ dt:196.2, P:1.35, amp:0.28, az:74.6 } },
-    { id:'SNN', mag:-8.0, elev:49.6, snr:171, swir:true,  infra:{ dt:238.7, P:1.31, amp:0.21, az:242.0 } },
+    { id:'MSM', mag:-8.2, elev:58.3, snr:184, swir:false,  infra:{ dt:196.2, P:1.35, amp:0.28, az:74.6 } },
+    { id:'SNN', mag:-8.0, elev:49.6, snr:171, swir:false,  infra:{ dt:238.7, P:1.31, amp:0.21, az:242.0 } },
     { id:'SKS', mag:-7.6, elev:36.2, snr:128, swir:false, infra:{ dt:301.5, P:1.29, amp:0.14, az:228.4 } },
     { id:'SRG', mag:-7.5, elev:33.0, snr:119, swir:false, infra:null },
     { id:'FNB', mag:-7.3, elev:29.4, snr:104, swir:true,  infra:null },
@@ -360,7 +360,7 @@ function reentryDemo() {
            { t:17.6, alt:63.4, n:5,  note:'本体分裂（最大フレア −8.2 等）' },
            { t:22.3, alt:57.8, n:9,  note:'二次分裂・尾を引く破片列' },
            { t:27.2, alt:51.2, n:14, note:'減光しつつ破片が分散' } ],
-    swirObs:{ stations:['MSM','SNN','FNB'], band:'1.2–1.6 µm', tempK:2118, tempErr:140,
+    swirObs:{ stations:['FNB'], band:'1.2–1.6 µm', tempK:2118, tempErr:140,
       note:'可視・近赤外・SWIR の三波長帯の強度比から破片表面温度を推定。アルミ合金の融点（約 930 K）を大きく超え、酸化アルミの気化領域に達している。' },
     ablation:{ totalKg:214, alKg:68.3, cuKg:5.1, liKg:0.42, other:'Ti・Nb・Hf 微量',
       note:'成層圏エアロゾル中の宇宙機由来金属（Murphy et al. 2023, PNAS）に対応する地上からの直接観測。' },
@@ -464,7 +464,7 @@ function ballisticScenario() {
     { id:'KYM', mag:-6.5, elev:33.6, snr:118, swir:true,  infra:{ dt:637,  P:2.1, amp:2.35, az:129.9 } },
     { id:'SRG', mag:-6.2, elev:29.5, snr: 96, swir:false, infra:{ dt:715,  P:2.2, amp:2.06, az: 72.2 } },
     { id:'SKS', mag:-6.0, elev:27.8, snr: 88, swir:false, infra:{ dt:758,  P:2.2, amp:1.94, az: 72.4 } },
-    { id:'SNN', mag:-5.7, elev:24.7, snr: 71, swir:true,  infra:{ dt:840,  P:2.4, amp:1.72, az: 66.3 } },
+    { id:'SNN', mag:-5.7, elev:24.7, snr: 71, swir:false,  infra:{ dt:840,  P:2.4, amp:1.72, az: 66.3 } },
     { id:'YMG', mag:-5.4, elev:23.2, snr: 62, swir:false, infra:{ dt:888,  P:2.5, amp:1.63, az:145.9 } }
   ];
   return {
@@ -496,7 +496,7 @@ function ballisticScenario() {
            { t:16.4, alt:44.1, n:1, note:'最大光度 −6.8 等。減速が最も強い区間' },
            { t:18.9, alt:35.7, n:3, note:'小片の剥離（フレア 1.6 等分）。構体の一部が露出' },
            { t:22.4, alt:27.0, n:3, note:'発光終了。ここから海面まで約 35 km を暗黒飛行' } ],
-    swirObs:{ stations:['FNB','SNN','KYM'], band:'1.2–1.6 µm', tempK:2860, tempErr:180,
+    swirObs:{ stations:['FNB','KYM'], band:'1.2–1.6 µm', tempK:2860, tempErr:180,
       note:'炭素系アブレータの表面温度は 2,500 K を超える。アルミ合金が溶ける 930 K どころか、'
         + '酸化アルミの沸点 3,250 K に迫る。熱防護材が設計どおり働いていることを外から確認できる。' },
     ablation:{ totalKg:58, parts:[ { el:'C', kg:44.6, color:'var(--c-ok)' }, { el:'Si', kg:6.8, color:'var(--c-cau)' },

@@ -12,9 +12,9 @@ NS.STATIONS = [
   { id:'KYM', name:'郡山局',   en:'Koriyama',   kind:'u', pref:'福島県',  city:'郡山市',
     lat:37.3900, lon:140.3830, alt:280, swir:true, draco:true,  host:'工学部・日本大学東北高等学校', role:'東北拠点' },
   { id:'SNN', name:'湘南局',   en:'Shonan',     kind:'u', pref:'神奈川県',city:'藤沢市',
-    lat:35.3750, lon:139.4700, alt:65,  swir:true,  host:'生物資源科学部・日本大学藤沢高等学校・中学校・小学校', role:'南関東' },
+    lat:35.3750, lon:139.4700, alt:65,  swir:false, host:'生物資源科学部・日本大学藤沢高等学校・中学校・小学校', role:'南関東' },
   { id:'MSM', name:'三島局',   en:'Mishima',    kind:'u', pref:'静岡県',  city:'三島市',
-    lat:35.1210, lon:138.9170, alt:80,  swir:true,  host:'国際関係学部・短期大学部（三島）・日本大学三島高等学校・中学校', role:'東海・富士' },
+    lat:35.1210, lon:138.9170, alt:80,  swir:false, host:'国際関係学部・短期大学部（三島）・日本大学三島高等学校・中学校', role:'東海・富士' },
   { id:'TDN', name:'津田沼局', en:'Tsudanuma',  kind:'u', pref:'千葉県',  city:'習志野市',
     lat:35.6940, lon:140.0135, alt:60,  swir:false, host:'生産工学部（津田沼・実籾）', role:'近接基線・筐体設計' },
   { id:'SKS', name:'桜上水局', en:'Sakurajosui',kind:'u', pref:'東京都',  city:'世田谷区',
@@ -62,7 +62,7 @@ NS.EQUIPMENT = [
   { key:'spec',   cat:'光学', name:'4K分光カメラ',           model:'Sony ZV-E10 + SEL15F14G + 回折格子 600 lpm（AVerMedia BU113）',
     spec:'3840×2160 / 29.97p, UFOCaptureHD2', target:'火球・再突入体の発光分光（350–900 nm の元素同定）', all:true },
   { key:'swir',   cat:'光学', name:'SWIR冷却カメラ',         model:'ZWO ASI992MM Pro（IMX992 InGaAs, 0.4–1.7 µm, 2段TEC −35℃）',
-    spec:'2592×2056 / 3.45 µm, USB3.0', target:'再突入破片の熱放射・薄雲越しの火球', all:false, at:['FNB','SNN','KYM','MSM'] },
+    spec:'2592×2056 / 3.45 µm, USB3.0', target:'再突入破片の熱放射・薄雲越しの火球', all:false, at:['FNB','KYM'] },
   { key:'infra',  cat:'音響', name:'インフラサウンドセンサー ×2', model:'株式会社サヤ INF03（0.1–1000 Hz, 130/110 dB SPL 切替）',
     spec:'GNSS同期ロガー, ペア配置（基線約 60 m）', target:'火球衝撃波・火山・雷・津波・ロケット', all:true },
   { key:'met',    cat:'気象', name:'複合気象センサー',       model:'Vaisala WXT530 系',
@@ -260,7 +260,12 @@ NS.stationState = function (st, t) {
   });
   var down = sub.filter(function (s) { return !s.ok; });
   var status = down.length === 0 ? 'ok' : (down.length <= 1 ? 'warn' : 'down');
-  /* デモの見栄えを安定させるため、既定は 14 局中 1 局を「一部障害」にする */
+  /* SWIR 冷却カメラの設置局（船橋・郡山）。表記をデータ 1 か所から出す。 */
+NS.swirStations = function () {
+  return NS.STATIONS.filter(function (st) { return st.swir; });
+};
+
+/* デモの見栄えを安定させるため、既定は 14 局中 1 局を「一部障害」にする */
   var uptime = 99.9 - r() * 0.9 - (status === 'down' ? 2.5 : status === 'warn' ? 0.6 : 0);
   return { status:status, sub:sub, down:down, uptime:uptime, weather:w,
            latency:38 + r() * 90, disk:52 + r() * 34, night:w.sunAlt < -12,
