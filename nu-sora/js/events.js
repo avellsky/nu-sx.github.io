@@ -519,6 +519,97 @@ function ballisticScenario() {
   };
 }
 
+/* ---------- ロックーン方式の弾道飛行（サブオービタル）の再突入 ----------
+   気球で成層圏まで運んでから空中発射する「ロックーン」方式（AstroX が福島県
+   南相馬市で開発）を想定した協力観測。飛行計画と機体の GNSS 追尾データが
+   あらかじめ共有されるので、真値の分かっている再突入＝観測網の較正事象になる。
+   突入速度は 1.5 km/s 台で、軌道デブリ（7〜8 km/s）とも自然火球（11 km/s 以上）とも
+   桁で違う。発光は暗いが、経路が近いのでインフラサウンドは大振幅で届く。 */
+function rockoonDemo() {
+  var t = NS.night(9, 19, 52, 14, 300);
+  var lc = NS.makeLightcurve({ seed:'RE-RKN', dur:6.8, beginMag:3.6, peakMag:-3.4, peakAt:0.58,
+    flares:[{ at:0.64, amp:0.8, w:0.020 }] });
+  var ErJ = 6.4e5;                        /* 低速なので発光効率は小さい（τ ≒ 0.15 %） */
+  var det = [
+    { id:'KYM', mag:-3.4, elev:52.6, snr:96, swir:true,  infra:{ dt:268.4, P:0.62, amp:1.24, az:104.8 } },
+    { id:'YMG', mag:-3.1, elev:31.4, snr:64, swir:false, infra:{ dt:502.7, P:0.68, amp:0.46, az:128.3 } },
+    { id:'TCR', mag:-2.9, elev:27.8, snr:58, swir:false, infra:{ dt:571.2, P:0.70, amp:0.38, az: 38.6 } },
+    { id:'FNB', mag:-2.4, elev:18.9, snr:37, swir:true,  infra:{ dt:742.9, P:0.74, amp:0.21, az: 27.4 } },
+    { id:'SNN', mag:-2.1, elev:15.2, snr:29, swir:false, infra:null }
+  ];
+  return {
+    id:'NUS-RE-RKN-2028', kind:'reentry', t:t, scenario:true,
+    tab:'ロックーン弾道飛行（協力観測）',
+    scenarioTitle:'協力観測の想定です',
+    name:'ロックーン方式 弾道飛行の再突入（協力観測）',
+    objName:'サブオービタル機体 第 2 段（カーボン複合材 ＋ アルミ合金）',
+    scenarioNote:'株式会社 AstroX（福島県南相馬市）が開発するロックーン方式'
+      + '（気球で成層圏へ運び、そこからロケットを空中発射する方式）の弾道飛行を想定した、'
+      + '事業者との協力観測の例である。実際の飛行計画・打上げ実績を示すものではなく、数値はすべて模擬データである。',
+    summary:'気球で高度 20 km まで上げてから点火し、頂点 120 km に達した機体の第 2 段が、'
+      + '発射点の東 82 km の海上へ落下する想定。突入速度 1.55 km/s・経路角 62° は、'
+      + '軌道デブリ（7〜8 km/s・経路角 1〜3°）とも自然火球（11 km/s 以上）とも重ならない。'
+      + '飛行計画と機体の GNSS 追尾という「真値」が手に入るので、'
+      + '観測網の位置・時刻・エネルギー推定をそのまま較正できる数少ない機会になる。',
+    absMag:-3.4, dur:6.8, stationsDet:5, stationsFov:7, lightcurve:lc,
+    begin:{ lat:37.612, lon:141.480, alt:74.2 }, end:{ lat:37.548, lon:141.836, alt:31.5 },
+    impact:{ lat:37.508, lon:142.010, name:'福島県 南相馬の東 約 82 km の太平洋上（洋上回収域）' },
+    vInf:1.55, entryAngle:62.0, azimuth:104.0, ErJ:ErJ, ErKt:ErJ / NS.KT_J,
+    objMass:180, objArea:'第 2 段（直径 0.42 m・全長 3.1 m）',
+    ballistic:{ apogeeKm:120, rangeKm:82, flightSec:436, splashErrKm:0.9, splashErrSec:0.6,
+      eez:'領海の外・排他的経済水域（EEZ）の内側（洋上回収域）',
+      note:'落下点は 4 局のインフラサウンド到達時刻差の交会で決めた。' },
+    plan:{
+      src:'事業者から提供された飛行計画（打上げ 2 時間前）と、機体搭載 GNSS の追尾ログ（飛行後）',
+      rows:[
+        { k:'再突入時刻', truth:'20:07:14.62 JST', obs:'20:07:14.27 JST', diff:'−0.35 s' },
+        { k:'発光開始高度', truth:'74.6 km', obs:'74.2 km', diff:'−0.4 km' },
+        { k:'突入速度', truth:'1.59 km/s', obs:'1.55 km/s', diff:'−0.04 km/s（2.5 %）' },
+        { k:'経路角', truth:'61.4°', obs:'62.0°', diff:'+0.6°' },
+        { k:'着水点', truth:'37.512°N 142.004°E', obs:'37.508°N 142.010°E', diff:'0.7 km' },
+        { k:'着水時刻', truth:'20:08:03.1 JST', obs:'20:08:02.5 JST', diff:'−0.6 s' }
+      ],
+      note:'真値が分かる再突入は、観測網にとって「ものさし合わせ」の機会である。'
+        + 'ここで求めた系統差（時刻 −0.35 秒、速度 −2.5 %）は、真値のない自然火球や軌道デブリの'
+        + '推定にそのまま補正として効かせられる。種子島の打上げをインフラサウンドの較正事象として'
+        + '使うのと同じ考え方を、光学・分光・音響の三つに広げたものにあたる。'
+    },
+    timeline:[
+      { t:'−2 時間 40 分', ev:'南相馬の沖合で気球を放球（洋上・船上放球）' },
+      { t:'−0 時間 22 分', ev:'高度 20 km に到達。姿勢と方位を整える' },
+      { t:'0 秒', ev:'空中発射（第 1 段点火）' },
+      { t:'+2 分 06 秒', ev:'頂点 120 km を通過（サブオービタル）' },
+      { t:'+6 分 58 秒', ev:'第 2 段が高度 74 km で発光開始（本観測網が検出）' },
+      { t:'+7 分 47 秒', ev:'着水。洋上回収船が回収に向かう' }
+    ],
+    predict:{ issued:-2.0, windowMin:1, srcTLE:'事業者の飛行計画（打上げ 2 時間前に共有）', errKm:0.7, errMin:0.01 },
+    frag:[ { t:1.9, alt:66.4, n:1, note:'アブレータ表面が発光を始める' },
+           { t:3.9, alt:48.8, n:1, note:'最大光度 −3.4 等。減速が最も強い区間' },
+           { t:4.4, alt:45.1, n:2, note:'小片の剥離（フレア 0.8 等分）' },
+           { t:6.8, alt:31.5, n:2, note:'発光終了。ここから海面まで約 31 km を暗黒飛行' } ],
+    swirObs:{ stations:['KYM','FNB'], band:'1.2–1.6 µm', tempK:1465, tempErr:120,
+      note:'速度が 1.5 km/s 台と遅いため、よどみ点の加熱は弾道ミサイルの再突入体（2,800 K 級）より'
+        + 'はるかに穏やかで、アルミ合金の融点（約 930 K）を少し超える程度にとどまる。'
+        + '熱防護材の設計余裕を外から確かめられる。' },
+    ablation:{ totalKg:2.4, parts:[ { el:'C', kg:1.32, color:'var(--c-ok)' }, { el:'Al', kg:0.78, color:'var(--c-info)' },
+                                    { el:'Fe', kg:0.21, color:'var(--muted)' }, { el:'Si', kg:0.09, color:'var(--c-cau)' } ],
+      other:'Cu・Li は微量（機体の電装が小さい）',
+      note:'総アブレーション質量は機体質量の 1 % 台で、軌道デブリ（数十 %）とは比べものにならない。'
+        + '低速の弾道飛行では、機体はほとんど燃えずに落ちてくる。' },
+    infraP:0.68, EinfKt:NS.aftacE(0.68),
+    det:det,
+    spectrum:{ kind:'ballistic', seed:'RE-RKN-SP', station:'郡山局', expo:'4K30p · 積算 40 フレーム',
+      note:'カーボン複合材の外皮に由来する C₂ スワンバンド（473 / 516 / 563 nm）と CN violet（386–422 nm）が出るが、'
+        + '速度が遅いぶん励起温度が低く、大気起源の O I 777・N I は弱い。'
+        + 'アルミ合金の Al I 394.4 / 396.2 nm は、衛星の再突入ほどではないが弾道ミサイルの再突入体よりは強く出る。'
+        + '真値が分かっているので、このスペクトルは「既知組成の標準光源」として、'
+        + '自然天体・軌道デブリのスペクトル同定の基準に使える。' },
+    alert:{ level:'情報', issuedDt:96,
+      recipients:['事業者（飛行安全）', '海上保安庁 第二管区（航行警報の参考）', '福島県 南相馬市 危機管理課',
+                  'JAXA 宇宙状況把握（SSA）（情報共有）'] }
+  };
+}
+
 /* ---------- インフラサウンド事象 ---------- */
 NS.fujiT = function () { return Date.UTC(2028, 10, 23, 0, 41, 12); };   /* 2028-11-23 09:41 JST */
 
@@ -743,8 +834,37 @@ function reentryForecast() {
 }
 
 /* ---------- 組み立て ---------- */
+/* 各局のインフラサウンド到達を、発光経路の幾何から決め直す。
+   音は経路のうち「その局にいちばん近い点」から届くので、その斜距離を見かけの音速で割る。
+   見かけの音速は成層圏の風で経路ごとに数 % ばらつくため、局ごとに ±4 % の幅を持たせる。
+   こうしておくと、到達時刻・到来方位・距離が互いに矛盾せず、画面の解析がそのまま成り立つ。 */
+NS.infraGeom = function (e, cel0) {
+  if (!e || !e.det || !e.begin || !e.end) return e;
+  var N = 80;
+  e.det.forEach(function (d) {
+    if (!d.infra) return;
+    var st = NS.ST[d.id], best = null;
+    for (var i = 0; i <= N; i++) {
+      var f = i / N;
+      var la = e.begin.lat + (e.end.lat - e.begin.lat) * f;
+      var lo = e.begin.lon + (e.end.lon - e.begin.lon) * f;
+      var al = e.begin.alt + (e.end.alt - e.begin.alt) * f;
+      var g = NS.dist(st.lat, st.lon, la, lo);
+      var r = Math.sqrt(g * g + al * al);
+      if (!best || r < best.r) best = { r:r, g:g, lat:la, lon:lo, alt:al, f:f };
+    }
+    var c = (cel0 || 0.300) * (1 + (NS.rng('cel' + e.id + d.id)() - 0.5) * 0.08);
+    d.infra.dt = Math.round(best.r / c * 10) / 10;
+    d.infra.az = Math.round(NS.bearing(st.lat, st.lon, best.lat, best.lon) * 10) / 10;
+    d.infra.km = Math.round(best.r);
+    d.infra.cel = c;
+    d.infra.src = best;
+  });
+  return e;
+};
+
 NS.buildCatalog = function () {
-  var fb = fireballBoso(), re = reentryDemo(), bal = ballisticScenario();
+  var fb = fireballBoso(), re = reentryDemo(), bal = ballisticScenario(), rkn = rockoonDemo();
   /* 輻射点・地心速度・日心軌道は、軌跡（発光点・終端点）と突入速度から導く（js/orbit3d.js）。
      こうしておくと、軌道は必ず発生時刻の地球の位置を通り、3D 描画とも矛盾しない。 */
   if (NS.orbitFromTrack) {
@@ -755,14 +875,17 @@ NS.buildCatalog = function () {
       fb.entryAngle = od.entryAngle; fb.azimuth = od.azimuth;
     }
   }
-  NS.FLAGSHIP = { fireball:fb, reentry:re, ballistic:bal };
-  NS.REENTRIES = [re, bal];
+  NS.FLAGSHIP = { fireball:fb, reentry:re, ballistic:bal, rockoon:rkn };
+  NS.REENTRIES = [re, bal, rkn];
   NS.INFRA = infraEvents();
   NS.FORECAST = reentryForecast();
   NS.EVENTS = [fb, re].concat(routineEvents()).sort(function (a, b) { return b.t - a.t; });
   NS.EVENTS.forEach(function (e) { NS.EVMAP = NS.EVMAP || {}; NS.EVMAP[e.id] = e; });
   NS.INFRA.forEach(function (e) { NS.EVMAP[e.id] = e; });
   NS.EVMAP[bal.id] = bal;        /* 想定シナリオは一覧には出さず、画面から辿れるようにだけしておく */
+  NS.EVMAP[rkn.id] = rkn;
+  /* インフラサウンドの到達は、経路の幾何から求め直す（見かけの音速 0.30 km/s 前後） */
+  [fb, re, bal, rkn].forEach(function (x) { NS.infraGeom(x, 0.300); });
   NS.DEBRIS_CANDIDATES.forEach(function (c) { c.t = re.t + c.tOff * 60000; });
   return NS.EVENTS;
 };
@@ -775,7 +898,8 @@ NS.alertLog = function () {
     { t:fb.t + 41e3,          lvl:'解析',   ev:fb.id, text:'多点三角測量による軌跡決定が完了（残差 41 m）。絶対等級 −11.8、突入速度 17.4 km/s' },
     { t:fb.t + 128e3,         lvl:'解析',   ev:fb.id, text:'暗黒飛行（ダークフライト）の風補正（気象庁 数値予報 GPV ＋ 高層気象観測 ＋ 自局の気象センサー）による落下域確率地図を生成' },
     { t:fb.t + 222e3,         lvl:'通報',   ev:fb.id, text:'千葉県山武市・東金市の防災課、千葉県教育委員会へ落下域確率地図を自動配信（検出から 3 分 42 秒）' },
-    { t:fb.t + 243.6e3,       lvl:'確認',   ev:fb.id, text:'船橋局でインフラサウンド到達を確認。音響エネルギー推定値が光学推定と 2 倍以内で整合' },
+    { t:fb.t + (fb.det[0].infra ? fb.det[0].infra.dt : 243.6) * 1000, lvl:'確認', ev:fb.id,
+      text:'船橋局でインフラサウンド到達を確認。音響エネルギー推定値が光学推定と 2 倍以内で整合' },
     { t:fb.t + 1830e3,        lvl:'対応',   ev:fb.id, text:'山武市より「被害報告なし」の回答。翌朝から回収捜索を開始（UAV 2 機・地上班 6 名）' },
     { t:re.t - 9.6 * 3600e3,  lvl:'予報',   ev:re.id, text:'公開軌道要素から再突入予報を発出（予報窓 ±32 分、日本上空通過の可能性 62 %）' },
     { t:re.t,                 lvl:'検出',   ev:re.id, text:'6 局で再突入発光を検出。経路角 1.4°・継続 38 秒から人工物と即時判定' },

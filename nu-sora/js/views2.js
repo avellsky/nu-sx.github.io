@@ -693,14 +693,14 @@ NS.V.reentry = function (root, go, arg) {
     el('h2', { text:'再突入天体の光学・分光・音響観測' }),
     el('p', { text:'公開軌道要素から再突入を予報し、光学・SWIR・分光・インフラサウンドで実観測する。破片化の過程と大気への金属注入量を地上から直接推定する。速度・経路角・継続時間・スペクトルの組み合わせで、自然火球・軌道デブリ・弾道飛翔体を区別する（サブテーマ G-2 / DT-1）。' }),
     el('div', { class:'seg', style:{ marginTop:'10px' } }, list.map(function (x) {
-      return el('button', { text:x.scenario ? '弾道飛翔体（想定シナリオ）' : '軌道デブリ（衛星の再突入）',
+      return el('button', { text:x.tab || (x.scenario ? '弾道飛翔体（想定シナリオ）' : '軌道デブリ（衛星の再突入）'),
         title:x.name, 'aria-pressed':x.id === e.id ? 'true' : 'false',
         onclick:function () { go('reentry', x.id); } });
     }))
   ]));
   if (e.scenario) {
     NS.add(root, el('div', { class:'scnbanner', style:{ marginBottom:'14px' } }, [
-      el('b', { text:'訓練用の想定シナリオです' }),
+      el('b', { text:e.scenarioTitle || '訓練用の想定シナリオです' }),
       el('span', { text:e.scenarioNote })]));
   }
 
@@ -733,7 +733,13 @@ NS.V.reentry = function (root, go, arg) {
   /* 予報精度（弾道飛翔体は軌道要素が無いので、落下点の独立推定に置き換える） */
   var b = e.ballistic;
   NS.add(root, el('div', { class:'grid g3', style:{ marginTop:'14px' } }, [
-    bal ? panel('落下点の独立推定', { note:'8 局のインフラサウンド到達時刻差の交会による' }, [
+    e.plan ? panel('真値との照合（観測網の較正）', { note:e.plan.src }, [
+      NS.table(['量', '真値（飛行計画・GNSS）', '本観測網の推定', '差'], e.plan.rows.map(function (r) {
+        return [el('b', { text:r.k }), { class:'mono sm', html:r.truth }, { class:'mono sm', html:r.obs },
+          { class:'r mono', html:r.diff }];
+      })),
+      el('div', { class:'note', text:e.plan.note })
+    ]) : bal ? panel('落下点の独立推定', { note:'8 局のインフラサウンド到達時刻差の交会による' }, [
       NS.kv([
         ['J-ALERT', b.jalert.label],
         ['本観測網の落下時刻', NS.fmtJST(e.t + (e.dur + 42) * 1000, { sec:true }) + '（推定誤差 ± ' + NS.f(b.splashErrSec, 1) + ' 秒）'],
@@ -771,6 +777,23 @@ NS.V.reentry = function (root, go, arg) {
       el('div', { class:'note', text:e.ablation.note })
     ])
   ]));
+
+  /* 飛行の時系列（ロックーン方式など、計画の分かっている飛行） */
+  if (e.timeline) {
+    NS.add(root, el('div', { style:{ marginTop:'14px' } }, panel('飛行の時系列（ロックーン方式）', {
+      note:'気球で成層圏まで運び、そこからロケットを空中発射する。空中発射の時刻を 0 秒とする',
+      tools:badge('頂点 ' + e.ballistic.apogeeKm + ' km', 'info') }, [
+      el('ul', { class:'tl' }, e.timeline.map(function (x) {
+        return el('li', { class:'i-info' }, [
+          el('div', { class:'tt', text:x.t }),
+          el('div', { class:'tx', text:x.ev })
+        ]);
+      })),
+      el('div', { class:'note', text:'ロックーン方式は、気球で大気の濃い層を越えてから点火するので、'
+        + '同じ推進薬でも到達高度を稼げる。打上げ地点が洋上で、飛行計画が事前に共有されるため、'
+        + '観測網にとっては「いつ・どこで・どんな速度で落ちてくるかが分かっている再突入」になる。' })
+    ])));
+  }
 
   /* 光度曲線 + 地図 */
   var series = e.det.map(function (d, i) {
@@ -827,6 +850,57 @@ NS.V.reentry = function (root, go, arg) {
     ]),
     mp
   ]));
+
+  /* --- インフラサウンドの解析 --- */
+  var reInfra = e.det.filter(function (d) { return d.infra; });
+  if (reInfra.length) {
+    /* 音は経路のうち各局にいちばん近い点から届く（NS.infraGeom で求めてある） */
+    var cel = reInfra.map(function (d) {
+      return { d:d, st:NS.ST[d.id], slant:d.infra.km, c:d.infra.cel || (d.infra.km / d.infra.dt) };
+    });
+    var cAvg = cel.reduce(function (a, x) { return a + x.c; }, 0) / cel.length;
+    var cSd = Math.sqrt(cel.reduce(function (a, x) { return a + (x.c - cAvg) * (x.c - cAvg); }, 0) / cel.length);
+    var srcAlt = reInfra.reduce(function (a, d) { return a + (d.infra.src ? d.infra.src.alt : 0); }, 0) / reInfra.length;
+    var ws2 = reInfra.map(function (d, i) {
+      return { name:NS.ST[d.id].name, color:['var(--accent)','var(--c-info)','var(--c-ok)','var(--c-warn)'][i % 4],
+        pts:NS.wavePacket({ P:d.infra.P, amp:d.infra.amp, seed:e.id + d.id, dur:Math.max(30, e.dur * 2),
+                            pre:10, width:d.infra.P * 1.4, noise:0.02 })
+          .map(function (p) { return [p[0] + d.infra.dt, p[1] + (reInfra.length - 1 - i) * 1.1]; }), width:1.1 };
+    });
+    NS.add(root, el('div', { class:'grid g-2-1', style:{ marginTop:'14px' } }, [
+      panel('インフラサウンド波形（局別・時刻同期）', {
+        note:'GNSS 同期。横軸は発光ピークからの経過秒。' + (bal
+          ? '経路角が急なので音源は一点に近く、各局の波形はよく似た形になる'
+          : '経路角が浅く軌跡が長いので音源は線状に伸び、局ごとに到達が大きくばらつく') }, [
+        NS.chart.line({ series:ws2, width:560, height:220, xLabel:'発光からの経過秒', yLabel:'気圧変動（相対 Pa）',
+          xFmt:function (v) { return NS.f(v, 0) + 's'; }, yFmt:function () { return ''; },
+          rules:reInfra.map(function (d) { return { x:d.infra.dt, color:'var(--muted)', dash:'2 3', label:NS.ST[d.id].id }; }) }),
+        el('div', { class:'note', html:'各局の到達時刻と音源までの距離から求めた<b>見かけの音速は '
+          + NS.f(cAvg, 3) + ' ± ' + NS.f(cSd, 3) + ' km/s</b>。'
+          + '成層圏の東西風で経路ごとに数 % ばらつくので、この差そのものが高層風の情報になる（G-4）。' })
+      ]),
+      panel('到達・周期・方位', { note:'周期 P から AFTAC の周期–収量関係でエネルギーを出す' }, [
+        NS.table(['観測局', '距離', '到達', '周期 P', '振幅', '到来方位', '見かけ音速'],
+          cel.map(function (x) {
+            return [NS.ST[x.d.id].name, { class:'r', html:NS.km(x.slant, 0) },
+              { class:'r', html:'＋' + NS.f(x.d.infra.dt, 1) + ' s' },
+              { class:'r', html:NS.f(x.d.infra.P, 2) + ' s' },
+              { class:'r', html:NS.f(x.d.infra.amp, 2) + ' Pa' },
+              { class:'r', html:NS.f(x.d.infra.az, 1) + '°' },
+              { class:'r mono sm', html:NS.f(x.c, 3) }];
+          })),
+        NS.kv([
+          ['代表周期 P', NS.f(e.infraP, 2) + ' s'],
+          ['音響エネルギー', NS.sig(e.EinfKt * 1e3) + ' × 10⁻³ kt <span class="hint">（AFTAC 周期–収量関係）</span>'],
+          ['光学エネルギー', NS.sig(e.ErKt * 1e3) + ' × 10⁻³ kt <span class="hint">（放射エネルギーから）</span>'],
+          ['音源（各局の最寄り点）', '平均高度 ' + NS.km(srcAlt, 0) + '　<span class="hint">経路のうち、その局にいちばん近い点から届く</span>']
+        ], 'wide'),
+        el('div', { class:'note', text:'光学と音響は独立な二つのエネルギー推定で、両者が factor 2 以内で一致すれば'
+          + '発光効率の仮定が妥当だったことになる。再突入体は自然火球より遅いぶん発光効率が小さく、'
+          + '光学だけでは過小評価になりやすいので、音響側の拘束が効く。' })
+      ])
+    ]));
+  }
 
   /* SWIR + 検出局 */
   NS.add(root, el('div', { class:'grid g-2-1', style:{ marginTop:'14px' } }, [
