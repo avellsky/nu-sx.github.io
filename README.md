@@ -1,4 +1,18 @@
-# nu-sx.github.io
+# nu-sx.github.io（移転済み）
+
+> **このリポジトリの公開サイトは移転しました。**
+> 新しい公開先は **https://nu-sx.github.io/** です（リポジトリは
+> [`nu-sx/nu-sx.github.io`](https://github.com/nu-sx/nu-sx.github.io)）。
+>
+> | 旧 URL | 新 URL |
+> |---|---|
+> | `https://avellsky.github.io/nu-sx.github.io/` | `https://nu-sx.github.io/` |
+> | `https://avellsky.github.io/nu-sx.github.io/nu-sora/` | `https://nu-sx.github.io/nu-sora/` |
+>
+> 旧 URL は表紙・デモとも新 URL へ自動転送する 1 枚のページに置き換えてある
+> （画面内の位置を表す `#...` も引き継ぐ）。更新はすべて新リポジトリで行う。
+
+---
 
 日本大学 理工学部（理工学研究所）**宇宙科学研究ユニット NU-SX** が公開する Web デモのサイト。
 
